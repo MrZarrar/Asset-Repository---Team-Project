@@ -23,6 +23,12 @@ async function createAssetsCollection() {
                 { name: 'usage_info', type: 'text', required: false },
                 { name: 'date_created', type: 'date', required: true },
                 { name: 'last_updated', type: 'date', required: true },
+                { // Link to Projects collection
+                    name: 'project_id', 
+                    type: 'relation', 
+                    required: true, 
+                    options: { collectionId: 'projects' } 
+                }
                 
             ]
         });
