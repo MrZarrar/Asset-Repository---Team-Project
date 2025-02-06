@@ -1,5 +1,5 @@
 const signupForm = document.getElementById('signForm');
-const loginForm = document.getElementById('loginForm');
+const loginForm = document.getElementById('logForm');
 
 if (signupForm) {
   document.body.classList.add('signup-page');
@@ -7,7 +7,7 @@ if (signupForm) {
   document.body.classList.add('login-page');
 }
 
-const firstName_input = document.getElementById('username');
+const firstName_input = document.getElementById('firstname');
 const surname_input = document.getElementById('surname');
 const email_input = document.getElementById('email');
 const password_input = document.getElementById('password');
@@ -95,12 +95,12 @@ function getSignupErrors(username, surname, email, password, confirmPassword){
   return errors;
 }
 
-function getLoginErrors(email, password){
+function getLoginErrors(username, password){
   let errors = [];
 
-  if(email === '' || email == null || !isValidEmail(email)){
+  if(username === '' || username == null || !isValidEmail(username)){
     errors.push('Please enter a valid email address')
-    email_input.classList.add('incorrect')
+    username_input.classList.add('incorrect')
   }
   if(password === '' || password === null || password.length < 8 || password.length > 20 || !containsString(password)){
     errors.push('Please enter a valid password');
