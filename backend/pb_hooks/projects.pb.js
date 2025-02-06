@@ -23,10 +23,15 @@ async function createProjectsCollection() {
                 { name: 'tag', type: 'json', required: false },
                 { name: 'project_id', type: 'text', required: true, unique: true }
             ],
-            options: {}
+            options: {},
+            listRule: "true",   // Everyone can list projects
+            viewRule: "true",   // Everyone can view projects
+            createRule: "request.auth != null && request.auth.user.role == 'general'",
+            updateRule: "request.auth != null && request.auth.user.role == 'general'",
+            deleteRule: "request.auth != null && request.auth.user.role == 'admin'"
         });
 
-        console.log('Projects collection created:', collection);
+        console.log('Projects collection created with RBAC rules:', collection);
     } catch (e) {
         console.error('Error creating projects collection:', e);
     }
