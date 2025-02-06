@@ -29,8 +29,14 @@ async function createAssetsCollection() {
                     required: true, 
                     options: { collectionId: 'projects' } 
                 }
-                
-            ]
+            ],
+            options: {},
+            listRule: "",
+            viewRule: "",
+            createRule: "user.role = 'general'",
+            updateRule: "user.role = 'general'",
+            deleteRule: "user.role = 'admin'",
+
         });
 
         console.log('Assets collection created:', collection);
