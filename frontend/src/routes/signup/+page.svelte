@@ -11,7 +11,7 @@
             return;
         }
     }
-    
+
     try {
             const user = await pb.collection('users').create({
                 email: email,
@@ -25,3 +25,11 @@
         }
 </script>
 
+</script>
+
+<form on:submit|preventDefault={register}>
+    <input type="email" bind:value={email} placeholder="Email" required />
+    <input type="password" bind:value={password} placeholder="Password" required />
+    <input type="password" bind:value={confirmPassword} placeholder="Confirm Password" required />
+    <button type="submit">Sign Up</button>
+</form>
