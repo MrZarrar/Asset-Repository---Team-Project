@@ -6,5 +6,6 @@ async function logActions(action, file, user, time) {
     $app.logger().info(
     action + " was done on file: " + file,
     "user", user,
-    "time", time)
+    "time", time
+    )
 }
