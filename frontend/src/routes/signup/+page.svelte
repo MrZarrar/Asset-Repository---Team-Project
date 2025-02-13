@@ -11,5 +11,17 @@
             return;
         }
     }
+    
+    try {
+            const user = await pb.collection('users').create({
+                email: email,
+                password: password,
+                passwordConfirm: confirmPassword
+            });
+
+            console.log("User created:", user);
+        } catch (err) {
+            console.error("Sign-up failed:", err);
+        }
 </script>
 
