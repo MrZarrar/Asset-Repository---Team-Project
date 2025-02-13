@@ -40,3 +40,4 @@ export async function deleteRecord(id) {
     } catch (error) {
         console.error('Error when deleting record:', error);
     }
+}
