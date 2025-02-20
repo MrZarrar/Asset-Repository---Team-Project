@@ -28,7 +28,7 @@ migrate((app) => {
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
-        "required": false,
+        "required": true,
         "system": false,
         "type": "text"
       },
@@ -42,7 +42,8 @@ migrate((app) => {
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
-        "required": false,
+        "required": true,
+        "unique": true,
         "system": false,
         "type": "text"
       },
@@ -56,7 +57,7 @@ migrate((app) => {
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
-        "required": false,
+        "required": true,
         "system": false,
         "type": "text"
       },
@@ -68,7 +69,7 @@ migrate((app) => {
         "name": "size",
         "onlyInt": false,
         "presentable": false,
-        "required": false,
+        "required": true,
         "system": false,
         "type": "number"
       },
@@ -82,7 +83,7 @@ migrate((app) => {
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
-        "required": false,
+        "required": true,
         "system": false,
         "type": "text"
       },
@@ -120,7 +121,7 @@ migrate((app) => {
         "minSelect": 0,
         "name": "project_id",
         "presentable": false,
-        "required": false,
+        "required": true,
         "system": false,
         "type": "relation"
       },
@@ -132,6 +133,7 @@ migrate((app) => {
         "onUpdate": false,
         "presentable": false,
         "system": false,
+        "required": true,
         "type": "autodate"
       },
       {
@@ -142,6 +144,7 @@ migrate((app) => {
         "onUpdate": true,
         "presentable": false,
         "system": false,
+        "required": true,
         "type": "autodate"
       }
     ],
