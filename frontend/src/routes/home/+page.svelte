@@ -107,8 +107,7 @@ input[type="search"]::-webkit-search-cancel-button {
                 </button>
                 <div
                   class={`${isSearchMenuOpen ? 'block' : 'hidden'}
-                  id="dropdown"
-                  class="z-10 absolute mt-2 bg-gray-200 dark:bg-gray-700 divide-y divide-gray-600 rounded-lg shadow-lg`}
+                  absolute z-50 mt-2 bg-gray-200 dark:bg-gray-700 divide-y divide-gray-600 rounded-lg shadow-lg `}
                 >
                   <ul class="py-2 text-sm text-gray-900 dark:text-gray-200">
                     <li>
@@ -211,21 +210,80 @@ input[type="search"]::-webkit-search-cancel-button {
     </div>
   </nav>      
 
-  <section class="py-8">
-      <article>
-          <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Background</h2>
-          <p class="text-gray-600">
-              The goal of the project is to develop a Web-based repository system that supports the storage and access of different source code related assets of a software company.
-          </p>
-          <ul class="list-disc ml-6 mt-4 space-y-2">
-              <li>Jar files</li>
-              <li>Shared libraries e.g. a security library to authenticate users through a service like LDAP</li>
-              <li>Scripts</li>
-              <li>Images</li>
-              <li>Information about the licensing of a particular asset</li>
-              <li>Asset usage information</li>
-              <li>Documentation about the asset</li>
-          </ul>
-      </article>
-  </section>    
+  <div class="flex">
+    <!-- Left Sidebar -->
+    <aside class="hidden lg:block w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 p-4">
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-4">Indexed Artifacts</h2>
+        <!-- Add your graph component here -->
+        <div class="h-48 bg-gray-100 dark:bg-gray-700 rounded"></div>
+      </div>
+
+      <div>
+        <h2 class="text-xl font-bold mb-4">Popular Categories</h2>
+        <ul class="space-y-2">
+          <!-- svelte-ignore a11y-missing-attribute -->
+          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Testing Frameworks & Tools</a></li>
+          <!-- svelte-ignore a11y-missing-attribute -->
+          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Android Packages</a></li>
+            <!-- svelte-ignore a11y-missing-attribute -->
+          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Logging Frameworks</a></li>
+          <!-- svelte-ignore a11y-missing-attribute -->
+          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">JVM Languages</a></li>
+          <!-- Add more categories as needed -->
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1">
+      <section class="py-8">
+        <div class="container mx-auto px-4">
+          <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">
+            Most Popular
+          </h1>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
+            <div class="relative w-64 group">
+              <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
+              <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Item 1</h2>
+                <a href="/details_page" class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">Description.</a>
+              </div>
+            </div>
+            <div class="relative w-64 group">
+              <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
+              <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Item 2</h2>
+                <a href="/details_page" class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">Description.</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>    
+    </div>
+
+    <!-- Right Sidebar -->
+    <aside class="hidden xl:block w-72 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 p-4 min-h-screen">
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-4">Indexed Repositories</h2>
+        <!-- svelte-ignore a11y-missing-attribute -->
+        <ul class="space-y-2">
+          <li><a class="block text-gray-700 dark:text-gray-300 hover:scale-105 transition-all duration-300">Central</a></li>
+          <li><a class="block text-gray-700 dark:text-gray-300 hover:scale-105 transition-all duration-300">Atlassian</a></li>
+          <li><a class="block text-gray-700 dark:text-gray-300 hover:scale-105 transition-all duration-300">WSO2 Releases</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-xl font-bold mb-4">Popular Tags</h2>
+        <!-- svelte-ignore a11y-missing-attribute -->
+        <div class="flex flex-wrap gap-2">
+          <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">android</a>
+          <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">api</a>
+          <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">maven</a>
+          <!-- Add more tags as needed -->
+        </div>
+      </div>
+    </aside>
+  </div>
 </main>
