@@ -1,35 +1,36 @@
 <script>
-    import pb from '$lib/pocketbase';
-
+    import { signUp } from '$lib/auth';
+  
+    
     let email = "";
     let password = "";
     let confirmPassword = "";
+    let username = "";
+    let name = "";
+    let errorMessage = "";
 
-    async function register() {
-        if (password !== confirmPassword) {
-            alert("Passwords do not match!");
-            return;
+    async function handleSignUp() {
+        try {
+            await signUp(email, password, confirmPassword,username,name);
+            alert("Sign-up successful! You can now log in.");
+        } catch (error) {
+            errorMessage = error.message;
         }
     }
-
-    try {
-            const user = await pb.collection('users').create({
-                email: email,
-                password: password,
-                passwordConfirm: confirmPassword
-            });
-
-            console.log("User created:", user);
-        } catch (err) {
-            console.error("Sign-up failed:", err);
-        }
 </script>
 
-</script>
-
-<form on:submit|preventDefault={register}>
+<h1>Sign Up</h1>
+<form on:submit|preventDefault={handleSignUp}>
+    <input type="text" bind:value={username} placeholder="Username" required />
+    <input type="text" bind:value={name} placeholder="Name" required />
     <input type="email" bind:value={email} placeholder="Email" required />
     <input type="password" bind:value={password} placeholder="Password" required />
     <input type="password" bind:value={confirmPassword} placeholder="Confirm Password" required />
     <button type="submit">Sign Up</button>
 </form>
+
+{#if errorMessage}
+    <p style="color: red;">{errorMessage}</p>
+{/if}
+
+<a href="/login">Already have an account? Log in</a>
