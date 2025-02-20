@@ -1,30 +1,41 @@
-<script lang="ts">
+<script>
   import { goto } from "$app/navigation";
   import { user } from "$lib/user";
+  import { updateProfile } from "$lib/api";
 
-  let username: string;
-  let fname: string;
-  let lname: string;
-  let email: string;
+  let userid;
+  let username;
+  let name;
+  let email;
 
   $: {
+    userid = $user.userid;
     username = $user.username;
-    fname = $user.fname;
-    lname = $user.lname;
+    name = $user.name;
     email = $user.email;
   }
 
-  function updatedProfile() {
-    console.log("Saving Profile:", { username, fname, lname, email });
-    user.set({ username, fname, lname, email });
-    console.log("Store updated. Redirecting to profile page...");
-    goto("/profile");
+  async function updatedProfile() {
+    if(!userid) {
+      alert("User ID is required.");
+      return;
+    }
+    try{
+      await updateProfile(userid, username, name, email);
+      user.set({ userid, username, name, email });
+      goto("/profile");
+    }
+    catch (error) {
+      console.error("Error updating profile:", error);
+      alert("Error updating profile. Please try again.");
+    }
   }
 
   function cancel() {
     goto("/profile");
   }
 </script>
+
 
 <form
   id="profile-settings-form"
@@ -87,33 +98,17 @@
 
       <div class="sm:col-span-3">
         <label
-          for="first-name"
-          class="block text-sm/6 font-medium text-gray-900">First name</label
+          for="name"
+          class="block text-sm/6 font-medium text-gray-900">Name</label
         >
         <div class="mt-2">
           <input
             type="text"
-            name="first-name"
-            id="first-name"
+            name="name"
+            id="name"
             autocomplete="given-name"
             class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
-            bind:value={fname}
-          />
-        </div>
-      </div>
-
-      <div class="sm:col-span-3">
-        <label for="last-name" class="block text-sm/6 font-medium text-gray-900"
-          >Last name</label
-        >
-        <div class="mt-2">
-          <input
-            type="text"
-            name="last-name"
-            id="last-name"
-            autocomplete="family-name"
-            class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
-            bind:value={lname}
+            bind:value={name}
           />
         </div>
       </div>
