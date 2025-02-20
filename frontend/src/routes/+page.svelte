@@ -1,5 +1,21 @@
 <script>
-    import { Search, User, Download, ChevronDown } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown } from "@lucide/svelte";
+
+  import PocketBase from 'pocketbase';
+
+  const pb = new PocketBase('http://127.0.0.1:8090');
+
+  let fetchedAssets = [];
+
+  async function fetchAssets() {
+    try {
+      fetchedAssets = await pb.collection('assets').getFullList();
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+    }
+  }
+
+  fetchAssets();
 </script>
 
 <style>
@@ -210,6 +226,7 @@
                 <li>Asset usage information</li>
                 <li>Documentation about the asset</li>
             </ul>
+
         </article>
     </section>    
 </main>
