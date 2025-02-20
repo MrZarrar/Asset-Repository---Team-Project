@@ -121,7 +121,7 @@ migrate((app) => {
         "minSelect": 0,
         "name": "project_id",
         "presentable": false,
-        "required": true,
+        "required": false,
         "system": false,
         "type": "relation"
       },
