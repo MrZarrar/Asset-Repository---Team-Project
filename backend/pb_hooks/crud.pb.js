@@ -13,7 +13,7 @@ export async function createRecord(data) {
     }
 }
 
-export async function getRecordById(id) {
+export async function fetchRecordById(id) {
     try {
         const record = await pb.collection(collectionName).getOne(id);
         console.log('Record retrieved:', record);
@@ -39,5 +39,15 @@ export async function deleteRecord(id) {
         console.log('Record deleted:', id);
     } catch (error) {
         console.error('Error when deleting record:', error);
+    }
+}
+
+export async function fetchAllRecords() {
+    try {
+        const records = await pb.collection(collectionName).getFullList();
+        console.log('Record(s) fetched:', records);
+        return records;
+    } catch (error) {
+        console.error('Error fetching record(s):', error);
     }
 }
