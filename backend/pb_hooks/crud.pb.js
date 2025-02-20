@@ -41,13 +41,3 @@ export async function deleteRecord(id) {
         console.error('Error when deleting record:', error);
     }
 }
-
-export async function fetchAllRecords() {
-    try {
-        const records = await pb.collection(collectionName).getFullList();
-        console.log('Record(s) fetched:', records);
-        return records;
-    } catch (error) {
-        console.error('Error fetching record(s):', error);
-    }
-}
