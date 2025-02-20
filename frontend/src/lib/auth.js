@@ -7,6 +7,8 @@ export async function SignUp(email, password, passwordConfirm){
         }
         
         const user = await pb.collection('users').create(
+            UserName,
+            name,
             email,
             password,
             passwordConfirm
@@ -37,5 +39,5 @@ try {
 }
 
 export function logout() {
-
+    pb.authStore.clear();
 }
