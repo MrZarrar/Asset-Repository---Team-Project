@@ -1,5 +1,5 @@
 // superuser.js
-const PocketBase = require("pocketbase"); // Use require instead of import
+const PocketBase = require("pocketbaseM"); // Use require instead of import
 const pb = new PocketBase('http://127.0.0.1:8090/');
 pb.autoCancellation(false);
 
