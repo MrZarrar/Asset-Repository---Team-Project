@@ -13,7 +13,7 @@ export async function SignUp(email, password, passwordConfirm){
         )
 
         return user;
-        
+
     } catch (error) {
         console.error("Sign-up error:", error);
         throw error;        
@@ -21,9 +21,19 @@ export async function SignUp(email, password, passwordConfirm){
 
 }
 
-
-export async function login(email, password) {
-
+export async function logIn(email, password) {
+try {
+    const authData = await pb.collection('users').authWithPassword(
+        email,
+        password
+    );
+    return authData;
+    
+} catch (error) {
+    console.error("Login error:", error);
+    throw error;
+}
+    
 }
 
 export function logout() {
