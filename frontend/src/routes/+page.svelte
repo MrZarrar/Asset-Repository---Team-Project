@@ -227,6 +227,21 @@
                 <li>Documentation about the asset</li>
             </ul>
 
+            <p>Assets</p>
+
+            {#if assets.length}
+            <ul>
+            {#each assets as asset}
+            <li>
+              <p>{asset.name}</p>
+              <p>{asset.type}</p>
+            </li>
+            {/each}
+            </ul>
+            {:else}
+            <p>Assets have not been loaded</p>
+            {/if}
+
         </article>
     </section>    
 </main>
