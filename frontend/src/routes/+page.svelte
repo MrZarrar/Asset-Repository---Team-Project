@@ -9,7 +9,7 @@
 
   async function fetchAssets() {
     try {
-      fetchedAssets = await pb.collection('assets').getFullList();
+      fetchedAssets = await pb.collection('Assets').getFullList();
     } catch (error) {
       console.error('Error fetching assets:', error);
     }
@@ -229,9 +229,9 @@
 
             <p>Assets</p>
 
-            {#if assets.length}
+            {#if fetchedAssets.length}
             <ul>
-            {#each assets as asset}
+            {#each fetchedAssets as asset}
             <li>
               <p>{asset.name}</p>
               <p>{asset.type}</p>
