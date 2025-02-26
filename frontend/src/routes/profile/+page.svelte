@@ -1,11 +1,28 @@
 <script>
 	import { user } from '../../lib/user.js';
+	import { User, Download, ChevronDown } from '@lucide/svelte';
 
 	let isMobileMenuOpen = false;
 	function toggleMobileMenu() {
 		isMobileMenuOpen = !isMobileMenuOpen;
 	}
 
+	let isUserMenuOpen = false;
+	function toggleUserMenu() {
+		isUserMenuOpen = !isUserMenuOpen;
+		if (isUserMenuOpen) {
+			isDownloadMenuOpen = false;
+		}
+	}
+
+	let isDownloadMenuOpen = false;
+	function toggleDownloadMenu() {
+		// Toggle the download menu and close the user menu if it is open
+		isDownloadMenuOpen = !isDownloadMenuOpen;
+		if (isDownloadMenuOpen) {
+			isUserMenuOpen = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -90,15 +107,80 @@
 						</a>
 					</div>
 				</div>
-				
+				<div class="flex itmes-center">
+					<div class="relative ml-1">
+						<button
+							type="button"
+							on:click={toggleDownloadMenu}
+							class="rounded-full text-black dark:bg-gray-800 p-1 dark:text-gray-400 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden hover:scale-105 transition-all duration-300"
+						>
+							<span class="absolute -inset-1.5"></span>
+							<span class="sr-only">View notifications</span>
+							<Download class="size-6" />
+						</button>
+						<div
+							class={`${isDownloadMenuOpen ? 'block' : 'hidden'} absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md dark:bg-gray-800 dark:text-white bg-white py-1  shadow-lg ring-1 ring-black/5 focus:outline-hidden`}
+							role="menu"
+							aria-orientation="vertical"
+							aria-labelledby="user-menu-button"
+							tabindex="-1"
+						>
+							<span
+								class="block px-4 py-2 text-sm font-semibold text-gray-700 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-all duration-300"
+								>Nothing is downloaded yet.</span
+							>
+						</div>
+					</div>
+					<div class="relative ml-5">
+						<button
+							type="button"
+							on:click={toggleUserMenu}
+							class="rounded-full dark:text-gray-400 p-1 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden hover:scale-105 transition-all duration-300"
+							id="user-menu-button"
+							aria-expanded={isUserMenuOpen}
+							aria-haspopup="true"
+						>
+							<span class="absolute -inset-1.5"></span>
+							<span class="sr-only">Open user menu</span>
+							<User class="size-6" />
+						</button>
+						<div
+							class={`${isUserMenuOpen ? 'block' : 'hidden'} absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md dark:bg-gray-800 dark:hover:bg-gray-900 dark:text-gray-100 bg-white text-gray-900 py-1 ring-1 shadow-lg ring-black/5 focus:outline-hidden`}
+							role="menu"
+							aria-orientation="vertical"
+							aria-labelledby="user-menu-button"
+							tabindex="-1"
+						>
+							<a
+								href="/profile"
+								class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700"
+								role="menuitem"
+								tabindex="-1"
+								id="user-menu-item-0">Your Profile</a
+							>
+							<a
+								href="/profile_settings"
+								class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700"
+								role="menuitem"
+								tabindex="-1"
+								id="user-menu-item-1">Settings</a
+							>
+							<a
+								class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700"
+								role="menuitem"
+								tabindex="-1"
+								id="user-menu-item-2">Sign out</a
+							>
+						</div>
+					</div>
+				</div>
 			</div>
-
 		</div>
 
 		<div class={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden`} id="mobile-menu">
 			<div class="space-y-1 px-2 pt-2 pb-3">
 				<a
-					href="/+page.svelte"
+					href="/"
 					class="block rounded-md bg-gray-900 px-3 py-2 text-base font-medium text-white"
 					aria-current="page"
 				>

@@ -4,6 +4,9 @@
 	import { updateProfile } from '$lib/api';
 
 	let userid = $user.userid;
+	let username = $user.username;
+    let name = $user.name;
+    let email = $user.email;
 
 	async function updatedProfile() {
 		if (!userid) {
