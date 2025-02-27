@@ -1,4 +1,9 @@
 import pb from '$lib/pocketbase';
+// In $lib/auth.js
+import { writable } from 'svelte/store';
+export const isAuthenticated = writable(false);
+
+// Update this in your login/logout functions
 
 export async function signUp(email, password, passwordConfirm, username, name) {
     try {
