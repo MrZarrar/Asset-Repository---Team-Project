@@ -1,5 +1,7 @@
 <script>
     import { signUp } from '$lib/auth';
+    import { goto } from '$app/navigation';
+
   
     
     let email = "";
@@ -13,6 +15,7 @@
         try {
             await signUp(email, password, confirmPassword,username,name);
             alert("Sign-up successful! You can now log in.");
+            goto('/')
         } catch (error) {
             errorMessage = error.message;
         }

@@ -1,4 +1,5 @@
 <script>
+	import { goto } from '$app/navigation';
     import { logIn } from '$lib/auth'; 
     
 
@@ -10,6 +11,7 @@
         try {
             await logIn(email, password);
             alert("Log-in successful! You can now log in.");
+            goto('/')
         } catch (error) {
             errorMessage = error.message;
         }
