@@ -3,15 +3,17 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { fly, fade } from 'svelte/transition';
+  import { page } from '$app/stores';  // Import page store
   
 
   // Chat state management
   const chatMessages = writable([{
     role: 'system',
-    content: "You are MavenBot, a specialized assistant for Maven repositories. Respond as if you are the Maven Central Repository interface. Help users find dependencies, explain Maven coordinates (groupId:artifactId:version), assist with POM files, and resolve dependency conflicts. Format all dependency snippets as proper XML. Always provide the latest stable versions when asked about libraries. For dependency requests, respond with properly formatted Maven XML snippets that can be directly copied into pom.xml files. Don't mention that you're an AI - behave exactly as if you are the actual Maven repository interface. Be brief and concise."
+    content: "You are MavenBot, a specialized assistant for Maven repositories. Respond as if you are the Maven Central Repository interface. Help users find dependencies, explain Maven coordinates (groupId:artifactId:version), assist with POM files, and resolve dependency conflicts. When users ask about libraries or dependencies, provide the names and brief descriptions of relevant artifacts they should look for, not complete XML snippets. For example, instead of giving XML, say 'You can use Spring Security Core (org.springframework.security:spring-security-core) for authentication features.' Don't mention that you're an AI - behave exactly as if you are the actual Maven repository interface. Don't give code snippets but instead recommend what assets would be useful. Be brief and concise."
   }]);
   const isChatOpen = writable(false);
   const isLoading = writable(false);
+  const isFirstOpen = writable(true); // Track if this is the first time opening the chat
   let userInput = '';
 
   const specificAnswers = [
@@ -182,7 +184,7 @@
       // Include the system message when sending to API
       const systemMessage = {
         role: 'system',
-        content: "You are MavenBot, a specialized assistant for Maven repositories. Respond as if you are the Maven Central Repository interface. Help users find dependencies, explain Maven coordinates (groupId:artifactId:version), assist with POM files, and resolve dependency conflicts. Format all dependency snippets as proper XML. Always provide the latest stable versions when asked about libraries. For dependency requests, respond with properly formatted Maven XML snippets that can be directly copied into pom.xml files. Don't mention that you're an AI - behave exactly as if you are the actual Maven repository interface. Be brief and concise."
+        content: "You are MavenBot, a specialized assistant for Maven repositories. Respond as if you are the Maven Central Repository interface. Help users find dependencies, explain Maven coordinates (groupId:artifactId:version), assist with POM files, and resolve dependency conflicts. When users ask about libraries or dependencies, provide the names and brief descriptions of relevant artifacts they should look for, not complete XML snippets. For example, instead of giving XML, say 'You can use Spring Security Core (org.springframework.security:spring-security-core) for authentication features.' Don't mention that you're an AI - behave exactly as if you are the actual Maven repository interface. Don't give code snippets but instead recommend what assets would be useful. Be brief and concise."
       };
       
       // Send to your server endpoint that interfaces with openai api
@@ -210,15 +212,30 @@
     }
   }
 
+  const welcomeMessage = "Welcome to MavenBot! What kind of Maven dependency or asset are you looking for today?";
+
   function toggleChat() {
     $isChatOpen = !$isChatOpen;
+    
+    // If opening the chat for the first time, display the welcome message
+    if ($isChatOpen && $isFirstOpen) {
+      $chatMessages = [...$chatMessages, { 
+        role: 'assistant', 
+        content: welcomeMessage
+      }];
+      $isFirstOpen = false;
+    }
   }
+
+  // Function to check if we're on login or signup page
+  $: isAuthPage = $page?.route?.id === '/login' || $page?.route?.id === '/signup';
 </script>
 
 
 <slot />
 
-<!-- Chat Interface -->
+<!-- Chat Interface - conditionally rendered -->
+{#if !isAuthPage}
 <div class="fixed bottom-5 right-5 z-50">
   {#if $isChatOpen}
     <div class="relative group">
@@ -235,12 +252,12 @@
         </div>
         <div class="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
           {#each $chatMessages.filter(msg => msg.role !== 'system') as message}
-            <div class={`p-3 rounded-2xl max-w-[80%] ${
+            <div class={`p-3 rounded-2xl max-w-[90%] overflow-y-auto ${
               message.role === 'user' 
                 ? 'self-end bg-blue-600 text-white' 
                 : 'self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
             }`}>
-              <p class="m-0">{message.content}</p>
+              <p class="m-0 break-words">{message.content}</p>
             </div>
           {/each}
           {#if $isLoading}
@@ -279,3 +296,4 @@
     </div>
   {/if}
 </div>
+{/if}
