@@ -1,0 +1,37 @@
+<script>
+    import PocketBase from 'pocketbase';
+    import { onMount } from 'svelte';
+    // import logging.css
+
+    const pb = new PocketBase('http://127.0.0.1:8090');
+  
+    let logs = [];
+
+    async function fetchLogs() {
+        try {
+            logs = await pb.collection('logs').getFullList({ sort: '-created' });
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        }
+    }
+  
+    onMount(fetchLogs);
+</script>
+
+<svelte:head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging</title>
+</svelte:head>
+
+<main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+    <h1 class="text-xl font-semibold mt-6">Log History</h1>
+    <ul class="mt-4 space-y-2">
+        {#each logs as log}
+            <li class="p-3 bg-gray-100 rounded shadow">
+                <strong>{log.action}</strong> on <em>{log.file}</em> by <span class="text-blue-600">{log.user}</span>
+                <div class="text-sm text-gray-500">{new Date(log.time).toLocaleString()}</div>
+            </li>
+        {/each}
+    </ul>
+</main>
