@@ -1,12 +1,7 @@
 <script>
     import { signUp } from '$lib/auth';
-<<<<<<< HEAD
     import { goto } from '$app/navigation';
 
-  
-=======
->>>>>>> be398340244238c81f6e081351828ffe52e4aff2
-    
     let email = "";
     let password = "";
     let confirmPassword = "";
@@ -16,14 +11,9 @@
 
     async function handleSignUp() {
         try {
-<<<<<<< HEAD
             await signUp(email, password, confirmPassword,username,name);
             alert("Sign-up successful! You can now log in.");
             goto('/')
-=======
-            await signUp(email, password, confirmPassword, username, name);
-            window.location.href = "/login";
->>>>>>> be398340244238c81f6e081351828ffe52e4aff2
         } catch (error) {
             errorMessage = error.message;
         }
