@@ -9,12 +9,8 @@
     async function handleLogin() {
         try {
             await logIn(email, password);
-<<<<<<< HEAD
             alert("Log-in successful! You can now log in.");
             goto('/')
-=======
-            window.location.href = "/";
->>>>>>> be398340244238c81f6e081351828ffe52e4aff2
         } catch (error) {
             errorMessage = error.message;
         }

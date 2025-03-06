@@ -36,7 +36,7 @@
 
 <style>
 input[type="search"]::-webkit-search-cancel-button {
-  -webkit-appearance: none;
+   -webkit-appearance: none;
   display: none;
 }
 </style>
