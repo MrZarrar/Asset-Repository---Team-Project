@@ -2,11 +2,47 @@
 	import { goto } from '$app/navigation';
 	import { user } from '$lib/user';
 	import { updateProfile } from '$lib/api';
+	import { User } from '@lucide/svelte';
 
 	let userid = $user.userid;
 	let username = $user.username;
-    let name = $user.name;
-    let email = $user.email;
+	let name = $user.name;
+	let email = $user.email;
+	let profilePicture = $user.profilePicture || '';
+
+	let fileInput;
+
+	async function profilePictureChange(event) {
+		const file = event.target.files[0];
+		if (file) {
+			const formData = new FormData();
+			formData.append('avatar', file);
+
+			try {
+				const response = await fetch(
+					`http://127.0.0.1:8090/api/collections/profiles/records/${userid}`,
+					{
+						method: 'PATCH',
+						body: formData
+					}
+				);
+
+				if (!response.ok) {
+					throw new Error('Error updating profile picture');
+				}
+				const updatedUser = await response.json();
+				const imageUrl = `http://127.0.0.1:8090/api/files/profiles/${userid}/${updatedUser.profilePicture}`;
+
+				user.update((currentUser) => ({
+					...currentUser,
+					profilePicture: imageUrl
+				}));
+			} catch (error) {
+				console.error('Error updating profile picture:', error);
+				alert('Error updating profile picture. Please try again.');
+			}
+		}
+	}
 
 	async function updatedProfile() {
 		if (!userid) {
@@ -14,8 +50,8 @@
 			return;
 		}
 		try {
-			await updateProfile(userid, username, name, email);
-			user.set({ userid, username, name, email });
+			await updateProfile(userid, username, name, email, profilePicture);
+			user.set({ userid, username, name, email, profilePicture });
 			goto('/profile');
 		} catch (error) {
 			console.error('Error updating profile:', error);
@@ -36,37 +72,45 @@
 			<div class="sm:col-span-4">
 				<label for="username" class="block text-sm/6 font-medium text-gray-900">Username</label>
 				<div class="mt-2">
-						<input
-							type="text"
-							name="username"
-							id="username"
-							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-600 sm:text-sm/6"
-							placeholder="Username"
-							bind:value={$user.username}
-						/>
+					<input
+						type="text"
+						name="username"
+						id="username"
+						class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-600 sm:text-sm/6"
+						placeholder="Username"
+						bind:value={$user.username}
+					/>
 				</div>
 			</div>
 
 			<div class="col-span-full">
 				<label for="photo" class="block text-sm/6 font-medium text-gray-900">Photo</label>
 				<div class="mt-2 flex items-center gap-x-3">
-					<svg
-						class="size-12 text-gray-300"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							fill-rule="evenodd"
-							d="M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 0 0 3.065 7.097A9.716 9.716 0 0 0 12 21.75a9.716 9.716 0 0 0 6.685-2.653Zm-12.54-1.285A7.486 7.486 0 0 1 12 15a7.486 7.486 0 0 1 5.855 2.812A8.224 8.224 0 0 1 12 20.25a8.224 8.224 0 0 1-5.855-2.438ZM15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-							clip-rule="evenodd"
-						/>
-					</svg>
+					{#if profilePicture}
+						<img src={profilePicture} alt="" class="h-12 w-12 rounded-full" />
+					{:else}
+						<div
+							class="h-12 w-12 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600"
+						>
+							<User class="size-6 text-gray-600 dark:text-gray-400" />
+						</div>
+					{/if}
+
+					<input
+						type="file"
+						id="photo"
+						accept="image/*"
+						on:change={profilePictureChange}
+						class="hidden"
+						bind:this={fileInput}
+					/>
 					<button
 						type="button"
 						class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 ring-1 shadow-xs ring-gray-300 ring-inset hover:bg-gray-50"
-						>Change</button
+						on:click={() => fileInput.click()}
 					>
+						Change
+					</button>
 				</div>
 			</div>
 
