@@ -1,5 +1,5 @@
 <script>
-    import { logIn } from '$lib/auth'; 
+    import { login } from '$lib/auth'; 
     
     let email = "";
     let password = "";
@@ -7,7 +7,7 @@
 
     async function handleLogin() {
         try {
-            await logIn(email, password);
+            await login(email, password);
             window.location.href = "/";
         } catch (error) {
             errorMessage = error.message;

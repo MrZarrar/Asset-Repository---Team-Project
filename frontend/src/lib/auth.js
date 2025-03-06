@@ -27,9 +27,10 @@ export async function signUp(email, password, passwordConfirm, username, name) {
     }
 }
 
-export async function logIn(email, password) {
+export async function login(email, password) {
     try {
         const authData = await pb.collection('users').authWithPassword(email, password);
+        isAuthenticated.set(true);
         return authData;
     } catch (error) {
         console.error("Login error:", error);
@@ -39,4 +40,5 @@ export async function logIn(email, password) {
 
 export function logout() {
     pb.authStore.clear();
+    isAuthenticated.set(false);
 }
