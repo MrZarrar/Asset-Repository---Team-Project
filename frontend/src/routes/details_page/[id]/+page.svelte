@@ -117,99 +117,38 @@
   /**
    * Function to download an asset file from meta_data
    */
-  async function downloadAsset() {
-    if (!asset || !asset.id) {
-      downloadError = "Cannot download: Asset information is missing";
-      return;
+   async function downloadAsset() {
+    if (!asset || !asset.id || !asset.file) {
+        console.error("Cannot download: Asset information is missing");
+        return;
     }
-    
-    try {
-      downloading = true;
-      downloadError = null;
-      
-      // debug
-      console.log("meta_data field:", asset.meta_data);
-      
-      let downloadUrl = null;
-      let fileName = asset.name || 'download';
-      
-      // Handle meta_data field based on its type
-      if (asset.meta_data) {
-        if (typeof asset.meta_data === 'string') {
-          // If meta_data is a string, check if it's a URL
-          if (asset.meta_data.startsWith('http')) {
-            downloadUrl = asset.meta_data;
-          } 
-          // If it looks like JSON, try to parse it
-          else if (asset.meta_data.startsWith('{') || asset.meta_data.startsWith('[')) {
-            try {
-              const parsedData = JSON.parse(asset.meta_data);
-              console.log("Parsed meta_data:", parsedData);
-              
-              downloadUrl = parsedData.url || parsedData.file_url || parsedData.download_url || 
-                          parsedData.path || parsedData.file_path;
-                          
-              // extract filename if available
-              if (parsedData.file_name) {
-                fileName = parsedData.file_name;
-              }
-            } catch (e) {
-              console.error("Failed to parse meta_data:", e);
-            }
-          }
-        } 
-        else if (typeof asset.meta_data === 'object') {
-          // Extract URL or file path from the object
-          downloadUrl = asset.meta_data.url || asset.meta_data.file_url || 
-                        asset.meta_data.download_url || asset.meta_data.path || 
-                        asset.meta_data.file_path;
-                        
-          // Extract filename 
-          if (asset.meta_data.file_name) {
-            fileName = asset.meta_data.file_name;
-          }
-        }
-      }
-      
-      if (!downloadUrl && asset.id) {
-        const collectionName = 'assets'; 
-        downloadUrl = `${pb.baseUrl}/api/files/${collectionName}/${asset.id}/meta_data`;
-      }
-      
-      if (!downloadUrl) {
-        throw new Error("Could not determine download URL from meta_data");
-      }
-      
-      console.log("Attempting download from:", downloadUrl);
-      
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = fileName;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-    } catch (err) {
-      console.error("Download failed:", err);
-      downloadError = err.message || "Download failed. Please try again later.";
-    } finally {
-      downloading = false;
-    }
-  }
 
-  /**
-   * Alternative simpler download for direct file access
-   */
-  function simpleDownload() {
-    if (!asset || !asset.id) return;
-    
-    // Construct the download URL - adjust to match your actual API structure
-    const downloadUrl = `${pb.baseUrl}/api/files/assets/${asset.id}/${asset.file}`;
-    
-    // Open in new window/tab
-    window.open(downloadUrl, '_blank');
-  }
+    try {
+        downloading = true;
+        downloadError = null;
+
+        // Construct the correct download URL
+        const collectionName = 'Assets'; 
+        const downloadUrl = `${pb.baseUrl}/api/files/${collectionName}/${asset.id}/${asset.file}`;
+
+        console.log("Downloading from:", downloadUrl);
+
+        // Create a download link and trigger the download
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = asset.file; 
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+    } catch (err) {
+        console.error("Download failed:", err);
+        downloadError = err.message || "Download failed. Please try again later.";
+    } finally {
+        downloading = false;
+    }
+}
 
   /**
    * Formats a file size in bytes to a human-readable string
