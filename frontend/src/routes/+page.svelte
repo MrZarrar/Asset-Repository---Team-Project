@@ -1,6 +1,24 @@
 <script>
   import { Search, User, Download, ChevronDown } from "@lucide/svelte";
   import { isAuthenticated } from '$lib/auth';
+
+  import PocketBase from 'pocketbase';
+
+  const pb = new PocketBase('http://127.0.0.1:8090');
+
+  let fetchedAssets = [];
+
+  async function fetchAssets() {
+    try {
+      fetchedAssets = await pb.collection('Assets').getFullList();
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+    }
+  }
+
+  fetchAssets();
+
+  import { isAuthenticated } from '$lib/auth';
   
   // Declare the variable needed for toggling the mobile menu state
   let isMobileMenuOpen = false;
@@ -90,8 +108,7 @@ input[type="search"]::-webkit-search-cancel-button {
               Documentation
             </a>
           </div>
-        </div>
-
+        </div>  
         <div class="w-full flex justify-center md:justify-start">
           <div class="w-full max-w-[150px] xs:max-w-[120px] md:max-w-xl">
             <div class="relative flex w-full">
@@ -292,4 +309,5 @@ input[type="search"]::-webkit-search-cancel-button {
       </div>
     </aside>
   </div>
+>>>>>>> frontend/src/routes/+page.svelte
 </main>
