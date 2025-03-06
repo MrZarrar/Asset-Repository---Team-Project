@@ -17,8 +17,6 @@
   }
 
   fetchAssets();
-
-  import { isAuthenticated } from '$lib/auth';
   
   // Declare the variable needed for toggling the mobile menu state
   let isMobileMenuOpen = false;
