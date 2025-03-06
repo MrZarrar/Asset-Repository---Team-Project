@@ -128,7 +128,7 @@
       downloadError = null;
       
       // debug
-      console.log("meta_data field:", asset.meta_data);
+      console.log("meta_datA feld:", asset.meta_data);
       
       let downloadUrl = null;
       let fileName = asset.name || 'download';
