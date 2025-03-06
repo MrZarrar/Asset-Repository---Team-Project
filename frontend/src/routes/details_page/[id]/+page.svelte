@@ -1,16 +1,19 @@
 <script>
   import { Search, User, Download, ChevronDown } from "@lucide/svelte";
+  import { login, isAuthenticated } from '$lib/auth';
+  import { onMount } from 'svelte';
+  import pb from '$lib/pocketbase';
+  import { page } from '$app/stores';
   
-  // Declare the variable needed for toggling the mobile menu state
+  const assetId = $page.params.id;
+  
   let isMobileMenuOpen = false;
   function toggleMobileMenu() {
     isMobileMenuOpen = !isMobileMenuOpen;
   }
 
-  // Declare the variable needed for toggling the user menu state
   let isUserMenuOpen = false;
   function toggleUserMenu() {
-    // Toggle the user menu and close the download menu if it is open
     isUserMenuOpen = !isUserMenuOpen;
     if (isUserMenuOpen) {
       isDownloadMenuOpen = false;
@@ -19,7 +22,6 @@
 
   let isDownloadMenuOpen = false;
   function toggleDownloadMenu() {
-    // Toggle the download menu and close the user menu if it is open
     isDownloadMenuOpen = !isDownloadMenuOpen;
     if (isDownloadMenuOpen) {
       isUserMenuOpen = false;
@@ -31,6 +33,202 @@
     isSearchMenuOpen = !isSearchMenuOpen;
   }
 
+  // Add asset-specific variables
+  let asset = null;
+  
+  // metadata variables
+  let appMeta = {
+    appName: "Loading...",
+    appURL: "",
+    senderName: "",
+    senderAddress: ""
+  };
+  let loading = true;
+  let error = null;
+
+  //  download variables
+  let downloading = false;
+  let downloadError = null;
+  let availableFields = [];
+
+  // Function to fetch a specific asset by id
+  async function fetchAssetById(id) {
+    try {
+      // If you're using PocketBase, this would be the API call
+      const record = await pb.collection('assets').getOne(id);
+      return record;
+    } catch (err) {
+      console.error("Error fetching asset:", err);
+      throw err;
+    }
+  }
+
+  // Add the onMount function to load metadata
+  onMount(async () => {
+    try {
+      // Load app metadata
+      appMeta = {
+        appName: "Asset Repository",
+        appURL: "http://127.0.0.1:8090",
+        senderName: "Repository Admin",
+        senderAddress: ""
+      };
+      
+      // Fetch specific asset details using the id from the route
+      if (assetId) {
+        try {
+          asset = await fetchAssetById(assetId);
+        } catch (err) {
+          error = `Failed to load asset details: ${err.message}`;
+        }
+      }
+      
+      loading = false;
+      
+      if (asset) {
+        console.log("Asset data:", asset);
+        availableFields = Object.keys(asset);
+        console.log("Available fields:", availableFields);
+        
+        //  log the meta_data field
+        if (asset.meta_data) {
+          console.log("meta_data content:", asset.meta_data);
+          
+          // If its a string that looks like json, try to parse it
+          if (typeof asset.meta_data === 'string' && 
+              (asset.meta_data.startsWith('{') || asset.meta_data.startsWith('['))) {
+            try {
+              const parsedData = JSON.parse(asset.meta_data);
+              console.log("Parsed meta_data:", parsedData);
+            } catch (e) {
+              console.log("meta_data is not valid JSON");
+            }
+          }
+        }
+      }
+      
+    } catch (err) {
+      console.error("Application initialization failed:", err);
+      error = "Failed to initialize application.";
+      loading = false;
+    }
+  });
+
+  /**
+   * Function to download an asset file from meta_data
+   */
+  async function downloadAsset() {
+    if (!asset || !asset.id) {
+      downloadError = "Cannot download: Asset information is missing";
+      return;
+    }
+    
+    try {
+      downloading = true;
+      downloadError = null;
+      
+      // debug
+      console.log("meta_data field:", asset.meta_data);
+      
+      let downloadUrl = null;
+      let fileName = asset.name || 'download';
+      
+      // Handle meta_data field based on its type
+      if (asset.meta_data) {
+        if (typeof asset.meta_data === 'string') {
+          // If meta_data is a string, check if it's a URL
+          if (asset.meta_data.startsWith('http')) {
+            downloadUrl = asset.meta_data;
+          } 
+          // If it looks like JSON, try to parse it
+          else if (asset.meta_data.startsWith('{') || asset.meta_data.startsWith('[')) {
+            try {
+              const parsedData = JSON.parse(asset.meta_data);
+              console.log("Parsed meta_data:", parsedData);
+              
+              downloadUrl = parsedData.url || parsedData.file_url || parsedData.download_url || 
+                          parsedData.path || parsedData.file_path;
+                          
+              // extract filename if available
+              if (parsedData.file_name) {
+                fileName = parsedData.file_name;
+              }
+            } catch (e) {
+              console.error("Failed to parse meta_data:", e);
+            }
+          }
+        } 
+        else if (typeof asset.meta_data === 'object') {
+          // Extract URL or file path from the object
+          downloadUrl = asset.meta_data.url || asset.meta_data.file_url || 
+                        asset.meta_data.download_url || asset.meta_data.path || 
+                        asset.meta_data.file_path;
+                        
+          // Extract filename 
+          if (asset.meta_data.file_name) {
+            fileName = asset.meta_data.file_name;
+          }
+        }
+      }
+      
+      if (!downloadUrl && asset.id) {
+        const collectionName = 'assets'; 
+        downloadUrl = `${pb.baseUrl}/api/files/${collectionName}/${asset.id}/meta_data`;
+      }
+      
+      if (!downloadUrl) {
+        throw new Error("Could not determine download URL from meta_data");
+      }
+      
+      console.log("Attempting download from:", downloadUrl);
+      
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = fileName;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+    } catch (err) {
+      console.error("Download failed:", err);
+      downloadError = err.message || "Download failed. Please try again later.";
+    } finally {
+      downloading = false;
+    }
+  }
+
+  /**
+   * Alternative simpler download for direct file access
+   */
+  function simpleDownload() {
+    if (!asset || !asset.id) return;
+    
+    // Construct the download URL - adjust to match your actual API structure
+    const downloadUrl = `${pb.baseUrl}/api/files/assets/${asset.id}/${asset.file}`;
+    
+    // Open in new window/tab
+    window.open(downloadUrl, '_blank');
+  }
+
+  /**
+   * Formats a file size in bytes to a human-readable string
+   */
+  function formatFileSize(bytes) {
+    if (!bytes || isNaN(bytes)) return 'Unknown size';
+    
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = bytes;
+    let unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
+  }
+
 </script>
 
 <style>
@@ -38,12 +236,24 @@ input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
   display: none;
 }
+
+/* Add some style for the downloading state */
+.downloading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.download-error {
+  color: #e74c3c;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
 </style>
 
 <svelte:head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home</title>    
+  <title>{asset ? asset.name : 'Asset Details'}</title>    
 </svelte:head>   
 
   
@@ -215,7 +425,6 @@ input[type="search"]::-webkit-search-cancel-button {
     <aside class="hidden lg:block w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 p-4">
       <div class="mb-6">
         <h2 class="text-xl font-bold mb-4">Indexed Artifacts</h2>
-        <!-- Add your graph component here -->
         <div class="h-48 bg-gray-100 dark:bg-gray-700 rounded"></div>
       </div>
 
@@ -238,70 +447,95 @@ input[type="search"]::-webkit-search-cancel-button {
       <div class="mb-6 flex items-center space-x-2 text-sm">
         <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">Home</a>
         <span>»</span>
-        <span>Item</span>
+        <span>Asset Details</span>
       </div>
 
-      <div class="flex items-start gap-6 mb-8">
-        <div class="w-16 h-16 bg-white p-2 rounded-lg shadow-md">
+      {#if loading}
+        <div class="flex justify-center items-center h-64">
+          <p class="text-lg text-gray-600 dark:text-gray-400">Loading asset details...</p>
         </div>
-        
-        <div>
-          <h1 class="text-3xl font-bold mb-4">Item</h1>
-          <p class="text-gray-600 dark:text-gray-300 max-w-3xl">
-            Description of the item.
-          </p>
+      {:else if error}
+        <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md mb-8">
+          <p>{error}</p>
         </div>
-      </div>
-
-      <!-- Package Details Grid -->
-      <div class="grid gap-4 mb-8">
-        <!-- License -->
-        <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-          <div class="font-semibold mb-2">License</div>
-          <div class="inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md">
-            EPL 1.0
+      {:else}
+        <div class="flex items-start gap-6 mb-8">
+          <div class="w-16 h-16 bg-white p-2 rounded-lg shadow-md">
+            <!-- Asset Logo -->
           </div>
-        </div>
-
-        <!-- Categories -->
-        <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-          <div class="font-semibold mb-2">Categories</div>
-          <div class="inline-block px-3 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-md">
-            Testing Frameworks & Tools
-          </div>
-        </div>
-
-        <!-- Tags -->
-        <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-          <div class="font-semibold mb-2">Tags</div>
-          <div class="flex gap-2">
-            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md">testing</span>
-            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md">junit</span>
-            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md">quality</span>
-          </div>
-        </div>
-
-        <!-- Homepage -->
-        <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-          <div class="font-semibold mb-2">HomePage</div>
-          <a href="http://junit.org" class="text-blue-600 dark:text-blue-400 hover:underline">http://junit.org</a>
-        </div>
-
-        <!-- Ranking -->
-        <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-          <div class="font-semibold mb-2">Ranking</div>
+          
           <div>
-            <div>#1 in MvnRepository (<a href="#" class="text-blue-600 dark:text-blue-400 hover:underline">See Top Artifacts</a>)</div>
-            <div>#1 in <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline">Testing Frameworks & Tools</a></div>
+            <h1 class="text-3xl font-bold mb-4">{asset ? asset.name : 'Asset Not Found'}</h1>
+            <p class="text-gray-600 dark:text-gray-300 max-w-3xl">
+              {asset ? asset.description : "Unable to find the requested asset."}
+            </p>
           </div>
         </div>
 
-        <!-- Used By -->
-        <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-          <div class="font-semibold mb-2">Used By</div>
-          <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline">133,617 artifacts</a>
-        </div>
-      </div>
+        <!-- Asset Details -->
+        {#if asset}
+          <div class="grid gap-4 mb-8">
+            <!-- asset version -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Version</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {asset.version || "Not specified"}
+              </div>
+            </div>
+
+            <!-- asset typ -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Type</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {asset.type || "Not specified"}
+              </div>
+            </div>
+
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Last Updated</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {asset.last_updated ? new Date(asset.last_updated).toLocaleDateString() : "Not specified"}
+              </div>
+            </div>
+
+            <!-- download Link -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Download</div>
+              <div>
+                <button 
+                  on:click={downloadAsset}
+                  disabled={downloading}
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:scale-105 transition-all duration-300 hover:bg-blue-700 transition-colors flex items-center gap-2 {downloading ? 'downloading' : ''}"
+                >
+                  {#if downloading}
+                    <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Downloading...
+                  {:else}
+                    <Download class="w-4 h-4" />
+                    Download Asset
+                  {/if}
+                </button>
+                
+                {#if downloadError}
+                  <div class="download-error mt-2">
+                    Error: {downloadError}
+                  </div>
+                {/if}
+                
+                {#if asset.file_size}
+                  <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    Size: {formatFileSize(asset.file_size)}
+                  </div>
+                {/if}
+              </div>
+            </div>
+          </div>
+        {:else}
+          <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-8">
+            <p>Asset with ID "{assetId}" could not be found.</p>
+          </div>
+        {/if}
+      {/if}
     </div>
 
     <!-- Right Sidebar -->
@@ -323,7 +557,6 @@ input[type="search"]::-webkit-search-cancel-button {
           <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">android</a>
           <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">api</a>
           <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">maven</a>
-          <!-- Add more tags as needed -->
         </div>
       </div>
     </aside>
