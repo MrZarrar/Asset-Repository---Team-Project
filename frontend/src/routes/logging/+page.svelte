@@ -24,7 +24,7 @@
     <title>Logging</title>
 </svelte:head>
 
-<main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+<main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-4">
     <h1 class="text-xl font-semibold mt-6">Log History</h1>
     <ul class="mt-4 space-y-2">
         {#each logs as log}
