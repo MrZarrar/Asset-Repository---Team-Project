@@ -8,23 +8,23 @@
     </head>
 
 <script>
-    import PocketBase from 'pocketbase';
-    import { onMount } from 'svelte';
+  import PocketBase from 'pocketbase';
+  import { onMount } from 'svelte';
 
-    const pb = new PocketBase('http://127.0.0.1:8090');
-  
-    let logs = [];
+  const pb = new PocketBase('http://127.0.0.1:8090');
 
-    async function fetchLogs() {
-        try {
-            logs = await pb.collection('logs').getFullList({ sort: '-created' });
-        } catch (error) {
-            console.error('Error fetching logs:', error);
-        }
+  let logs = [];
+
+  async function fetchLogs() {
+    try {
+        logs = await pb.collection('logs').getFullList({ sort: '-created' });
+    } catch (error) {
+        console.error('Error fetching logs:', error);
     }
-  
-    onMount(fetchLogs);
-  </script>
+  }
+
+  onMount(fetchLogs);
+</script>
   
   <main class="p-6 max-w-2xl mx-auto">
     <h1 class="text-xl font-semibold mt-6">Log History</h1>
