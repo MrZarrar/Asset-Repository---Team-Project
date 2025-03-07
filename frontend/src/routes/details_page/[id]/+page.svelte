@@ -41,8 +41,8 @@
     version: "",
     size: 0,
     type: "",
-    last_updated: "",
-    created: "",
+    date_updated: "",
+    date_created: "",
     licence_info: "",
     usage_info: "",
     file: "",
@@ -130,7 +130,8 @@
   async function updateAsset() {
     try {
       const updatedRecord = await pb.collection('assets').update(assetId, updatedAsset);
-      asset = updatedRecord;
+      asset = { ...updatedRecord }; // Update the asset with the new data
+      updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
       editing = false; // Exit edit mode after saving
       console.log("Asset updated successfully:", updatedRecord);
     } catch (err) {
@@ -483,9 +484,9 @@ input.editing, textarea.editing {
               <div class="font-semibold mb-2">Last Updated</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <input type="date" bind:value={updatedAsset.last_updated} class="border rounded p-2 w-full editing" />
+                  <input type="date" bind:value={updatedAsset.date_updated} class="border rounded p-2 w-full editing" />
                 {:else}
-                  {asset.last_updated ? new Date(asset.last_updated).toLocaleDateString() : "Not specified"}
+                  {asset.date_updated ? new Date(asset.date_updated).toISOString().split('T')[0] : "Not specified"}
                 {/if}
               </div>
             </div>
@@ -494,9 +495,9 @@ input.editing, textarea.editing {
               <div class="font-semibold mb-2">Created</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <input type="date" bind:value={updatedAsset.created} class="border rounded p-2 w-full editing" />
+                  <input type="date" bind:value={updatedAsset.date_created} class="border rounded p-2 w-full editing" />
                 {:else}
-                  {asset.created ? new Date(asset.created).toLocaleDateString() : "Not specified"}
+                  {asset.date_created ? new Date(asset.date_created).toISOString().split('T')[0] : "Not specified"}
                 {/if}
               </div>
             </div>
