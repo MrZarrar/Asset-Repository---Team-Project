@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Upload } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -130,7 +130,17 @@
 
   async function updateAsset() {
     try {
-      const updatedRecord = await pb.collection('assets').update(assetId, updatedAsset);
+      const formData = new FormData();
+      for (const key in updatedAsset) {
+        formData.append(key, updatedAsset[key]);
+      }
+      if (updatedAsset.logo instanceof File) {
+        formData.append('logo', updatedAsset.logo);
+      }
+      if (updatedAsset.file instanceof File) {
+        formData.append('file', updatedAsset.file);
+      }
+      const updatedRecord = await pb.collection('assets').update(assetId, formData);
       asset = { ...updatedRecord }; // Update the asset with the new data
       updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
       editing = false; // Exit edit mode after saving
@@ -217,7 +227,12 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 input.editing, textarea.editing {
-  color: black;
+  background-color: #2d3748; /* Grey background */
+  color: white; /* White text */
+}
+
+input[type="file"].hidden {
+  display: none;
 }
 </style>
 
@@ -433,7 +448,12 @@ input.editing, textarea.editing {
       {:else}
         <div class="flex items-start gap-6 mb-8">
           <div class="w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
-            {#if asset.logo}
+            {#if editing}
+              <label class="cursor-pointer">
+                <input type="file" accept="image/*" on:change={(e) => updatedAsset.logo = e.target.files[0]} class="hidden" />
+                <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
+              </label>
+            {:else if asset.logo}
               <img src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} alt="Asset Logo" class="w-full h-full object-cover rounded-lg" />
             {:else}
               <!-- Placeholder for logo if not available -->
@@ -512,19 +532,26 @@ input.editing, textarea.editing {
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Download</div>
               <div class="flex items-center gap-2">
-                <button 
-                  on:click={downloadAsset}
-                  disabled={downloading}
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:scale-105 transition-all duration-300 hover:bg-blue-700 transition-colors flex items-center gap-2 {downloading ? 'downloading' : ''}"
-                >
-                  {#if downloading}
-                    <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Downloading...
-                  {:else}
-                    <Download class="w-4 h-4" />
-                    Download Asset
-                  {/if}
-                </button>
+                {#if editing}
+                  <label class="cursor-pointer">
+                    <input type="file" accept="*" on:change={(e) => updatedAsset.file = e.target.files[0]} class="hidden" />
+                    <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
+                  </label>
+                {:else}
+                  <button 
+                    on:click={downloadAsset}
+                    disabled={downloading}
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:scale-105 transition-all duration-300 hover:bg-blue-700 transition-colors flex items-center gap-2 {downloading ? 'downloading' : ''}"
+                  >
+                    {#if downloading}
+                      <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Downloading...
+                    {:else}
+                      <Download class="w-4 h-4" />
+                      Download Asset
+                    {/if}
+                  </button>
+                {/if}
 
                 <button
                   on:click={() => editing = !editing}
