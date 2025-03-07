@@ -1,0 +1,36 @@
+<script>
+    import PocketBase from 'pocketbase';
+    
+    const pb = new PocketBase('http://127.0.0.1:8090'); // Change to your PocketBase URL
+
+    let username = '';
+    let email = '';
+    let password = '';
+    let confirmPassword = '';
+
+    async function signup() {
+        if (password !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+
+        try {
+            const user = await pb.collection('users').create({
+                username,
+                email,
+                password
+            });
+            alert('Registration successful');
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
+
+<form on:submit|preventDefault={signup}>
+    <input type="email" bind:value={email} placeholder="Email" required />
+    <input type="text" bind:value={username} placeholder="Username" required />
+    <input type="password" bind:value={password} placeholder="Password" required />
+    <input type="password" bind:value={confirmPassword} placeholder="Re-type Password" required />
+    <button type="submit">Register</button>
+</form>
