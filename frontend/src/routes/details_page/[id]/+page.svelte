@@ -124,29 +124,29 @@
     }
 
     try {
-        downloading = true;
-        downloadError = null;
+        const fileUrl = `http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.file}`;
 
-        // Construct the correct download URL
-        const collectionName = 'Assets'; 
-        const downloadUrl = `${pb.baseUrl}/api/files/${collectionName}/${asset.id}/${asset.file}`;
+        // Fetch the file as a blob
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch file: ${response.statusText}`);
+        }
 
-        console.log("Downloading from:", downloadUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
 
-        // Create a download link and trigger the download
+        // Create a temporary link element and trigger the download
         const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = asset.file; 
-        a.target = '_blank';
+        a.href = blobUrl;
+        a.download = asset.file; // Use the original file name
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
 
+        // Clean up
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
     } catch (err) {
         console.error("Download failed:", err);
-        downloadError = err.message || "Download failed. Please try again later.";
-    } finally {
-        downloading = false;
     }
 }
 
