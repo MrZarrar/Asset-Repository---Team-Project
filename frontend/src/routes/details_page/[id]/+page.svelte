@@ -67,7 +67,6 @@
   // Function to fetch a specific asset by id
   async function fetchAssetById(id) {
     try {
-      // If you're using PocketBase, this would be the API call
       const record = await pb.collection('assets').getOne(id);
       return record;
     } catch (err) {
@@ -99,6 +98,7 @@
       loading = false;
       
       if (asset) {
+        updatedAsset = { ...asset }; // Initialize updatedAsset with the fetched asset data
         console.log("Asset data:", asset);
         availableFields = Object.keys(asset);
         console.log("Available fields:", availableFields);
@@ -128,15 +128,15 @@
   });
 
   async function updateAsset() {
-  try {
-    const updatedRecord = await pb.collection('assets').update(assetId, updatedAsset);
-    asset = updatedRecord;
-    editing = false; // Exit edit mode after saving
-    console.log("Asset updated successfully:", updatedRecord);
-  } catch (err) {
-    console.error("Error updating asset:", err);
+    try {
+      const updatedRecord = await pb.collection('assets').update(assetId, updatedAsset);
+      asset = updatedRecord;
+      editing = false; // Exit edit mode after saving
+      console.log("Asset updated successfully:", updatedRecord);
+    } catch (err) {
+      console.error("Error updating asset:", err);
+    }
   }
-}
 
   /**
    * Function to download an asset file from meta_data
@@ -192,6 +192,8 @@
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 
+  let updatedAsset = { ...asset };
+
 </script>
 
 <style>
@@ -211,6 +213,10 @@ input[type="search"]::-webkit-search-cancel-button {
   font-size: 0.875rem;
   margin-top: 0.5rem;
 }
+
+input.editing, textarea.editing {
+  color: black;
+}
 </style>
 
 <svelte:head>
@@ -221,6 +227,7 @@ input[type="search"]::-webkit-search-cancel-button {
 
   
 <main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
       
   <nav class="bg-gray-200 dark:bg-gray-800">
     <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -428,9 +435,19 @@ input[type="search"]::-webkit-search-cancel-button {
           </div>
           
           <div>
-            <h1 class="text-3xl font-bold mb-4">{asset ? asset.name : 'Asset Not Found'}</h1>
+            <h1 class="text-3xl font-bold mb-4">
+              {#if editing}
+                <input type="text" bind:value={updatedAsset.name} class="border rounded p-2 w-full editing" />
+              {:else}
+                {asset ? asset.name : 'Asset Not Found'}
+              {/if}
+            </h1>
             <p class="text-gray-600 dark:text-gray-300 max-w-3xl">
-              {asset ? asset.usage_info : "Unable to find the requested asset."}
+              {#if editing}
+                <textarea bind:value={updatedAsset.usage_info} class="border rounded p-2 w-full editing"></textarea>
+              {:else}
+                {asset ? asset.usage_info : "Unable to find the requested asset."}
+              {/if}
             </p>
           </div>
         </div>
@@ -442,7 +459,11 @@ input[type="search"]::-webkit-search-cancel-button {
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Version</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.version || "Not specified"}
+                {#if editing}
+                  <input type="text" bind:value={updatedAsset.version} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.version || "Not specified"}
+                {/if}
               </div>
             </div>
 
@@ -450,25 +471,35 @@ input[type="search"]::-webkit-search-cancel-button {
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Type</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.type || "Not specified"}
+                {#if editing}
+                  <input type="text" bind:value={updatedAsset.type} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.type || "Not specified"}
+                {/if}
               </div>
             </div>
 
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Last Updated</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.last_updated ? new Date(asset.last_updated).toLocaleDateString() : "Not specified"}
+                {#if editing}
+                  <input type="date" bind:value={updatedAsset.last_updated} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.last_updated ? new Date(asset.last_updated).toLocaleDateString() : "Not specified"}
+                {/if}
               </div>
             </div>
 
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Created</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.created ? new Date(asset.created).toLocaleDateString() : "Not specified"}
+                {#if editing}
+                  <input type="date" bind:value={updatedAsset.created} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.created ? new Date(asset.created).toLocaleDateString() : "Not specified"}
+                {/if}
               </div>
             </div>
-
-
 
             <!-- download Link -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
@@ -494,6 +525,15 @@ input[type="search"]::-webkit-search-cancel-button {
                 >
                   {editing ? "Cancel" : "Edit Asset"}
                 </button>
+
+                {#if editing}
+                  <button
+                    on:click={updateAsset}
+                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ml-2"
+                  >
+                    Save
+                  </button>
+                {/if}
               </div>
               
               {#if downloadError}
@@ -541,6 +581,8 @@ input[type="search"]::-webkit-search-cancel-button {
           <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">maven</a>
         </div>
       </div>
+
+      
     </aside>
   </div>
 </main>
