@@ -1,10 +1,12 @@
 <script>
-  import { Search, User, Download, ChevronDown } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Upload } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
   import { page } from '$app/stores';
-  
+
+  let editing = false;
+
   const assetId = $page.params.id;
   
   let isMobileMenuOpen = false;
@@ -34,7 +36,19 @@
   }
 
   // Add asset-specific variables
-  let asset = null;
+  let asset = {
+    logo: "",
+    name: "",
+    version: "",
+    size: 0,
+    type: "",
+    date_updated: "",
+    date_created: "",
+    licence_info: "",
+    usage_info: "",
+    file: "",
+    
+  };
   
   // metadata variables
   let appMeta = {
@@ -54,8 +68,7 @@
   // Function to fetch a specific asset by id
   async function fetchAssetById(id) {
     try {
-      // If you're using PocketBase, this would be the API call
-      const record = await pb.collection('assets').getOne(id);
+      const record = await pb.collection('assets').getOne(id, { expand: 'logo' });
       return record;
     } catch (err) {
       console.error("Error fetching asset:", err);
@@ -86,6 +99,7 @@
       loading = false;
       
       if (asset) {
+        updatedAsset = { ...asset }; // Initialize updatedAsset with the fetched asset data
         console.log("Asset data:", asset);
         availableFields = Object.keys(asset);
         console.log("Available fields:", availableFields);
@@ -113,6 +127,28 @@
       loading = false;
     }
   });
+
+  async function updateAsset() {
+    try {
+      const formData = new FormData();
+      for (const key in updatedAsset) {
+        formData.append(key, updatedAsset[key]);
+      }
+      if (updatedAsset.logo instanceof File) {
+        formData.append('logo', updatedAsset.logo);
+      }
+      if (updatedAsset.file instanceof File) {
+        formData.append('file', updatedAsset.file);
+      }
+      const updatedRecord = await pb.collection('assets').update(assetId, formData);
+      asset = { ...updatedRecord }; // Update the asset with the new data
+      updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
+      editing = false; // Exit edit mode after saving
+      console.log("Asset updated successfully:", updatedRecord);
+    } catch (err) {
+      console.error("Error updating asset:", err);
+    }
+  }
 
   /**
    * Function to download an asset file from meta_data
@@ -168,6 +204,8 @@
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 
+  let updatedAsset = { ...asset };
+
 </script>
 
 <style>
@@ -187,6 +225,15 @@ input[type="search"]::-webkit-search-cancel-button {
   font-size: 0.875rem;
   margin-top: 0.5rem;
 }
+
+input.editing, textarea.editing {
+  background-color: #2d3748; /* Grey background */
+  color: white; /* White text */
+}
+
+input[type="file"].hidden {
+  display: none;
+}
 </style>
 
 <svelte:head>
@@ -197,6 +244,7 @@ input[type="search"]::-webkit-search-cancel-button {
 
   
 <main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+
       
   <nav class="bg-gray-200 dark:bg-gray-800">
     <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -399,14 +447,34 @@ input[type="search"]::-webkit-search-cancel-button {
         </div>
       {:else}
         <div class="flex items-start gap-6 mb-8">
-          <div class="w-16 h-16 bg-white p-2 rounded-lg shadow-md">
-            <!-- Asset Logo -->
+          <div class="w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
+            {#if editing}
+              <label class="cursor-pointer">
+                <input type="file" accept="image/*" on:change={(e) => updatedAsset.logo = e.target.files[0]} class="hidden" />
+                <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
+              </label>
+            {:else if asset.logo}
+              <img src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} alt="Asset Logo" class="w-full h-full object-cover rounded-lg" />
+            {:else}
+              <!-- Placeholder for logo if not available -->
+              <div class="w-full h-full flex items-center justify-center text-gray-400">No Logo</div>
+            {/if}
           </div>
           
           <div>
-            <h1 class="text-3xl font-bold mb-4">{asset ? asset.name : 'Asset Not Found'}</h1>
+            <h1 class="text-3xl font-bold mb-4">
+              {#if editing}
+                <input type="text" bind:value={updatedAsset.name} class="border rounded p-2 w-full editing" />
+              {:else}
+                {asset ? asset.name : 'Asset Not Found'}
+              {/if}
+            </h1>
             <p class="text-gray-600 dark:text-gray-300 max-w-3xl">
-              {asset ? asset.description : "Unable to find the requested asset."}
+              {#if editing}
+                <textarea bind:value={updatedAsset.usage_info} class="border rounded p-2 w-full editing"></textarea>
+              {:else}
+                {asset ? asset.usage_info : "Unable to find the requested asset."}
+              {/if}
             </p>
           </div>
         </div>
@@ -418,64 +486,113 @@ input[type="search"]::-webkit-search-cancel-button {
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Version</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.version || "Not specified"}
+                {#if editing}
+                  <input type="text" bind:value={updatedAsset.version} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.version || "Not specified"}
+                {/if}
               </div>
             </div>
 
-            <!-- asset typ -->
+            <!-- asset type -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Type</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.type || "Not specified"}
+                {#if editing}
+                  <input type="text" bind:value={updatedAsset.type} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.type || "Not specified"}
+                {/if}
               </div>
             </div>
 
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Last Updated</div>
               <div class="text-gray-800 dark:text-gray-200">
-                {asset.last_updated ? new Date(asset.last_updated).toLocaleDateString() : "Not specified"}
+                {#if editing}
+                  <input type="date" bind:value={updatedAsset.date_updated} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.date_updated ? new Date(asset.date_updated).toISOString().split('T')[0] : "Not specified"}
+                {/if}
+              </div>
+            </div>
+
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Created</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {#if editing}
+                  <input type="date" bind:value={updatedAsset.date_created} class="border rounded p-2 w-full editing" />
+                {:else}
+                  {asset.date_created ? new Date(asset.date_created).toISOString().split('T')[0] : "Not specified"}
+                {/if}
               </div>
             </div>
 
             <!-- download Link -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Download</div>
-              <div>
-                <button 
-                  on:click={downloadAsset}
-                  disabled={downloading}
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:scale-105 transition-all duration-300 hover:bg-blue-700 transition-colors flex items-center gap-2 {downloading ? 'downloading' : ''}"
-                >
-                  {#if downloading}
-                    <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Downloading...
-                  {:else}
-                    <Download class="w-4 h-4" />
-                    Download Asset
-                  {/if}
-                </button>
-                
-                {#if downloadError}
-                  <div class="download-error mt-2">
-                    Error: {downloadError}
-                  </div>
+              <div class="flex items-center gap-2">
+                {#if editing}
+                  <label class="cursor-pointer">
+                    <input type="file" accept="*" on:change={(e) => updatedAsset.file = e.target.files[0]} class="hidden" />
+                    <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
+                  </label>
+                {:else}
+                  <button 
+                    on:click={downloadAsset}
+                    disabled={downloading}
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:scale-105 transition-all duration-300 hover:bg-blue-700 transition-colors flex items-center gap-2 {downloading ? 'downloading' : ''}"
+                  >
+                    {#if downloading}
+                      <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Downloading...
+                    {:else}
+                      <Download class="w-4 h-4" />
+                      Download Asset
+                    {/if}
+                  </button>
                 {/if}
-                
-                {#if asset.file_size}
-                  <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    Size: {formatFileSize(asset.file_size)}
-                  </div>
+
+                <button
+                  on:click={() => editing = !editing}
+                  class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2 mr-0"
+                >
+                  {editing ? "Cancel" : "Edit Asset"}
+                </button>
+
+                {#if editing}
+                  <button
+                    on:click={updateAsset}
+                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ml-2"
+                  >
+                    Save
+                  </button>
                 {/if}
               </div>
+              
+              {#if downloadError}
+                <div class="download-error mt-2">
+                  Error: {downloadError}
+                </div>
+              {/if}
+              
+              {#if asset.size}
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Size: {formatFileSize(asset.size)}
+                </div>
+              {/if}
             </div>
           </div>
         {:else}
-          <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-8">
+          <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-2">
             <p>Asset with ID "{assetId}" could not be found.</p>
           </div>
         {/if}
       {/if}
+
     </div>
+
+    
 
     <!-- Right Sidebar -->
     <aside class="hidden xl:block w-72 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 p-4 min-h-screen">
@@ -498,6 +615,8 @@ input[type="search"]::-webkit-search-cancel-button {
           <a class="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">maven</a>
         </div>
       </div>
+
+      
     </aside>
   </div>
 </main>
