@@ -4,7 +4,9 @@
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
   import { page } from '$app/stores';
-  
+
+  let editing = false;
+
   const assetId = $page.params.id;
   
   let isMobileMenuOpen = false;
@@ -126,14 +128,15 @@
   });
 
   async function updateAsset() {
-    try {
-      await pb.collection('assets').update(assetId, asset);
-      alert("Asset updated successfully!");
-    } catch (err) {
-      console.error("Error updating asset:", err);
-      alert("Failed to update asset.");
-    }
+  try {
+    const updatedRecord = await pb.collection('assets').update(assetId, updatedAsset);
+    asset = updatedRecord;
+    editing = false; // Exit edit mode after saving
+    console.log("Asset updated successfully:", updatedRecord);
+  } catch (err) {
+    console.error("Error updating asset:", err);
   }
+}
 
   /**
    * Function to download an asset file from meta_data
@@ -465,17 +468,12 @@ input[type="search"]::-webkit-search-cancel-button {
               </div>
             </div>
 
-            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-              <div class="font-semibold mb-2">Size</div>
-              <div class="text-gray-800 dark:text-gray-200">
-                {asset.size || "Not specified"}
-              </div>
-            </div>
+
 
             <!-- download Link -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Download</div>
-              <div>
+              <div class="flex items-center gap-2">
                 <button 
                   on:click={downloadAsset}
                   disabled={downloading}
@@ -489,28 +487,38 @@ input[type="search"]::-webkit-search-cancel-button {
                     Download Asset
                   {/if}
                 </button>
-                
-                {#if downloadError}
-                  <div class="download-error mt-2">
-                    Error: {downloadError}
-                  </div>
-                {/if}
-                
-                {#if asset.file_size}
-                  <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    Size: {formatFileSize(asset.file_size)}
-                  </div>
-                {/if}
+
+                <button
+                  on:click={() => editing = !editing}
+                  class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2 mr-0"
+                >
+                  {editing ? "Cancel" : "Edit Asset"}
+                </button>
               </div>
+              
+              {#if downloadError}
+                <div class="download-error mt-2">
+                  Error: {downloadError}
+                </div>
+              {/if}
+              
+              {#if asset.size}
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Size: {formatFileSize(asset.size)}
+                </div>
+              {/if}
             </div>
           </div>
         {:else}
-          <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-8">
+          <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-2">
             <p>Asset with ID "{assetId}" could not be found.</p>
           </div>
         {/if}
       {/if}
+
     </div>
+
+    
 
     <!-- Right Sidebar -->
     <aside class="hidden xl:block w-72 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 p-4 min-h-screen">
