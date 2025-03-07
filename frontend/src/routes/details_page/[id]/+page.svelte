@@ -34,7 +34,18 @@
   }
 
   // Add asset-specific variables
-  let asset = null;
+  let asset = {
+    name: "",
+    version: "",
+    size: 0,
+    type: "",
+    last_updated: "",
+    created: "",
+    licence_info: "",
+    usage_info: "",
+    file: "",
+    
+  };
   
   // metadata variables
   let appMeta = {
@@ -113,6 +124,16 @@
       loading = false;
     }
   });
+
+  async function updateAsset() {
+    try {
+      await pb.collection('assets').update(assetId, asset);
+      alert("Asset updated successfully!");
+    } catch (err) {
+      console.error("Error updating asset:", err);
+      alert("Failed to update asset.");
+    }
+  }
 
   /**
    * Function to download an asset file from meta_data
@@ -406,7 +427,7 @@ input[type="search"]::-webkit-search-cancel-button {
           <div>
             <h1 class="text-3xl font-bold mb-4">{asset ? asset.name : 'Asset Not Found'}</h1>
             <p class="text-gray-600 dark:text-gray-300 max-w-3xl">
-              {asset ? asset.description : "Unable to find the requested asset."}
+              {asset ? asset.usage_info : "Unable to find the requested asset."}
             </p>
           </div>
         </div>
@@ -422,7 +443,7 @@ input[type="search"]::-webkit-search-cancel-button {
               </div>
             </div>
 
-            <!-- asset typ -->
+            <!-- asset type -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Type</div>
               <div class="text-gray-800 dark:text-gray-200">
@@ -434,6 +455,20 @@ input[type="search"]::-webkit-search-cancel-button {
               <div class="font-semibold mb-2">Last Updated</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {asset.last_updated ? new Date(asset.last_updated).toLocaleDateString() : "Not specified"}
+              </div>
+            </div>
+
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Created</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {asset.created ? new Date(asset.created).toLocaleDateString() : "Not specified"}
+              </div>
+            </div>
+
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Size</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {asset.size || "Not specified"}
               </div>
             </div>
 
