@@ -13,7 +13,7 @@ migrate((app) => {
     "pattern": "",
     "presentable": false,
     "primaryKey": false,
-    "required": false,
+    "required": true,
     "system": false,
     "type": "text"
   }))
@@ -29,7 +29,7 @@ migrate((app) => {
     "pattern": "",
     "presentable": false,
     "primaryKey": false,
-    "required": false,
+    "required": true,
     "system": false,
     "type": "text"
   }))
@@ -58,7 +58,7 @@ migrate((app) => {
     "min": "",
     "name": "launched",
     "presentable": false,
-    "required": false,
+    "required": true,
     "system": false,
     "type": "date"
   }))
@@ -86,7 +86,7 @@ migrate((app) => {
     "pattern": "",
     "presentable": false,
     "primaryKey": false,
-    "required": false,
+    "required": true,
     "system": false,
     "type": "text"
   }))

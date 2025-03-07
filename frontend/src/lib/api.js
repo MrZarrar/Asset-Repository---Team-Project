@@ -1,10 +1,11 @@
 export const updateProfile = async (userid, name, username, email) => {
-    const url = ''; // Add the actual API endpoint URL here
+    const url = `http://127.0.0.1:8090/api/collections/profiles/records/${userid}`;
 
     const data = {
         name: name,
         username: username,
-        email: email
+        email: email,
+        profilePicture: profilePicture
     };
 
     try {

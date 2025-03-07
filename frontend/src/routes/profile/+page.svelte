@@ -210,18 +210,19 @@
 
 	<div class="flex items-center space-x-5 p-5">
 		<div>
-			<svg
-				class="w-[200px] h-[200px] text-gray-300"
-				viewBox="0 0 24 24"
-				fill="currentColor"
-				aria-hidden="true"
-			>
-				<path
-					fill-rule="evenodd"
-					d="M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 0 0 3.065 7.097A9.716 9.716 0 0 0 12 21.75a9.716 9.716 0 0 0 6.685-2.653Zm-12.54-1.285A7.486 7.486 0 0 1 12 15a7.486 7.486 0 0 1 5.855 2.812A8.224 8.224 0 0 1 12 20.25a8.224 8.224 0 0 1-5.855-2.438ZM15.75 9a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-					clip-rule="evenodd"
+			{#if $user.profilePicture}
+				<img
+					src={$user.profilePicture}
+					alt={$user.name ? `${$user.name}'s profile picture` : ''}
+					class="w-[200px] h-[200px] rounded-full object-cover border-4 border-gray-300 dark:border-gray-600"
 				/>
-			</svg>
+			{:else}
+				<div
+					class="w-[200px] h-[200px] flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 border-4 border-gray-300 dark:border-gray-600"
+				>
+					<User class="size-16 text-gray-600 dark:text-gray-400" />
+				</div>
+			{/if}
 		</div>
 		<div class="flex flex-col justify-center items-center gap-2">
 			<div class="flex flex-row gap-4">

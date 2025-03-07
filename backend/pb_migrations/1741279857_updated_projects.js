@@ -13,7 +13,7 @@ migrate((app) => {
     "pattern": "",
     "presentable": false,
     "primaryKey": false,
-    "required": false,
+    "required": true,
     "system": false,
     "type": "text"
   }))

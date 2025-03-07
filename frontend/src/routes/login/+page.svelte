@@ -1,6 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
     import { logIn } from '$lib/auth'; 
+    import { login } from '$lib/auth'; 
     
     let email = "";
     let password = "";
