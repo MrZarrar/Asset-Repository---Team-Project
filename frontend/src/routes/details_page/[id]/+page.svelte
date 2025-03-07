@@ -37,6 +37,7 @@
 
   // Add asset-specific variables
   let asset = {
+    logo: "",
     name: "",
     version: "",
     size: 0,
@@ -67,7 +68,7 @@
   // Function to fetch a specific asset by id
   async function fetchAssetById(id) {
     try {
-      const record = await pb.collection('assets').getOne(id);
+      const record = await pb.collection('assets').getOne(id, { expand: 'logo' });
       return record;
     } catch (err) {
       console.error("Error fetching asset:", err);
@@ -431,8 +432,13 @@ input.editing, textarea.editing {
         </div>
       {:else}
         <div class="flex items-start gap-6 mb-8">
-          <div class="w-16 h-16 bg-white p-2 rounded-lg shadow-md">
-            <!-- Asset Logo -->
+          <div class="w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
+            {#if asset.logo}
+              <img src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} alt="Asset Logo" class="w-full h-full object-cover rounded-lg" />
+            {:else}
+              <!-- Placeholder for logo if not available -->
+              <div class="w-full h-full flex items-center justify-center text-gray-400">No Logo</div>
+            {/if}
           </div>
           
           <div>
