@@ -200,17 +200,14 @@ input[type="search"]::-webkit-search-cancel-button {
   color: #e74c3c;
 }
 
-/* Temporarily remove styling for add asset form */
-/*
 input.editing, textarea.editing {
-  background-color: #2d3748; 
-  color: white; 
+  background-color: #2d3748; /* Grey background */
+  color: white; /* White text */
 }
 
 input[type="file"].hidden {
   display: none;
 }
-*/
 </style>
 
 <svelte:head>
@@ -435,35 +432,35 @@ input[type="file"].hidden {
               <form on:submit|preventDefault={addAsset}>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
-                  <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required />
+                  <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                  <input type="text" bind:value={newAsset.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required />
+                  <input type="text" bind:value={newAsset.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Version</label>
-                  <input type="text" bind:value={newAsset.version} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required />
+                  <input type="text" bind:value={newAsset.version} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
-                  <input type="text" bind:value={newAsset.type} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required />
+                  <input type="text" bind:value={newAsset.type} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Updated</label>
-                  <input type="date" bind:value={newAsset.date_updated} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required />
+                  <input type="date" bind:value={newAsset.date_updated} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Created</label>
-                  <input type="date" bind:value={newAsset.date_created} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required />
+                  <input type="date" bind:value={newAsset.date_created} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">License Info</label>
-                  <textarea bind:value={newAsset.licence_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                  <textarea bind:value={newAsset.licence_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Usage Info</label>
-                  <textarea bind:value={newAsset.usage_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                  <textarea bind:value={newAsset.usage_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
                 </div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Logo</label>
