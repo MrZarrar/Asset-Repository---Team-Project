@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Plus, Upload } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -49,6 +49,22 @@
   let loadingAssets = true;
   let assetError = null;
 
+  // Add these variables for adding a new asset
+  let addingAsset = false;
+  let newAsset = {
+    asset_id: "",
+    logo: null,
+    name: "",
+    version: "",
+    size: 0,
+    type: "",
+    date_updated: "",
+    date_created: "",
+    licence_info: "",
+    usage_info: "",
+    file: null,
+  };
+
   // Add this function to authenticate with PocketBase
   async function authenticateAdmin() {
     try {
@@ -62,6 +78,57 @@
       return false;
     }
   }
+
+  // Function to add a new asset
+  async function addAsset() {
+    try {
+        const formData = new FormData();
+        formData.append("asset_id", newAsset.asset_id);
+        formData.append("name", newAsset.name);
+        formData.append("version", newAsset.version);
+        formData.append("size", newAsset.size);
+        formData.append("type", newAsset.type);
+        formData.append("date_updated", newAsset.date_updated);
+        formData.append("date_created", newAsset.date_created);
+        formData.append("licence_info", newAsset.licence_info);
+        formData.append("usage_info", newAsset.usage_info);
+
+        // Append files only if they exist
+        if (newAsset.file) {
+            formData.append("file", newAsset.file);
+        }
+        if (newAsset.logo) {
+            formData.append("logo", newAsset.logo);
+        }
+
+        // Create a new asset record
+        const createdRecord = await pb.collection('assets').create(formData);
+        
+        // Add the new asset to the list (ensure reactivity)
+        assets = [...assets, createdRecord];
+
+        // Reset form fields
+        newAsset = {
+            asset_id: "",
+            logo: null,
+            name: "",
+            version: "",
+            size: 0,
+            type: "",
+            date_updated: "",
+            date_created: "",
+            licence_info: "",
+            usage_info: "",
+            file: null,
+        };
+
+        addingAsset = false; // Exit add mode after saving
+        console.log("Asset added successfully:", createdRecord);
+    } catch (err) {
+        console.error("Error adding asset:", err);
+        assetError = `Failed to add asset: ${err.message}`;
+    }
+}
 
   // Update your onMount function to use proper authentication
   onMount(async () => {
@@ -131,6 +198,15 @@ input[type="search"]::-webkit-search-cancel-button {
 
 .error {
   color: #e74c3c;
+}
+
+input.editing, textarea.editing {
+  background-color: #2d3748; /* Grey background */
+  color: white; /* White text */
+}
+
+input[type="file"].hidden {
+  display: none;
 }
 </style>
 
@@ -338,9 +414,75 @@ input[type="search"]::-webkit-search-cancel-button {
     <div class="flex-1">
       <section class="py-8">
         <div class="container mx-auto px-4">
-          <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">
-            Most Popular
-          </h1>
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
+              Most Popular
+            </h1>
+            <button
+              on:click={() => addingAsset = true}
+              class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <Plus class="w-4 h-4 mr-2" />
+              Add Asset
+            </button>
+          </div>
+          {#if addingAsset}
+            <div class="mb-6">
+              <h2 class="text-2xl font-bold mb-4">Add New Asset</h2>
+              <form on:submit|preventDefault={addAsset}>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
+                  <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                  <input type="text" bind:value={newAsset.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Version</label>
+                  <input type="text" bind:value={newAsset.version} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+                  <input type="text" bind:value={newAsset.type} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Updated</label>
+                  <input type="date" bind:value={newAsset.date_updated} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Created</label>
+                  <input type="date" bind:value={newAsset.date_created} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">License Info</label>
+                  <textarea bind:value={newAsset.licence_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Usage Info</label>
+                  <textarea bind:value={newAsset.usage_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Logo</label>
+                  <label class="cursor-pointer">
+                    <input type="file" accept="image/*" on:change={(e) => newAsset.logo = e.target.files[0]} class="hidden" />
+                    <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
+                  </label>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">File</label>
+                  <label class="cursor-pointer">
+                    <input type="file" accept="*" on:change={(e) => newAsset.file = e.target.files[0]} class="hidden" />
+                    <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
+                  </label>
+                </div>
+                <div class="flex justify-end">
+                  <button type="button" on:click={() => addingAsset = false} class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Cancel</button>
+                  <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save</button>
+                </div>
+              </form>
+            </div>
+          {/if}
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
             {#if loadingAssets}
               <div class="col-span-full text-center py-8">
