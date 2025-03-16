@@ -1,20 +1,25 @@
 import pb from '$lib/pocketbase';
-// In $lib/auth.js
 import { writable } from 'svelte/store';
-export const isAuthenticated = writable(false);
 
-// Update this in your login/logout functions
+// This initialises the auth store based on Pocketbase's current state
+export const isAuthenticated = writable(pb.authStore.isValid);
+// This makes is so we restore the auth state on page reload
+export const currentUser = writable(pb.authStore.model);
+
+// listens for the auth state changes 
+pb.authStore.onChange((token, model) => {
+    isAuthenticated.set(pb.authStore.isValid);
+    currentUser.set(model);
+  });
 
 export async function signUp(email, password, passwordConfirm, username, name) {
     try {
         if (password !== passwordConfirm) {
             throw new Error("Passwords don't match!");
         }
-
-       
         const user = await pb.collection('users').create({
-            username,  // Ensure that 'username' is passed as an argument
-            name,      // Same for 'name'
+            username,  
+            name,
             email,
             password,
             passwordConfirm
@@ -42,3 +47,8 @@ export function logout() {
     pb.authStore.clear();
     isAuthenticated.set(false);
 }
+
+
+  
+
+
