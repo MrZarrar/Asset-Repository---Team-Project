@@ -1,4 +1,6 @@
 <script>
+	import { goto } from '$app/navigation';
+    import { logIn } from '$lib/auth'; 
     import { login } from '$lib/auth'; 
     
     let email = "";
@@ -7,8 +9,9 @@
 
     async function handleLogin() {
         try {
-            await login(email, password);
-            window.location.href = "/";
+            await logIn(email, password);
+            alert("Log-in successful! You can now log in.");
+            goto('/')
         } catch (error) {
             errorMessage = error.message;
         }
