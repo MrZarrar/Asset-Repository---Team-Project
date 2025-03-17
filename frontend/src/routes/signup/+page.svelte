@@ -1,6 +1,7 @@
 <script>
     import { signUp } from '$lib/auth';
-    
+    import { goto } from '$app/navigation';
+
     let email = "";
     let password = "";
     let confirmPassword = "";
@@ -10,8 +11,9 @@
 
     async function handleSignUp() {
         try {
-            await signUp(email, password, confirmPassword, username, name);
-            window.location.href = "/login";
+            await signUp(email, password, confirmPassword,username,name);
+            alert("Sign-up successful! You can now log in.");
+            goto('/')
         } catch (error) {
             errorMessage = error.message;
         }
