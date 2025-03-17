@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Upload } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Upload, X } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -121,6 +121,16 @@
       console.log("Asset updated successfully:", updatedRecord);
     } catch (err) {
       console.error("Error updating asset:", err);
+    }
+  }
+
+  async function deleteAsset() {
+    try {
+      await pb.collection('assets').delete(assetId);
+      console.log("Asset deleted successfully");
+      window.location.href = '/'; // Redirect to home page after deletion
+    } catch (err) {
+      console.error("Error deleting asset:", err);
     }
   }
 
@@ -379,6 +389,14 @@ input[type="file"].hidden {
                     Save
                   </button>
                 {/if}
+
+                <button
+                  on:click={deleteAsset}
+                  class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2 flex items-center gap-2"
+                >
+                  <X class="w-4 h-4" />
+                  Delete Asset
+                </button>
               </div>
               
               {#if downloadError}
