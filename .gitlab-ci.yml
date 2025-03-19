@@ -11,11 +11,8 @@ build_and_test:
   stage: build
   image: node:${NODE_VERSION}
   script:
+    - cd frontend
     - npm ci
-    - curl -L https://github.com/pocketbase/pocketbase/releases/download/v0.22.1/pocketbase_0.22.1_linux_amd64.zip -o pocketbase.zip
-    - unzip pocketbase.zip -d ./pb
-    - chmod +x ./pb/pocketbase
-    - npx tailwindcss
     - npm run build
 
 # Deploy Job
@@ -23,6 +20,6 @@ deploy:
   stage: deploy
   image: node:${NODE_VERSION}
   script:
+    - cd frontend
     - npm ci
-    - npx tailwindcss
     - npm run build
