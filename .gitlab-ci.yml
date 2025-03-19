@@ -11,7 +11,7 @@ build_and_test:
   stage: build
   image: node:${NODE_VERSION}
   script:
-    - cd TeamProject37/frontend
+    - cd frontend
     - npm ci
     - npm run build
 
@@ -20,6 +20,6 @@ deploy:
   stage: deploy
   image: node:${NODE_VERSION}
   script:
-    - cd TeamProject37/frontend
+    - cd frontend
     - npm ci
     - npm run build
