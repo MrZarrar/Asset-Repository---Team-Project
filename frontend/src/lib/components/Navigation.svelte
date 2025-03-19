@@ -3,7 +3,7 @@
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import { Search, User, Download, ChevronDown } from "@lucide/svelte";
-    import { login, isAuthenticated } from '$lib/auth';
+    import { authStore, logout } from '$lib/auth';
   
     let isMobileMenuOpen = false;
     let isSearchMenuOpen = false;
@@ -53,6 +53,16 @@
       }
       // therwise, normal navigation will occur
     }
+
+    async function handleLogout() {
+        try {
+            logout();
+            await goto('/login');
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
+    }
+
 </script>
   
 {#if !isAuthPage}
@@ -195,10 +205,15 @@
             </button>
             <div class={`${isUserMenuOpen ? 'block' : 'hidden'} absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md dark:bg-gray-800 dark:hover:bg-gray-900 dark:text-gray-100 bg-white text-gray-900 py-1 ring-1 shadow-lg ring-black/5 focus:outline-hidden`}
               role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-              {#if $isAuthenticated}
+              {#if $authStore.isAuthenticated}
                 <a href="/profile" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
                 <a class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-1">Settings</a>    
-                <a class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-2">Sign out</a>
+                <button 
+                  on:click={handleLogout}
+                  class="block w-full text-left px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" 
+                  role="menuitem" 
+                  tabindex="-1" 
+                  id="user-menu-item-2">Sign out</button>
               {:else}
                 <a href="/signup" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Sign up</a>
                 <a href="/login" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-1">Login</a>

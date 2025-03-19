@@ -1,51 +1,102 @@
 import pb from '$lib/pocketbase';
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 
-// This initialises the auth store based on Pocketbase's current state
-export const isAuthenticated = writable(pb.authStore.isValid);
-// This makes is so we restore the auth state on page reload
-export const currentUser = writable(pb.authStore.model);
+// main auth store
+export const authStore = writable({
+  isAuthenticated: false,
+  user: null,
+  token: null
+});
 
-// listens for the auth state changes 
-pb.authStore.onChange((token, model) => {
-    isAuthenticated.set(pb.authStore.isValid);
-    currentUser.set(model);
+// derived store for isAuthenticated
+export const isAuthenticated = derived(
+  authStore,
+  $authStore => $authStore.isAuthenticated
+);
+
+// initialise auth state
+export function initAuth() {
+  if (pb.authStore.isValid) {
+    authStore.set({
+      isAuthenticated: true,
+      user: pb.authStore.model,
+      token: pb.authStore.token
+    });
+    return true;
+  }
+  authStore.set({
+    isAuthenticated: false,
+    user: null,
+    token: null
   });
-
-export async function signUp(email, password, passwordConfirm, username, name) {
-    try {
-        if (password !== passwordConfirm) {
-            throw new Error("Passwords don't match!");
-        }
-        const user = await pb.collection('users').create({
-            username,  
-            name,
-            email,
-            password,
-            passwordConfirm
-        });
-
-        return user;
-    } catch (error) {
-        console.error("Sign-up error:", error);
-        throw error;
-    }
+  return false;
 }
 
+// login function
 export async function login(email, password) {
-    try {
-        const authData = await pb.collection('users').authWithPassword(email, password);
-        isAuthenticated.set(true);
-        return authData;
-    } catch (error) {
-        console.error("Login error:", error);
-        throw error;
-    }
+  try {
+    const authData = await pb.collection('users').authWithPassword(email, password);
+    authStore.set({
+      isAuthenticated: true,
+      user: authData.record,
+      token: authData.token
+    });
+    return authData;
+  } catch (error) {
+    console.error("Authentication error:", error);
+    throw error;
+  }
 }
 
+// logout function
 export function logout() {
-    pb.authStore.clear();
-    isAuthenticated.set(false);
+  pb.authStore.clear();
+  authStore.set({
+    isAuthenticated: false,
+    user: null,
+    token: null
+  });
+}
+
+// to refresh the token
+export async function refreshToken() {
+  try {
+    const authData = await pb.collection('users').authRefresh();
+    
+    authStore.set({
+      isAuthenticated: true,
+      user: authData.record,
+      token: authData.token
+    });
+    
+    return true;
+  } catch (error) {
+    console.error("Token refresh failed:", error);
+    logout();
+    return false;
+  }
+}
+
+// to sign up
+export async function signUp(email, password, passwordConfirm, username, name) {
+  try {
+    if (password !== passwordConfirm) {
+      throw new Error("Passwords don't match!");
+    }
+       
+    const user = await pb.collection('users').create({
+      username,
+      name,
+      email,
+      password,
+      passwordConfirm
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Sign-up error:", error);
+    throw error;
+  }
 }
 
 

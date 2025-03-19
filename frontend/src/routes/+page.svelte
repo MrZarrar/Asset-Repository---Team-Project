@@ -70,7 +70,7 @@
     try {
       // Use your admin/superuser credentials
       // These should be stored securely in environment variables in production
-      await pb.admins.authWithPassword('admin@yourdomain.com', 'your-secure-password');
+      await pb.admins.authWithPassword('Super.user@pocketbase.com', 'SuperPassword');
       console.log("Admin authenticated successfully");
       return true;
     } catch (error) {

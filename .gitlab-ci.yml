@@ -1,0 +1,25 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  NODE_VERSION: "22.14.0"
+
+# Build and Test Job
+build_and_test:
+  stage: build
+  image: node:${NODE_VERSION}
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+
+# Deploy Job
+deploy:
+  stage: deploy
+  image: node:${NODE_VERSION}
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
