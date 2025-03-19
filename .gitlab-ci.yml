@@ -20,3 +20,6 @@ deploy:
   stage: deploy
   image: node:${NODE_VERSION}
   script:
+    - cd TeamProject37/frontend
+    - npm ci
+    - npm run build
