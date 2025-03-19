@@ -14,11 +14,6 @@ build_and_test:
     - cd TeamProject37/frontend
     - npm ci
     - npm run build
-    
-artifacts:
-  paths:
-    - TeamProject37/frontend/build/
-    - expire_in: 1 week
 
 # Deploy Job
 deploy:
