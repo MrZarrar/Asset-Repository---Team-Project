@@ -80,7 +80,6 @@
 				</ul>
 			</div>
 		</div>
-
 		<!-- Profile Section -->
 		<slot></slot>
 	</div>
