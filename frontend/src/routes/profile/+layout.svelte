@@ -16,28 +16,6 @@
 			alert('Error updating profile. Please try again.');
 		}
 	}
-
-	let isMobileMenuOpen = false;
-	function toggleMobileMenu() {
-		isMobileMenuOpen = !isMobileMenuOpen;
-	}
-
-	let isUserMenuOpen = false;
-	function toggleUserMenu() {
-		isUserMenuOpen = !isUserMenuOpen;
-		if (isUserMenuOpen) {
-			isDownloadMenuOpen = false;
-		}
-	}
-
-	let isDownloadMenuOpen = false;
-	function toggleDownloadMenu() {
-		// Toggle the download menu and close the user menu if it is open
-		isDownloadMenuOpen = !isDownloadMenuOpen;
-		if (isDownloadMenuOpen) {
-			isUserMenuOpen = false;
-		}
-	}
 </script>
 
 <svelte:head>
