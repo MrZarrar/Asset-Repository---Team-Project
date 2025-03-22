@@ -3,9 +3,9 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { fly, fade } from 'svelte/transition';
-  import { page } from '$app/stores';  // Import page store
-  import { goto } from '$app/navigation';  // Import goto for navigation
-  
+  import { page } from '$app/stores'; 
+  import { goto } from '$app/navigation'; 
+
 
   // Chat state management
   const chatMessages = writable([{
@@ -193,9 +193,136 @@
     return true;
   }
 
-  // Function to send message to OpenAI API
+  // Search stuff in Maven repo
+  async function searchMavenRepository(query) {
+    try {
+      // Use Maven endpoint not chat endpoint
+      const response = await fetch(`/api/maven?q=${encodeURIComponent(query)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to search Maven repository');
+      }
+      
+      const data = await response.json();
+      return data.results;
+    } catch (error) {
+      console.error('Maven search error:', error);
+      return [];
+    }
+  }
+
+  // Make Maven results look pretty
+  function formatMavenResults(results, query) {
+    if (!results || results.length === 0) {
+      return `I couldn't find any Maven dependencies matching "${query}". Please try a different search term or check your spelling.`;
+    }
+    
+    // Show top 5 results
+    const topResults = results.slice(0, 5);
+    let message = `Here are some Maven dependencies matching "${query}":\n\n`;
+    
+    topResults.forEach(dep => {
+      message += `- **${dep.artifactId}** (${dep.groupId}:${dep.artifactId}:${dep.version})\n`;
+      if (dep.license && dep.license !== 'Unknown') {
+        message += `  License: ${dep.license}\n`;
+      }
+    });
+    
+    if (results.length > 5) {
+      message += `\nAnd ${results.length - 5} more results. You can ask for more specific information about any of these.`;
+    }
+    
+    return message;
+  }
+
+  // Track if we're in generate mode
+  let isGenerateMode = false;
+
+  // Add a constant for the prefix text
+  const GENERATE_PREFIX = "Generate asset for ";
+
+  // Modified toggleGenerateMode function to handle non-deletable prefix
+  function toggleGenerateMode() {
+    isGenerateMode = !isGenerateMode;
+    
+    if (isGenerateMode) {
+      // Pre-fill the text box
+      userInput = GENERATE_PREFIX;
+      // Focus on the input and position cursor at the end
+      setTimeout(() => {
+        const inputElement = document.querySelector('input[placeholder="Type your message..."]');
+        if (inputElement) {
+          inputElement.focus();
+          inputElement.selectionStart = inputElement.selectionEnd = userInput.length;
+        }
+      }, 50);
+    } else {
+      // Clear the input if canceling
+      userInput = "";
+    }
+  }
+
+  // Function to handle keydown events and prevent deletion of prefix
+  function handleInputKeydown(e) {
+    if (isGenerateMode) {
+      // Get current cursor position and selection
+      const input = e.target;
+      const selectionStart = input.selectionStart;
+      const selectionEnd = input.selectionEnd;
+      
+      // Prevent deleting the prefix with Backspace
+      if (e.key === 'Backspace' && (selectionStart <= GENERATE_PREFIX.length || 
+          (selectionStart === selectionEnd && selectionStart <= GENERATE_PREFIX.length))) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Prevent deleting the prefix with Delete
+      if (e.key === 'Delete' && selectionStart < GENERATE_PREFIX.length) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Prevent cutting the prefix with keyboard shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && 
+          selectionStart < GENERATE_PREFIX.length) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Allow Enter key to submit
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    } else if (e.key === 'Enter') {
+      sendMessage();
+    }
+  }
+
+  // Function to monitor input changes and restore prefix if needed
+  function handleInputChange(e) {
+    if (isGenerateMode && !userInput.startsWith(GENERATE_PREFIX)) {
+      userInput = GENERATE_PREFIX + userInput.replace(GENERATE_PREFIX, "");
+      
+      // Restore cursor position after forced prefix
+      setTimeout(() => {
+        const input = document.querySelector('input[placeholder="Type your message..."]');
+        if (input) {
+          const position = Math.max(GENERATE_PREFIX.length, input.selectionStart);
+          input.selectionStart = input.selectionEnd = position;
+        }
+      }, 0);
+    }
+  }
+
+  // Enhanced sendMessage function to handle generate mode
   async function sendMessage() {
     if (!userInput.trim()) return;
+    
+    // Reset generate mode if it's active
+    if (isGenerateMode) {
+      isGenerateMode = false;
+    }
     
     // Check for specific commands first before content filtering
     const topicResponse = checkSpecificAnswers(userInput);
@@ -226,6 +353,26 @@
       
       return;
     }
+
+    // Look for Maven search patterns first
+    const searchPatterns = [
+      /find\s+(?:dependency|dependencies|library|libraries|package|packages)\s+(?:for|about|related to)?\s+([^?.,]+)/i,
+      /search\s+(?:for)?\s+([^?.,]+)\s+(?:dependency|dependencies|library|libraries|package|packages)/i,
+      /(?:how|where)\s+(?:can|do)\s+i\s+(?:get|find|use)\s+([^?.,]+)/i,
+      /(?:recommend|suggest)\s+(?:a|some)?\s+(?:dependency|dependencies|library|libraries)\s+(?:for|about)?\s+([^?.,]+)/i
+    ];
+    
+    let isSearchQuery = false;
+    let searchTerm = '';
+    
+    for (const pattern of searchPatterns) {
+      const match = userInput.match(pattern);
+      if (match && match[1]) {
+        isSearchQuery = true;
+        searchTerm = match[1].trim();
+        break;
+      }
+    }
     
     // Add user message to chat
     $chatMessages = [...$chatMessages.filter(msg => msg.role !== 'system'), { role: 'user', content: userInput }];
@@ -234,6 +381,19 @@
     $isLoading = true;
 
     try {
+      // If it's a search query, handle it directly
+      if (isSearchQuery && searchTerm) {
+        const results = await searchMavenRepository(searchTerm);
+        const formattedResults = formatMavenResults(results, searchTerm);
+        
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: formattedResults
+        }];
+        $isLoading = false;
+        return;
+      }
+      
       // Include the system message when sending to API
       const systemMessage = {
         role: 'system',
@@ -284,51 +444,296 @@
 
   $: isAuthPage = $page?.route?.id === '/login' || $page?.route?.id === '/signup';
 
-  // Add this function for asset generation
+  // Function to extractMavenDetailsFromChat that uses commonMavenLibraries
+  function extractMavenDetailsFromChat() {
+    // Get the last few user messages
+    const recentMessages = $chatMessages
+      .filter(msg => msg.role === 'user')
+      .slice(-3)
+      .map(msg => msg.content.toLowerCase());
+    
+    let groupId = null;
+    let artifactId = null;
+    let version = null;
+    let license = null;
+    
+    // extract explicit maven coordinates first (existing patterns)
+    const groupIdPattern = /group(?:Id)?[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const artifactIdPattern = /artifact(?:Id)?[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const versionPattern = /version[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const licensePattern = /licen[cs]e[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const fullCoordinatePattern = /["']?([a-zA-Z0-9._-]+(?:\.[a-zA-Z0-9._-]+)+):([a-zA-Z0-9._-]+)(?::([a-zA-Z0-9._-]+))?["']?/;
+    const xmlPattern = /<dependency>\s*<groupId>([^<]+)<\/groupId>\s*<artifactId>([^<]+)<\/artifactId>\s*<version>([^<]+)<\/version>/i;
+    
+    for (const message of recentMessages) {
+      // check for explicit specifications
+      const groupMatch = message.match(groupIdPattern);
+      const artifactMatch = message.match(artifactIdPattern);
+      const versionMatch = message.match(versionPattern);
+      const licenseMatch = message.match(licensePattern);
+      
+      if (groupMatch && !groupId) groupId = groupMatch[1];
+      if (artifactMatch && !artifactId) artifactId = artifactMatch[1];
+      if (versionMatch && !version) version = versionMatch[1];
+      if (licenseMatch && !license) license = licenseMatch[1];
+      
+      // extract from full coordinate pattern
+      const fullMatch = message.match(fullCoordinatePattern);
+      if (fullMatch) {
+        if (!groupId) groupId = fullMatch[1];
+        if (!artifactId) artifactId = fullMatch[2];
+        if (!version && fullMatch[3]) version = fullMatch[3];
+      }
+      
+      // extract from xml pattern
+      const xmlMatch = message.match(xmlPattern);
+      if (xmlMatch) {
+        if (!groupId) groupId = xmlMatch[1];
+        if (!artifactId) artifactId = xmlMatch[2];
+        if (!version) version = xmlMatch[3];
+      }
+    }
+    
+    // if we still don't have details, try to search Maven Central
+    if (!groupId || !artifactId) {
+      // Extract a search term from the conversation
+      const searchTermPattern = /(?:generate|create|make|need|want)\s+(?:an?\s+)?(?:asset|dependency|library)\s+(?:for|about|using)?\s+([a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)?)/i;
+      const searchMatch = recentMessages.join(' ').match(searchTermPattern);
+      
+      if (searchMatch && searchMatch[1]) {
+        const searchTerm = searchMatch[1].trim();
+        
+        // message indicating we're searching Maven Central
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: `I'm searching Maven Central for "${searchTerm}"...`
+        }];
+        
+        searchMavenRepository(searchTerm)
+          .then(results => {
+            if (results && results.length > 0) {
+              const bestMatch = results[0]; // use the top result
+              
+              // update the form with the search result
+              const today = new Date().toISOString().split('T')[0];
+              const event = new CustomEvent('createMavenAsset', {
+                detail: {
+                  asset_id: bestMatch.artifactId,
+                  name: bestMatch.artifactId,
+                  version: bestMatch.version,
+                  type: 'maven',
+                  date_updated: today,
+                  date_created: today,
+                  licence_info: bestMatch.license || 'Apache 2.0',
+                  usage_info: `<dependency>
+                  <groupId>${bestMatch.groupId}</groupId>
+                  <artifactId>${bestMatch.artifactId}</artifactId>
+                  <version>${bestMatch.version}</version>
+                </dependency>`
+                }
+              });
+              
+              window.dispatchEvent(event);
+              
+              // Add a message with the search result
+              $chatMessages = [...$chatMessages, { 
+                role: 'assistant', 
+                content: `I found a matching Maven dependency: ${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}. I've filled out the form for you.`
+              }];
+            }
+          })
+          .catch(error => {
+            console.error('Error searching Maven Central:', error);
+          });
+      }
+    }
+    
+    // Return the details if we have at least groupId and artifactId
+    if (groupId && artifactId) {
+      return {
+        groupId,
+        artifactId,
+        version: version || '1.0.0',
+        license: license || 'Apache 2.0'
+      };
+    }
+    
+    return null;
+  }
+
+  // Updated generateAsset function with real Maven repository search
   async function generateAsset() {
     try {
       $isLoading = true;
       
-      const assetName = extractAssetNameFromChat();
+      // Get the last few user messages to extract context
+      const recentMessages = $chatMessages
+        .filter(msg => msg.role === 'user')
+        .slice(-3)
+        .map(msg => msg.content);
       
-      // Make API call to create asset
-      const response = await fetch('/api/assets/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: assetName || 'New Asset',
-          type: 'maven',
-          // Add any other properties needed for asset creation
-        })
-      });
+      // Join messages for analysis
+      const context = recentMessages.join(' ').toLowerCase();
       
-      if (!response.ok) throw new Error('Failed to create asset');
+      // Try to extract technology/library name
+      let searchQuery = '';
       
-      const data = await response.json();
+      // Common patterns to extract dependency names
+      const patterns = [
+        /(?:for|about|using|with)\s+([a-z0-9\s._-]+)(?:\s+library|\s+framework|\s+dependency)?/i,
+        /([a-z0-9\s._-]+)(?:\s+library|\s+framework|\s+dependency|\s+package)/i,
+        /generate\s+(?:an?\s+)?asset\s+(?:for|about|using)\s+([a-z0-9\s._-]+)/i
+      ];
       
-      // Add confirmation message to chat
+      // Try to extract with patterns
+      for (const pattern of patterns) {
+        for (const message of recentMessages) {
+          const match = message.match(pattern);
+          if (match && match[1]) {
+            searchQuery = match[1].trim();
+            break;
+          }
+        }
+        if (searchQuery) break;
+      }
+      
+      // If we still don't have a query, look for specific keywords
+      if (!searchQuery) {
+        const keywords = ['spring', 'apache', 'google', 'aws', 'azure', 'cloud', 'mongo', 'sql', 
+                          'hibernate', 'kafka', 'log4j', 'junit', 'mockito', 'lombok', 'jackson'];
+        
+        for (const keyword of keywords) {
+          if (context.includes(keyword)) {
+            searchQuery = keyword;
+            break;
+          }
+        }
+      }
+      
+      // If we still don't have a query, ask the user
+      if (!searchQuery) {
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: 'I need more details to generate a Maven asset. Could you specify which library or framework you need?'
+        }];
+        $isLoading = false;
+        return;
+      }
+      
+      // Let user know we're searching
       $chatMessages = [...$chatMessages, { 
         role: 'assistant', 
-        content: `I've created a new asset "${data.name}" for you. Would you like to go to your assets page to view it?`
+        content: `Searching Maven Central for "${searchQuery}" dependencies...`
       }];
       
-      // Set up a temporary handler for "yes" response
-      const yesHandler = setTimeout(() => {
-        const lastUserMessage = $chatMessages.findLast(msg => msg.role === 'user')?.content.toLowerCase();
-        if (lastUserMessage && (lastUserMessage.includes('yes') || lastUserMessage.includes('sure'))) {
-          goto('/assets');
+      // Search Maven Central
+      const searchResults = await searchMavenRepository(searchQuery);
+      
+      if (!searchResults || searchResults.length === 0) {
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: `I couldn't find any Maven dependencies matching "${searchQuery}". Could you try a different search term?`
+        }];
+        $isLoading = false;
+        return;
+      }
+      
+      // Use the first result
+      const bestMatch = searchResults[0];
+      
+      // Prepare the asset data
+      const today = new Date().toISOString().split('T')[0];
+      const assetData = {
+        asset_id: `${bestMatch.groupId}.${bestMatch.artifactId}`,
+        name: bestMatch.artifactId,
+        version: bestMatch.version,
+        type: 'maven',
+        date_updated: today,
+        date_created: today,
+        licence_info: bestMatch.license || 'Apache 2.0',
+        usage_info: `<dependency>
+  <groupId>${bestMatch.groupId}</groupId>
+  <artifactId>${bestMatch.artifactId}</artifactId>
+  <version>${bestMatch.version}</version>
+</dependency>`
+      };
+      
+      // Let user know we're creating the asset
+      $chatMessages = [...$chatMessages, { 
+        role: 'assistant', 
+        content: `Found "${bestMatch.artifactId}" (${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}). Creating asset...`
+      }];
+      
+      // Navigate to homepage first (where the asset form is)
+      goto('/');
+      
+      // Give the page a moment to load before dispatching the event
+      setTimeout(() => {
+        try {
+          // Create and dispatch the event to trigger asset creation
+          const event = new CustomEvent('createMavenAsset', {
+            detail: assetData
+          });
+          
+          window.dispatchEvent(event);
+          
+          // Add confirmation message
+          setTimeout(() => {
+            $chatMessages = [...$chatMessages, { 
+              role: 'assistant', 
+              content: `I've opened the asset form with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
+            }];
+            $isLoading = false;
+          }, 1000);
+        } catch (error) {
+          console.error('Error creating asset:', error);
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: 'Sorry, I encountered an error while creating the asset. Please try again.'
+          }];
+          $isLoading = false;
         }
-      }, 5000);
+      }, 1000);
       
     } catch (error) {
-      console.error('Error generating asset:', error);
+      console.error('Error in generateAsset:', error);
       $chatMessages = [...$chatMessages, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error while trying to create the asset. Please try again later.'
+        content: 'Sorry, I encountered an error while trying to generate the asset. Please try again later.'
       }];
-    } finally {
       $isLoading = false;
     }
+  }
+
+  // Helper function to extract asset name from chat context
+  function extractAssetNameFromChat() {
+    // Get the last few user messages to look for asset name
+    const recentMessages = $chatMessages
+      .filter(msg => msg.role === 'user')
+      .slice(-3)
+      .map(msg => msg.content);
+    
+    // Look for patterns like "create asset called X" or "generate X asset"
+    for (const message of recentMessages) {
+      // Various patterns to extract asset name
+      const patterns = [
+        /create\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
+        /generate\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
+        /make\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
+        /(?:generate|create|make)\s+"?([^"]+)"?\s+asset/i,
+        /(?:generate|create|make)\s+(?:an?\s+)?maven\s+dependency\s+(?:called|named|for)\s+"?([^"]+)"?/i,
+        /name\s*:\s*"?([^"]+)"?/i
+      ];
+      
+      for (const pattern of patterns) {
+        const match = message.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+      }
+    }
+    
+    return null; // No specific name found
   }
 
   async function downloadAsset() {
@@ -410,35 +815,6 @@
     return null; // No specific asset info found
   }
 
-  // Helper function to extract asset name from chat context
-  function extractAssetNameFromChat() {
-    // Get the last few user messages to look for asset name
-    const recentMessages = $chatMessages
-      .filter(msg => msg.role === 'user')
-      .slice(-3)
-      .map(msg => msg.content);
-    
-    // Look for patterns like "create asset called X" or "generate X asset"
-    for (const message of recentMessages) {
-      // Various patterns to extract asset name
-      const patterns = [
-        /create\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
-        /generate\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
-        /make\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
-        /(?:generate|create|make)\s+"?([^"]+)"?\s+asset/i
-      ];
-      
-      for (const pattern of patterns) {
-        const match = message.match(pattern);
-        if (match && match[1]) {
-          return match[1].trim();
-        }
-      }
-    }
-    
-    return null; // No specific name found
-  }
-
   // Add a reference to the chat container
   let chatContainer;
   let userHasScrolled = false;
@@ -481,7 +857,7 @@
   {#if $isChatOpen}
     <div class="relative group">
       <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:blur-md transition-all duration-1000 group-hover:duration-200"></div>
-      <div class="relative w-[350px] h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col overflow-hidden">
+      <div class="relative w-[470px] h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col overflow-hidden">
         <div class="p-4 bg-blue-600 text-white flex justify-between items-center">
           <h3 class="m-0 font-medium">My Chatbot</h3>
           <button 
@@ -514,21 +890,79 @@
             </div>
           {/if}
         </div>
+
         <div class="flex p-4 border-t border-gray-200 dark:border-gray-700">
-          <input 
-            type="text" 
-            bind:value={userInput} 
-            placeholder="Type your message..." 
-            on:keydown={(e) => e.key === 'Enter' && sendMessage()}
-            class="flex-1 p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button 
-            on:click={sendMessage} 
-            disabled={$isLoading}
-            class="bg-blue-600 text-white border-none rounded px-4 py-2 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-          >
-            Send
-          </button>
+          <div class="p-1 flex gap-2">
+            <input
+              bind:value={userInput}
+              placeholder="Type your message..."
+              class="flex-1 p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              on:keydown={handleInputKeydown}
+              on:input={handleInputChange}
+            />
+            <button 
+              on:click={sendMessage} 
+              class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Send
+            </button>
+            <button 
+              class="bg-green-600 text-white border-none border-2 border-green-600 rounded-md px-2 py-1 cursor-pointer hover:bg-green-700 transition-colors"
+              on:click={() => {
+                const directMenu = document.getElementById('directMenu');
+                directMenu.classList.toggle('hidden');
+              }}
+            >
+              Direct
+            </button>
+            <button 
+              on:click={toggleGenerateMode} 
+              class={`py-1 px-3 ${isGenerateMode ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-${isGenerateMode ? 'red' : 'green'}-500`}
+            >
+              {isGenerateMode ? 'Cancel' : 'Generate'}
+            </button>
+          </div>
+        </div> 
+        
+        <!-- Direct menu dropdown -->
+        <div id="directMenu" class="hidden absolute bottom-[80px] right-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm z-10">
+          <div class="p-1 flex flex-col space-y-1">
+            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
+              on:click={() => { 
+                goto('/');
+                document.getElementById('directMenu').classList.add('hidden');
+              }}>
+              Home
+            </button>
+            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
+              on:click={() => { 
+                goto('/profile');
+                document.getElementById('directMenu').classList.add('hidden');
+              }}>
+              Profile
+            </button>
+            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
+              on:click={() => { 
+                goto('/myAssets');
+                document.getElementById('directMenu').classList.add('hidden');
+              }}>
+              My Assets
+            </button>
+            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
+              on:click={() => { 
+                goto('/logging');
+                document.getElementById('directMenu').classList.add('hidden');
+              }}>
+              Log History
+            </button>
+            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
+              on:click={() => { 
+                goto('/profile_settings');
+                document.getElementById('directMenu').classList.add('hidden');
+              }}>
+              Settings
+            </button>
+          </div>
         </div>
       </div>
     </div>

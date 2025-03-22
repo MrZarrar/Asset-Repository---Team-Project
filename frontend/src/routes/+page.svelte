@@ -175,6 +175,36 @@
       loading = false;
       loadingAssets = false;
     }
+
+    // Add event listener for chatbot interaction
+    const createAssetHandler = (event) => {
+      const assetData = event.detail;
+      
+      // Open the asset form
+      addingAsset = true;
+      
+      // Fill the form with the data
+      newAsset = {
+        ...newAsset,
+        asset_id: assetData.asset_id || "",
+        name: assetData.name || "",
+        version: assetData.version || "",
+        type: assetData.type || "maven",
+        date_updated: assetData.date_updated || "",
+        date_created: assetData.date_created || "",
+        licence_info: assetData.licence_info || "",
+        usage_info: assetData.usage_info || ""
+      };
+      
+      console.log("Asset form opened with Maven data:", newAsset);
+    };
+    
+    window.addEventListener('createMavenAsset', createAssetHandler);
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('createMavenAsset', createAssetHandler);
+    };
   });
 
 </script>
