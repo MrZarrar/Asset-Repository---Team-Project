@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { OPENAI_API_KEY } from '$env/static/private';
+import { searchMavenCentral } from './maven.js';
 
 export async function POST({ request }) {
   try {
@@ -9,7 +10,7 @@ export async function POST({ request }) {
       return json({ error: 'Invalid request format' }, { status: 400 });
     }
 
-    // Call api
+    // api call
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -40,4 +41,5 @@ export async function POST({ request }) {
     console.error('Server error:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}
+
