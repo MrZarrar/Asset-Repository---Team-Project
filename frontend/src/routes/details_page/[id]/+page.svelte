@@ -4,7 +4,8 @@
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
   import { page } from '$app/stores';
-
+  import { logActions } from '../../../js/logging.pb.js';
+  
   let editing = false;
 
   const assetId = $page.params.id;
@@ -43,6 +44,10 @@
   async function fetchAssetById(id) {
     try {
       const record = await pb.collection('assets').getOne(id, { expand: 'logo' });
+
+      // Log viewing of an asset
+        logActions("viewed", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+
       return record;
     } catch (err) {
       console.error("Error fetching asset:", err);
@@ -119,6 +124,10 @@
       updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
       editing = false; // Exit edit mode after saving
       console.log("Asset updated successfully:", updatedRecord);
+
+      // Log updating of an asset
+      logActions("updated", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+
     } catch (err) {
       console.error("Error updating asset:", err);
     }
@@ -128,6 +137,10 @@
     try {
       await pb.collection('assets').delete(assetId);
       console.log("Asset deleted successfully");
+
+      // Log deleting of an asset
+      logActions("deleted", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+
       window.location.href = '/'; // Redirect to home page after deletion
     } catch (err) {
       console.error("Error deleting asset:", err);
