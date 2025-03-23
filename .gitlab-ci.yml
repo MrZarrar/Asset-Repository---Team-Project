@@ -6,20 +6,27 @@ stages:
 variables:
   NODE_VERSION: "22.14.0"
 
-# Build and Test Job
+
 build_and_test:
   stage: build
   image: node:${NODE_VERSION}
   script:
     - cd frontend
     - npm ci
+    - export OPENAI_API_KEY="${OPENAI_API_KEY}"
     - npm run build
+  variables:
+    VITE_PUBLIC_OPENAI_API_KEY: ${OPENAI_API_KEY}
+    PUBLIC_OPENAI_API_KEY: ${OPENAI_API_KEY}
 
-# Deploy Job
 deploy:
   stage: deploy
   image: node:${NODE_VERSION}
   script:
     - cd frontend
     - npm ci
+    - export OPENAI_API_KEY="${OPENAI_API_KEY}"
     - npm run build
+  variables:
+    VITE_PUBLIC_OPENAI_API_KEY: ${OPENAI_API_KEY}
+    PUBLIC_OPENAI_API_KEY: ${OPENAI_API_KEY}
