@@ -5,8 +5,8 @@
   import pb from '$lib/pocketbase';
   import { fetchAssets } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
-  import logActions from '../pb_hooks/logging.pb.js';
-
+  import { logActions } from '../js/logging.pb.js';
+  
   // Declare the variable needed for toggling the mobile menu state
   let isMobileMenuOpen = false;
   function toggleMobileMenu() {
@@ -14,7 +14,7 @@
   }
 
   // Declare the variable needed for toggling the user menu state
-  let isUserMenuOpen = false;
+  let isUserMenuOpen = false; 
   function toggleUserMenu() {
     // Toggle the user menu and close the download menu if it is open
     isUserMenuOpen = !isUserMenuOpen;
@@ -128,7 +128,7 @@
         console.log("Asset added successfully:", createdRecord);
 
         // Log creation of new asset
-        logActions("added", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+        await createLogEntry("added", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
         
     } catch (err) {
         console.error("Error adding asset:", err);

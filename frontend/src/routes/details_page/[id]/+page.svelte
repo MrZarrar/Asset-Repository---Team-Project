@@ -4,8 +4,8 @@
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
   import { page } from '$app/stores';
-  import logActions from '../pb_hooks/logging.pb.js';
-
+  import { logActions } from '../../../js/logging.pb.js';
+  
   let editing = false;
 
   const assetId = $page.params.id;
