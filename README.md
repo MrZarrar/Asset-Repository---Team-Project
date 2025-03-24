@@ -15,7 +15,9 @@ cd backend
 # start a development server
 ./pocktetbase[Env] serve
 ```
-
+Log in with:
+Email: Super.user@pocketbase.com
+Password: SuperPassword
 
 # Running the Front-end
 
@@ -33,6 +35,7 @@ npm install
 # start a development server
 npm run dev
 ```
+
 
 
 
