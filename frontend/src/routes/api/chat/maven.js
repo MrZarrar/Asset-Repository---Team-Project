@@ -38,7 +38,7 @@ export async function searchMavenCentral(query) {
       version: doc.latestVersion || doc.v, // results use v instead of latestVersion
       packaging: doc.p,
       timestamp: doc.timestamp,
-      license: doc.license || 'Unknown',
+      license: doc.license || 'Apache 2.0',
       popularity: doc.downloadCount || doc.versionCount || 0 // Different popularity metrics
     }));
   } catch (error) {

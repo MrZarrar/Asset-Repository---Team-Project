@@ -683,8 +683,12 @@
               role: 'assistant', 
               content: `I've opened the asset form with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
             }];
+            
+            // NEW: Reset context to allow for new asset generation
+            resetChatContext();
+            
             $isLoading = false;
-          }, 1000);
+          }, 1000); 
         } catch (error) {
           console.error('Error creating asset:', error);
           $chatMessages = [...$chatMessages, { 
@@ -702,6 +706,31 @@
         content: 'Sorry, I encountered an error while trying to generate the asset. Please try again later.'
       }];
       $isLoading = false;
+    }
+  }
+
+  // NEW: Function to reset chat context after asset generation
+  function resetChatContext() {
+    // Keep only the most recent messages but add a system message indicating context reset
+    const lastFewMessages = $chatMessages.slice(-3);
+    
+    // Add a system message to provide a clean break for context
+    $chatMessages = [
+      ...$chatMessages.filter(msg => msg.role === 'system'),
+      ...lastFewMessages,
+      {
+        role: 'system',
+        content: "Context reset for new requests"
+      },
+      {
+        role: 'assistant',
+        content: "I'm ready to help with another request. Need another asset or something else?"
+      }
+    ];
+    
+    // This helps ensure that any "memory" of the previous asset doesn't affect new generations
+    if (isGenerateMode) {
+      toggleGenerateMode(); // Turn off generate mode if it's on
     }
   }
 
