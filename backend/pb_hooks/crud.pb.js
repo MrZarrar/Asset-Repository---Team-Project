@@ -1,3 +1,4 @@
+/**
 import PocketBase from 'pocketbase';
 
 const pb = new PocketBase('http://127.0.0.1:8090'); 
@@ -23,6 +24,23 @@ export async function fetchRecordById(id) {
     }
 }
 
+
+ * @fileoverview This module provides a function to update a record in a specified collection.
+ * It logs the action and handles any errors that occur during the update process.
+ * 
+ * @module pb_hooks/crud
+
+
+
+ * Updates a record in the specified collection.
+ * 
+ * @async
+ * @function updateRecord
+ * @param {string} id - The ID of the record to update.
+ * @param {Object} data - The data to update the record with.
+ * @returns {Promise<Object>} The updated record.
+ * @throws Will throw an error if the update operation fails.
+
 export async function updateRecord(id, data) {
     try {
         const updatedRecord = await pb.collection(collectionName).update(id, data);
@@ -40,4 +58,6 @@ export async function deleteRecord(id) {
     } catch (error) {
         console.error('Error when deleting record:', error);
     }
-}
+} 
+
+*/
