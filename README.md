@@ -15,7 +15,9 @@ cd backend
 # start a development server
 ./pocktetbase[Env] serve
 ```
-
+Log in with:
+Email: Super.user@pocketbase.com
+Password: SuperPassword
 
 # Running the Front-end
 
@@ -38,6 +40,7 @@ npm install openai
 # start a development server
 npm run dev
 ```
+
 
 
 
