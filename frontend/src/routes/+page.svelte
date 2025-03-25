@@ -6,6 +6,10 @@
   import { fetchAssets } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
+  import { user } from '$lib/user.js';
+
+
+  $: role = $user.role;
   
   // Declare the variable needed for toggling the mobile menu state
   let isMobileMenuOpen = false;
@@ -314,13 +318,15 @@ input[type="file"].hidden {
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
               Most Popular
             </h1>
-            <button
-              on:click={() => addingAsset = true}
-              class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <Plus class="w-4 h-4 mr-2" />
-              Add Asset
-            </button>
+            {#if role !== 'viewer'}
+              <button
+                on:click={() => addingAsset = true}
+                class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Plus class="w-4 h-4 mr-2" />
+                Add Asset
+              </button>
+            {/if}
           </div>
           {#if addingAsset}
             <div class="mb-6">
