@@ -35,6 +35,9 @@ export function initAuth() {
 // login function
 export async function login(email, password) {
   try {
+    
+    email = email.toLowerCase();
+
     const authData = await pb.collection('users').authWithPassword(email, password);
     authStore.set({
       isAuthenticated: true,
@@ -83,6 +86,8 @@ export async function signUp(email, password, passwordConfirm, username, name) {
     if (password !== passwordConfirm) {
       throw new Error("Passwords don't match!");
     }
+
+    email = email.toLowerCase();
        
     const user = await pb.collection('users').create({
       username,
