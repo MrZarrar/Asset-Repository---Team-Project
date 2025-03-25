@@ -9,6 +9,7 @@
 	let name = $user.name;
 	let email = $user.email;
 	let profilePicture = $user.profilePicture || '';
+	let role = $user.role;
 
 	let fileInput;
 
@@ -105,6 +106,17 @@
 							autocomplete="email"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
 							bind:value={$user.email}
+						/>
+					</div>
+					<div class="sm:col-span-4">
+						<label for="email" class="block text-sm font-medium text-gray-900">Role</label>
+						<input
+							id="role"
+							name="role"
+							type="role"
+							autocomplete="role"
+							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							bind:value={$user.role}
 						/>
 					</div>
 				</div>
