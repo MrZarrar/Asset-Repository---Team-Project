@@ -5,7 +5,10 @@
   import pb from '$lib/pocketbase';
   import { page } from '$app/stores';
   import { logActions } from '../../../js/logging.pb.js';
-  
+  import { user } from '$lib/user.js';
+
+  $: role = $user.role;
+
   let editing = false;
 
   const assetId = $page.params.id;
@@ -219,6 +222,7 @@
       }
     });
   }
+
 
 </script>
 
@@ -468,29 +472,31 @@ implementation '{asset.asset_id || `com.example:${asset.name}`}:{asset.version |
                   </button>
                 {/if}
 
-                <button
-                  on:click={() => editing = !editing}
-                  class="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2 mr-0"
-                >
-                  {editing ? "Cancel" : "Edit Asset"}
-                </button>
-
-                {#if editing}
+                {#if role !== 'viewer'}
                   <button
-                    on:click={updateAsset}
-                    class="bg-green-600 hover:bg-green-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2"
+                    on:click={() => editing = !editing}
+                    class="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2 mr-0"
                   >
-                    Save
+                    {editing ? "Cancel" : "Edit Asset"}
+                  </button>
+
+                  {#if editing}
+                    <button
+                      on:click={updateAsset}
+                      class="bg-green-600 hover:bg-green-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2"
+                    >
+                      Save
+                    </button>
+                  {/if}
+
+                  <button
+                    on:click={deleteAsset}
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
+                  >
+                    <X class="w-4 h-4" />
+                    Delete Asset
                   </button>
                 {/if}
-
-                <button
-                  on:click={deleteAsset}
-                  class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
-                >
-                  <X class="w-4 h-4" />
-                  Delete Asset
-                </button>
               </div>
               
               {#if downloadError}
