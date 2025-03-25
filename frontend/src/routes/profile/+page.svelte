@@ -5,7 +5,13 @@
 	import { User } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
-	let userid, email, name, avatar, username;
+	let userid = $user.userid;
+	let username = $user.username;
+	let name = $user.name;
+	let email = $user.email;
+	let profilePicture = $user.profilePicture || '';
+	let role = $user.role;
+
 	let fileInput;
 
 	onMount(async () => {
@@ -134,6 +140,7 @@
 						</select>
 					</div>
 				</div>
+				
 			</div>
 			<!-- Save Button -->
 			<div class="flex space-x-4">
