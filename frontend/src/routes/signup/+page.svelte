@@ -1,6 +1,7 @@
 <script>
     import { signUp } from '$lib/auth';
     import { goto } from '$app/navigation';
+    import { user } from '$lib/user.js';
 
     let email = "";
     let password = "";
@@ -16,6 +17,15 @@
             goto('/login')
         } catch (error) {
             errorMessage = error.message;
+        }
+    }
+
+    async function continueAsGuest() {
+        try {
+            await login('Guest@gmail.com', 'GuestPassword123');
+            goto('/');
+        } catch (error) {
+            errorMessage = error.message || "Guest login failed";
         }
     }
 </script>
@@ -159,6 +169,10 @@
                 <p class="text-sm">
                     Already have an account? 
                     <a href="/login" class="text-blue-600 dark:text-blue-400 hover:underline">Login</a>
+                </p>
+                <p class="text-sm mt-4">
+                    Or 
+                    <button on:click={continueAsGuest} class="text-blue-600 dark:text-blue-400 hover:underline">Continue as Guest</button>
                 </p>
             </div>
         </div>
