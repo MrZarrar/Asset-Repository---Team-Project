@@ -10,6 +10,6 @@ export async function logActions(action, file, user, time) {
         return logEntry; // Return the created entry for potential use
     } catch (error) {
         console.error('Error saving log:', error);
-        throw error; // Re-throw to allow calling code to handle if needed
+        throw error; // Re-throw
     }
 }
