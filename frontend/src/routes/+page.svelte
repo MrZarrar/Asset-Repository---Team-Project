@@ -104,64 +104,71 @@
     }
   }
 
-  // Function to add a new asset
+  // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
     try {
-        const formData = new FormData();
-        formData.append("asset_id", newAsset.asset_id);
-        formData.append("name", newAsset.name);
-        formData.append("version", newAsset.version);
-        formData.append("size", newAsset.size);
-        formData.append("type", newAsset.type);
-        formData.append("date_updated", newAsset.date_updated);
-        formData.append("date_created", newAsset.date_created);
-        formData.append("licence_info", newAsset.licence_info);
-        formData.append("usage_info", newAsset.usage_info);
-        formData.append("maven_dependency", newAsset.maven_dependency);
-        formData.append("gradle_dependency", newAsset.gradle_dependency);
-
-        // Append files only if they exist
-        if (newAsset.file) {
-            formData.append("file", newAsset.file);
+      // Check if we have a POM file in newAsset
+      if (!newAsset.file && newAsset.type === 'maven') {
+        console.log("No POM file found, searching for it...");
+        // Try to fetch POM file as a backup if not already present
+        try {
+          const groupId = newAsset.asset_id.split(':')[0];
+          const artifactId = newAsset.asset_id.split(':')[1] || newAsset.name;
+          const version = newAsset.version;
+          
+          const response = await fetch(
+            `/api/maven/pom?groupId=${encodeURIComponent(groupId)}&artifactId=${encodeURIComponent(artifactId)}&version=${encodeURIComponent(version)}`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            const pomContent = data.pomContent;
+            
+            // Create a Blob with the POM content
+            const pomBlob = new Blob([pomContent], { type: 'application/xml' });
+            
+            // Create a File object from the Blob
+            newAsset.file = new File([pomBlob], `${artifactId}-${version}.pom`, { 
+              type: 'application/xml',
+              lastModified: new Date().getTime()
+            });
+            
+            console.log('POM file created successfully as backup');
+          }
+        } catch (e) {
+          console.error('Error creating backup POM file:', e);
+          // Continue without POM file if fetch fails
         }
-        if (newAsset.logo) {
-            formData.append("logo", newAsset.logo);
+      }
+      
+      // Now continue with your existing form submission
+      // Create form data for the API call
+      const formData = new FormData();
+      
+      // Add all form fields
+      for (const [key, value] of Object.entries(newAsset)) {
+        if (value !== null && value !== undefined) {
+          if (key === 'file' || key === 'logo') {
+            if (value instanceof File) {
+              formData.append(key, value, value.name);
+            }
+          } else {
+            formData.append(key, value);
+          }
         }
-
-        // Create a new asset record
-        const createdRecord = await pb.collection('assets').create(formData);
-        
-        // Add the new asset to the list (ensure reactivity)
-        assets = [...assets, createdRecord];
-
-        // Reset form fields
-        newAsset = {
-            asset_id: "",
-            logo: null,
-            name: "",
-            version: "",
-            size: 0,
-            type: "",
-            date_updated: "",
-            date_created: "",
-            licence_info: "",
-            usage_info: "",
-            maven_dependency: "",
-            gradle_dependency: "",
-            file: null,
-        };
-
-        addingAsset = false; // Exit add mode after saving
-        console.log("Asset added successfully:", createdRecord);
-
-        // Log creation of new asset
-        //await createLogEntry("added", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
-        
+      }
+      
+      // Your existing API call to save the asset
+      const createdRecord = await pb.collection('assets').create(formData);
+      
+      // Rest of your existing code...
+      addingAsset = false;
+      console.log("Asset added successfully:", createdRecord);
     } catch (err) {
-        console.error("Error adding asset:", err);
-        assetError = `Failed to add asset: ${err.message}`;
+      console.error("Error adding asset:", err);
+      assetError = `Failed to add asset: ${err.message}`;
     }
-}
+  }
 
   // Update your onMount function to use proper authentication
   onMount(async () => {
@@ -228,7 +235,9 @@
         licence_info: assetData.licence_info || "",
         usage_info: assetData.usage_info || "",
         maven_dependency: assetData.maven_dependency || "",
-        gradle_dependency: assetData.gradle_dependency || ""
+        gradle_dependency: assetData.gradle_dependency || "",
+        // If we have a POM file from the event, use it
+        file: assetData.pomFile || null
       };
       
       console.log("Asset form opened with Maven data:", newAsset);
