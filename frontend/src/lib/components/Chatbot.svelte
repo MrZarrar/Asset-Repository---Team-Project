@@ -516,20 +516,26 @@
               
               // update the form with the search result
               const today = new Date().toISOString().split('T')[0];
+              const dependencyXml = `<dependency>
+  <groupId>${bestMatch.groupId}</groupId>
+  <artifactId>${bestMatch.artifactId}</artifactId>
+  <version>${bestMatch.version}</version>
+</dependency>`;
+
+              const gradleDependency = `implementation '${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}'`;
+
               const event = new CustomEvent('createMavenAsset', {
                 detail: {
-                  asset_id: bestMatch.artifactId,
+                  asset_id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
                   name: bestMatch.artifactId,
                   version: bestMatch.version,
                   type: 'maven',
                   date_updated: today,
                   date_created: today,
                   licence_info: bestMatch.license || 'Apache 2.0',
-                  usage_info: `<dependency>
-                  <groupId>${bestMatch.groupId}</groupId>
-                  <artifactId>${bestMatch.artifactId}</artifactId>
-                  <version>${bestMatch.version}</version>
-                </dependency>`
+                  usage_info: `Use this dependency in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
+                  maven_dependency: dependencyXml,
+                  gradle_dependency: gradleDependency
                 }
               });
               
@@ -643,19 +649,25 @@
       
       // Prepare the asset data
       const today = new Date().toISOString().split('T')[0];
+      const dependencyXml = `<dependency>
+  <groupId>${bestMatch.groupId}</groupId>
+  <artifactId>${bestMatch.artifactId}</artifactId>
+  <version>${bestMatch.version}</version>
+</dependency>`;
+
+      const gradleDependency = `implementation '${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}'`;
+
       const assetData = {
-        asset_id: `${bestMatch.groupId}.${bestMatch.artifactId}`,
+        asset_id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
         name: bestMatch.artifactId,
         version: bestMatch.version,
         type: 'maven',
         date_updated: today,
         date_created: today,
         licence_info: bestMatch.license || 'Apache 2.0',
-        usage_info: `<dependency>
-  <groupId>${bestMatch.groupId}</groupId>
-  <artifactId>${bestMatch.artifactId}</artifactId>
-  <version>${bestMatch.version}</version>
-</dependency>`
+        usage_info: `Use this asset in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
+        maven_dependency: dependencyXml,
+        gradle_dependency: gradleDependency
       };
       
       // Let user know we're creating the asset

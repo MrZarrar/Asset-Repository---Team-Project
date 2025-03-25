@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Plus, Upload } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Plus, Upload, Check } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -64,8 +64,27 @@
     date_created: "",
     licence_info: "",
     usage_info: "",
+    maven_dependency: "",
+    gradle_dependency: "",
     file: null,
   };
+
+  // Add state variables to track copy status for each asset
+  let mavenCopiedIndex = -1;
+  let gradleCopiedIndex = -1;
+
+  // Function to handle copying with visual feedback
+  function copyToClipboard(text, type, index) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (type === 'maven') {
+        mavenCopiedIndex = index;
+        setTimeout(() => mavenCopiedIndex = -1, 2000); // Reset after 2 seconds
+      } else if (type === 'gradle') {
+        gradleCopiedIndex = index;
+        setTimeout(() => gradleCopiedIndex = -1, 2000); // Reset after 2 seconds
+      }
+    });
+  }
 
   // Add this function to authenticate with PocketBase
   async function authenticateAdmin() {
@@ -94,6 +113,8 @@
         formData.append("date_created", newAsset.date_created);
         formData.append("licence_info", newAsset.licence_info);
         formData.append("usage_info", newAsset.usage_info);
+        formData.append("maven_dependency", newAsset.maven_dependency);
+        formData.append("gradle_dependency", newAsset.gradle_dependency);
 
         // Append files only if they exist
         if (newAsset.file) {
@@ -121,6 +142,8 @@
             date_created: "",
             licence_info: "",
             usage_info: "",
+            maven_dependency: "",
+            gradle_dependency: "",
             file: null,
         };
 
@@ -199,7 +222,9 @@
         date_updated: assetData.date_updated || "",
         date_created: assetData.date_created || "",
         licence_info: assetData.licence_info || "",
-        usage_info: assetData.usage_info || ""
+        usage_info: assetData.usage_info || "",
+        maven_dependency: assetData.maven_dependency || "",
+        gradle_dependency: assetData.gradle_dependency || ""
       };
       
       console.log("Asset form opened with Maven data:", newAsset);
@@ -334,6 +359,14 @@ input[type="file"].hidden {
                   <textarea bind:value={newAsset.usage_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
                 </div>
                 <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Maven Dependency</label>
+                  <textarea bind:value={newAsset.maven_dependency} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Gradle Dependency</label>
+                  <textarea bind:value={newAsset.gradle_dependency} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
+                </div>
+                <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Logo</label>
                   <label class="cursor-pointer">
                     <input type="file" accept="image/*" on:change={(e) => newAsset.logo = e.target.files[0]} class="hidden" />
@@ -381,9 +414,86 @@ input[type="file"].hidden {
                     <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
                       {asset.description || "View details"}
                     </a>
+                    
+                    <!-- Maven dependency info for maven/java assets -->
+                    {#if asset.type === 'maven'}
+                      <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                        <div class="flex mt-1 space-x-1">
+                          <button 
+                            class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              copyToClipboard(xmlDependency, 'maven', i);
+                            }}
+                          >
+                            {#if mavenCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Mvn XML
+                            {/if}
+                          </button>
+                          <button 
+                            class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              copyToClipboard(gradleDependency, 'gradle', i);
+                            }}
+                          >
+                            {#if gradleCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Gradle
+                            {/if}
+                          </button>
+                          
+                          <!-- Download button added inside the button group -->
+                          {#if asset.file}
+                            <a 
+                              href={pb.files.getUrl(asset, asset.file)} 
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
+                              on:click|stopPropagation
+                            >
+                              <Download class="w-3 h-3" />
+                            </a>
+                          {/if}
+                        </div>
+                      </div>
+                    {:else}
+                      <!-- For non-maven assets, still show download button if available -->
+                      {#if asset.file}
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                          <div class="flex mt-1 space-x-1">
+                            <a 
+                              href={pb.files.getUrl(asset, asset.file)} 
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
+                              on:click|stopPropagation
+                            >
+                              <Download class="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      {/if}
+                    {/if}
+                    
                     {#if asset.last_updated}
                       <p class="mt-2 text-xs text-gray-400">
                         Updated: {new Date(asset.last_updated).toLocaleDateString()}
+                      </p>
+                    {/if}
+                    
+                    {#if asset.licence_info}
+                      <p class="mt-1 text-xs text-gray-400">
+                        License: {asset.licence_info.length > 20 ? asset.licence_info.substring(0, 20) + '...' : asset.licence_info}
                       </p>
                     {/if}
                   </div>

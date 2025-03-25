@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Upload, X } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Upload, X, Check } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -39,6 +39,10 @@
   let downloading = false;
   let downloadError = null;
   let availableFields = [];
+
+  // Add state for copy feedback
+  let mavenCopied = false;
+  let gradleCopied = false;
 
   // Function to fetch a specific asset by id
   async function fetchAssetById(id) {
@@ -203,6 +207,19 @@
 
   let updatedAsset = { ...asset };
 
+  // Function to handle copying with visual feedback
+  function copyToClipboard(text, type) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (type === 'maven') {
+        mavenCopied = true;
+        setTimeout(() => mavenCopied = false, 2000); // Reset after 2 seconds
+      } else if (type === 'gradle') {
+        gradleCopied = true;
+        setTimeout(() => gradleCopied = false, 2000); // Reset after 2 seconds
+      }
+    });
+  }
+
 </script>
 
 <style>
@@ -362,6 +379,70 @@ input[type="file"].hidden {
               </div>
             </div>
 
+            <!-- License Info -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">License</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {#if editing}
+                  <textarea bind:value={updatedAsset.licence_info} class="border rounded p-2 w-full editing"></textarea>
+                {:else}
+                  {asset.licence_info || "Not specified"}
+                {/if}
+              </div>
+            </div>
+
+            <!-- Maven Dependency Info -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Maven Dependency</div>
+              {#if asset.type === 'maven' || asset.type === 'java'}
+                <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
+                  <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto"><code>&lt;dependency&gt;
+    &lt;groupId&gt;{asset.asset_id?.split(':')[0] || 'com.example'}&lt;/groupId&gt;
+    &lt;artifactId&gt;{asset.asset_id?.split(':')[1] || asset.name}&lt;/artifactId&gt;
+    &lt;version&gt;{asset.version || '1.0.0'}&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                </div>
+                <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
+                  <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto"><code>// Gradle
+implementation '{asset.asset_id || `com.example:${asset.name}`}:{asset.version || '1.0.0'}'</code></pre>
+                </div>
+                <div class="flex flex-row gap-2 mt-2">
+                  <button 
+                    class="px-3 py-1 {mavenCopied ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-200 flex items-center gap-1"
+                    on:click={() => {
+                      const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                      copyToClipboard(xmlDependency, 'maven');
+                    }}
+                  >
+                    {#if mavenCopied}
+                      <Check class="w-4 h-4" />
+                      Copied!
+                    {:else}
+                      Copy Maven XML
+                    {/if}
+                  </button>
+                  <button 
+                      class="px-3 py-1 {gradleCopied ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-200 flex items-center gap-1"
+                    on:click={() => {
+                      const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                      copyToClipboard(gradleDependency, 'gradle');
+                    }}
+                  >
+                    {#if gradleCopied}
+                      <Check class="w-4 h-4" />
+                      Copied!
+                    {:else}
+                      Copy Gradle
+                    {/if}
+                  </button>
+                </div>
+              {:else}
+                <div class="text-gray-600 dark:text-gray-400">
+                  Not applicable for this asset type.
+                </div>
+              {/if}
+            </div>
+
             <!-- download Link -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Download</div>
@@ -405,7 +486,7 @@ input[type="file"].hidden {
 
                 <button
                   on:click={deleteAsset}
-                  class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2 flex items-center gap-2"
+                  class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
                 >
                   <X class="w-4 h-4" />
                   Delete Asset
