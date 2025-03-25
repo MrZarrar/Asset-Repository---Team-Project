@@ -29,7 +29,7 @@
     <ul class="mt-4 space-y-2">
         {#each logs as log}
             <li class="p-3 bg-gray-100 rounded shadow">
-                <strong>{log.action}</strong> on <em>{log.file}</em> by <span class="text-blue-600">{log.user}</span>
+                <span class="text-blue-600">{log.user}</span><strong>{log.action}</strong><em>{log.file}</em> @ <span class="text-blue-600">{log.time}</span>
                 <div class="text-sm text-gray-500">{new Date(log.time).toLocaleString()}</div>
             </li>
         {/each}
