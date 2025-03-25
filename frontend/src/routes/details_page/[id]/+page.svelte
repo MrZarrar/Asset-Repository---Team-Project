@@ -25,6 +25,7 @@
     licence_info: "",
     usage_info: "",
     file: "",
+    asset_id: "", // used to compute dependency text (e.g., "group:artifact")
     
   };
   
@@ -46,6 +47,23 @@
   // Add state for copy feedback
   let mavenCopied = false;
   let gradleCopied = false;
+
+  // New dependency text variables
+  let mavenDep = "";
+  let gradleDep = "";
+
+  // Function to compute the dependency texts
+  function computeDependencyTexts(assetData) {
+    mavenDep = `// Maven
+<dependency>
+  <groupId>${assetData.asset_id?.split(':')[0] || 'com.example'}</groupId>
+  <artifactId>${assetData.asset_id?.split(':')[1] || assetData.name}</artifactId>
+  <version>${assetData.version || '1.0.0'}</version>
+</dependency>`;
+  
+    gradleDep = `// Gradle
+implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${assetData.version || '1.0.0'}'`;
+  }
 
   // Function to fetch a specific asset by id
   async function fetchAssetById(id) {
@@ -77,6 +95,10 @@
       if (assetId) {
         try {
           asset = await fetchAssetById(assetId);
+          // Ensure licence_info field is properly recognized
+          console.log("License info:", asset.licence_info);
+          // Compute dependency texts after the asset is loaded:
+          computeDependencyTexts(asset);
         } catch (err) {
           error = `Failed to load asset details: ${err.message}`;
         }
@@ -126,6 +148,9 @@
       if (updatedAsset.file instanceof File) {
         formData.append('file', updatedAsset.file);
       }
+      // Optionally include the dependency texts if you want to persist them:
+      formData.append('mavenDependency', mavenDep);
+      formData.append('gradleDependency', gradleDep);
       const updatedRecord = await pb.collection('assets').update(assetId, formData);
       asset = { ...updatedRecord }; // Update the asset with the new data
       updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
@@ -222,7 +247,33 @@
       }
     });
   }
+  // --- Remove Files Functions ---
 
+  async function removeLogo() {
+    if (!confirm("Are you sure you want to remove the logo?")) return;
+    try {
+      // Remove the logo by updating the record with null for the logo field
+      const updatedRecord = await pb.collection('assets').update(assetId, { logo: null });
+      asset = { ...updatedRecord };
+      updatedAsset = { ...updatedRecord };
+      console.log("Logo removed successfully");
+    } catch (err) {
+      console.error("Error removing logo:", err);
+    }
+  }
+
+  async function removeAssetFile() {
+    if (!confirm("Are you sure you want to remove the asset file?")) return;
+    try {
+      // Remove the asset file by updating the record with null for the file field
+      const updatedRecord = await pb.collection('assets').update(assetId, { file: null });
+      asset = { ...updatedRecord };
+      updatedAsset = { ...updatedRecord };
+      console.log("Asset file removed successfully");
+    } catch (err) {
+      console.error("Error removing asset file:", err);
+    }
+  }
 
 </script>
 
@@ -302,17 +353,29 @@ input[type="file"].hidden {
         </div>
       {:else}
         <div class="flex items-start gap-6 mb-8">
-          <div class="w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
-            {#if editing}
-              <label class="cursor-pointer">
-                <input type="file" accept="image/*" on:change={(e) => updatedAsset.logo = e.target.files[0]} class="hidden" />
-                <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
-              </label>
-            {:else if asset.logo}
-              <img src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} alt="Asset Logo" class="w-full h-full object-cover rounded-lg" />
+          <div class="relative w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
+            {#if asset.logo}
+              <img 
+                src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} 
+                alt="Asset Logo" 
+                class="w-full h-full object-cover rounded-lg" 
+              />
             {:else}
-              <!-- Placeholder for logo if not available -->
-              <div class="w-full h-full flex items-center justify-center text-gray-400">No Logo</div>
+              <div class="w-full h-full flex items-center justify-center text-gray-400">
+                No Logo
+              </div>
+            {/if}
+            
+            {#if editing}
+              <label class="absolute inset-0 flex items-center justify-center cursor-pointer bg-black bg-opacity-30">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  on:change={(e) => updatedAsset.logo = e.target.files[0]} 
+                  class="hidden" 
+                />
+                <Upload class="w-6 h-6 text-white hover:text-gray-300" />
+              </label>
             {/if}
           </div>
           
@@ -397,49 +460,45 @@ input[type="file"].hidden {
 
             <!-- Maven Dependency Info -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
-              <div class="font-semibold mb-2">Maven Dependency</div>
+              <div class="font-semibold mb-2">Dependency</div>
               {#if asset.type === 'maven' || asset.type === 'java'}
-                <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
-                  <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto"><code>&lt;dependency&gt;
-    &lt;groupId&gt;{asset.asset_id?.split(':')[0] || 'com.example'}&lt;/groupId&gt;
-    &lt;artifactId&gt;{asset.asset_id?.split(':')[1] || asset.name}&lt;/artifactId&gt;
-    &lt;version&gt;{asset.version || '1.0.0'}&lt;/version&gt;
-&lt;/dependency&gt;</code></pre>
-                </div>
-                <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
-                  <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto"><code>// Gradle
-implementation '{asset.asset_id || `com.example:${asset.name}`}:{asset.version || '1.0.0'}'</code></pre>
-                </div>
-                <div class="flex flex-row gap-2 mt-2">
-                  <button 
-                    class="px-3 py-1 {mavenCopied ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-200 flex items-center gap-1"
-                    on:click={() => {
-                      const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
-                      copyToClipboard(xmlDependency, 'maven');
-                    }}
-                  >
-                    {#if mavenCopied}
-                      <Check class="w-4 h-4" />
-                      Copied!
-                    {:else}
-                      Copy Maven XML
-                    {/if}
-                  </button>
-                  <button 
-                      class="px-3 py-1 {gradleCopied ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-200 flex items-center gap-1"
-                    on:click={() => {
-                      const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
-                      copyToClipboard(gradleDependency, 'gradle');
-                    }}
-                  >
-                    {#if gradleCopied}
-                      <Check class="w-4 h-4" />
-                      Copied!
-                    {:else}
-                      Copy Gradle
-                    {/if}
-                  </button>
-                </div>
+                {#if editing}
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm">Maven Dependency (XML):</label>
+                    <textarea bind:value={mavenDep} class="border rounded p-2 w-full editing"></textarea>
+                    <label class="text-sm">Gradle Dependency:</label>
+                    <textarea bind:value={gradleDep} class="border rounded p-2 w-full editing"></textarea>
+                  </div>
+                {:else}
+                  <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto whitespace-pre">{mavenDep}</pre>
+                  </div>
+                  <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto whitespace-pre">{gradleDep}</pre>
+                  </div>
+                  <div class="flex flex-row gap-2 mt-2">
+                    <button 
+                      on:click={() => copyToClipboard(mavenDep, 'maven')}
+                      class="px-3 py-1 {mavenCopied ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                    >
+                      {#if mavenCopied}
+                        <Check class="w-4 h-4" /> Copied!
+                      {:else}
+                        Copy Maven XML
+                      {/if}
+                    </button>
+                    <button 
+                      on:click={() => copyToClipboard(gradleDep, 'gradle')}
+                      class="px-3 py-1 {gradleCopied ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                    >
+                      {#if gradleCopied}
+                        <Check class="w-4 h-4" /> Copied!
+                      {:else}
+                        Copy Gradle
+                      {/if}
+                    </button>
+                  </div>
+                {/if}
               {:else}
                 <div class="text-gray-600 dark:text-gray-400">
                   Not applicable for this asset type.
@@ -491,12 +550,13 @@ implementation '{asset.asset_id || `com.example:${asset.name}`}:{asset.version |
 
                   <button
                     on:click={deleteAsset}
-                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
+                    class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
                   >
                     <X class="w-4 h-4" />
                     Delete Asset
                   </button>
                 {/if}
+                
               </div>
               
               {#if downloadError}
@@ -511,6 +571,28 @@ implementation '{asset.asset_id || `com.example:${asset.name}`}:{asset.version |
                 </div>
               {/if}
             </div>
+
+            <!-- Remove Files Section (visible only in editing mode) -->
+            {#if editing}
+              <div class="border-t border-gray-200 dark:border-gray-700 py-4">
+                <div class="font-semibold mb-2">Remove Files</div>
+                <div class="flex items-center gap-3">
+                  {#if asset.logo}
+                    <button on:click={removeLogo} class="bg-red-600 hover:bg-red-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded">
+                      Remove Logo
+                    </button>
+                  {/if}
+                  {#if asset.file}
+                    <button on:click={removeAssetFile} class="bg-red-600 hover:bg-red-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded">
+                      Remove Asset File
+                    </button>
+                  {/if}
+                  {#if !asset.logo && !asset.file}
+                    <p class="text-gray-500">No files available to remove.</p>
+                  {/if}
+                </div>
+              </div>
+            {/if}
           </div>
         {:else}
           <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-2">

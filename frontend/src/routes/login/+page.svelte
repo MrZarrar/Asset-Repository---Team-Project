@@ -1,8 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
     import { login } from '$lib/auth'; 
-    import { user } from '$lib/user.js';
-
+    
     let email = "";
     let password = "";
     let errorMessage = "";
@@ -15,15 +14,6 @@
             errorMessage = error.message || "Login failed";
         }
     }
-
-    async function continueAsGuest() {
-		try {
-			await login('Guest@gmail.com', 'GuestPassword123');
-			goto('/');
-		} catch (error) {
-			errorMessage = error.message || "Guest login failed";
-		}
-	}
 </script>
 
 <svelte:head>
@@ -99,10 +89,6 @@
                 <p class="text-sm">
                     Don't have an account? 
                     <a href="/signup" class="text-blue-600 dark:text-blue-400 hover:underline">Sign up</a>
-                </p>
-                <p class="text-sm mt-4">
-                    Or 
-                    <button on:click={continueAsGuest} class="text-blue-600 dark:text-blue-400 hover:underline">Continue as Guest</button>
                 </p>
             </div>
         </div>

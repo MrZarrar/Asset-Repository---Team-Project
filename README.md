@@ -15,9 +15,7 @@ cd backend
 # start a development server
 ./pocktetbase[Env] serve
 ```
-Log in with:
-Email: Super.user@pocketbase.com
-Password: SuperPassword
+
 
 # Running the Front-end
 
@@ -32,15 +30,9 @@ npm install
 ```
 
 ```bash
-# install the openai for the chatbot
-npm install openai
-```
-
-```bash
 # start a development server
 npm run dev
 ```
-
 
 
 

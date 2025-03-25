@@ -4,7 +4,6 @@
     import { page } from '$app/stores';
     import { Search, User, Download, ChevronDown } from "@lucide/svelte";
     import { authStore, logout } from '$lib/auth';
-    import { user } from '$lib/user.js';
   
     let isMobileMenuOpen = false;
     let isSearchMenuOpen = false;
@@ -207,9 +206,7 @@
             <div class={`${isUserMenuOpen ? 'block' : 'hidden'} absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md dark:bg-gray-800 dark:hover:bg-gray-900 dark:text-gray-100 bg-white text-gray-900 py-1 ring-1 shadow-lg ring-black/5 focus:outline-hidden`}
               role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
               {#if $authStore.isAuthenticated}
-                {#if $user.role !== 'viewer'}
-                  <a href="/profile" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
-                {/if}
+                <a href="/profile" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
                 <a class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-1">Settings</a>    
                 <button 
                   on:click={handleLogout}
@@ -253,3 +250,4 @@
     </div>
   </nav>
 {/if}
+  
