@@ -5,5 +5,6 @@ export const user = writable({
     name: "John Doe",
     username: "johndoe",
     email: "example@gmail.com",
-    profilePicture: ""
+    profilePicture: "",
+    role: "user"
 });

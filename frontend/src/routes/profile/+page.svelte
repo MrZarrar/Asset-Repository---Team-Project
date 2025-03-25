@@ -9,6 +9,7 @@
 	let name = $user.name;
 	let email = $user.email;
 	let profilePicture = $user.profilePicture || '';
+	let role = $user.role;
 
 	let fileInput;
 
@@ -107,10 +108,23 @@
 							bind:value={$user.email}
 						/>
 					</div>
+
+					<div class="sm:col-span-4">
+						<label for="role" class="block text-sm font-medium text-gray-900">Role</label>
+						<select
+							id="role"
+							name="role"
+							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							bind:value={$user.role}
+						>
+							<option value="user">User</option>
+							<option value="admin">Admin</option>
+							<option value="moderator">Moderator</option>
+						</select>
+					</div>
+
 				</div>
-				<div class="mt-5">
-					<p class="font-semibold">Role: User</p>
-				</div>
+				
 			</div>
 			<!-- Save Button -->
 			<div class="flex space-x-4">
