@@ -13,7 +13,7 @@
         try {
             await signUp(email, password, confirmPassword,username,name);
             alert("Sign-up successful! You can now log in.");
-            goto('/')
+            goto('/login')
         } catch (error) {
             errorMessage = error.message;
         }
