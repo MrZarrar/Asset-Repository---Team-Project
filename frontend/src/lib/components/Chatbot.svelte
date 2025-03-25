@@ -567,6 +567,39 @@
     return null;
   }
 
+  // Add this function before or after the generateAsset function
+  async function fetchPomFile(groupId, artifactId, version) {
+    try {
+      const response = await fetch(
+        `/api/maven/pom?groupId=${encodeURIComponent(groupId)}&artifactId=${encodeURIComponent(artifactId)}&version=${encodeURIComponent(version)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch POM file');
+      }
+      
+      const data = await response.json();
+      return data.pomContent;
+    } catch (error) {
+      console.error('POM fetch error:', error);
+      return null;
+    }
+  }
+
+  // Convert POM content to a File object
+  function createPomFile(pomContent, artifactId, version) {
+    // Create a new Blob with the POM content
+    const pomBlob = new Blob([pomContent], { type: 'application/xml' });
+    
+    // Create a File object from the Blob
+    const pomFile = new File([pomBlob], `${artifactId}-${version}.pom`, { 
+      type: 'application/xml',
+      lastModified: new Date().getTime()
+    });
+    
+    return pomFile;
+  }
+
   // Updated generateAsset function with real Maven repository search
   async function generateAsset() {
     try {
@@ -647,6 +680,27 @@
       // Use the first result
       const bestMatch = searchResults[0];
       
+      // Fetch the POM file for this artifact
+      let pomFile = null;
+      try {
+        const pomContent = await fetchPomFile(
+          bestMatch.groupId, 
+          bestMatch.artifactId, 
+          bestMatch.version
+        );
+        
+        if (pomContent) {
+          pomFile = createPomFile(
+            pomContent, 
+            bestMatch.artifactId, 
+            bestMatch.version
+          );
+          console.log('POM file created successfully');
+        }
+      } catch (e) {
+        console.error('Error creating POM file:', e);
+      }
+      
       // Prepare the asset data
       const today = new Date().toISOString().split('T')[0];
       const dependencyXml = `<dependency>
@@ -667,7 +721,8 @@
         licence_info: bestMatch.license || 'Apache 2.0',
         usage_info: `Use this asset in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
         maven_dependency: dependencyXml,
-        gradle_dependency: gradleDependency
+        gradle_dependency: gradleDependency,
+        pomFile: pomFile
       };
       
       // Let user know we're creating the asset
