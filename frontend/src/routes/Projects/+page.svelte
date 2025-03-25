@@ -23,10 +23,10 @@
     launched: '',
     tag: '',
     project_id: '',
-    linkedAssets: []
+    linkedAssets: [] // asset IDs selected for linking
   };
 
-  // For the new project logo upload
+  // For new project logo file
   let newLogoFile = null;
   let newLogoFileName = '';
 
@@ -36,6 +36,7 @@
   let editLogoFile = null;
   let editLogoFileName = '';
 
+  // ----- Data Fetching -----
   onMount(async () => {
     try {
       projects = await pb.collection('projects').getFullList({ sort: '-created' });
@@ -48,6 +49,17 @@
     }
   });
 
+  // Utility: Update linked assets with project_id foreign key
+  async function linkAssetsToProject(projectId, assetIds) {
+    if (!assetIds || assetIds.length === 0) return;
+    await Promise.all(
+      assetIds.map(assetId =>
+        pb.collection('assets').update(assetId, { project_id: projectId })
+      )
+    );
+  }
+
+  // ----- Create New Project -----
   async function createProject() {
     try {
       let tagParsed = {};
@@ -70,11 +82,16 @@
       }
       formData.append('tag', JSON.stringify(tagParsed));
       formData.append('project_id', newProject.project_id);
+      // Also save linked assets list on the project record (if needed)
       formData.append('linkedAssets', JSON.stringify(newProject.linkedAssets));
 
       const record = await pb.collection('projects').create(formData);
       console.log("Project created:", record);
       projects = [record, ...projects];
+
+      // Update each linked asset's "project_id" field to match the new project's id
+      await linkAssetsToProject(record.id, newProject.linkedAssets);
+
       resetNewProject();
       showAddModal = false;
     } catch (err) {
@@ -98,6 +115,7 @@
     newLogoFileName = '';
   }
 
+  // ----- Edit Project -----
   function editProject(project) {
     editingProject = project;
     updatedProject = {
@@ -134,9 +152,14 @@
       if (updatedProject.linkedAssets) {
         formData.append('linkedAssets', JSON.stringify(updatedProject.linkedAssets));
       }
+
       const record = await pb.collection('projects').update(editingProject.id, formData);
       console.log("Project updated:", record);
       projects = projects.map(p => p.id === record.id ? record : p);
+
+      // Update linked assets for this project as well.
+      await linkAssetsToProject(record.id, updatedProject.linkedAssets);
+
       showEditModal = false;
       editingProject = null;
       updatedProject = {};
@@ -148,6 +171,7 @@
     }
   }
 
+  // ----- Delete Project -----
   async function deleteProject(id) {
     if (!confirm("Are you sure you want to delete this project?")) return;
     try {
@@ -159,6 +183,7 @@
     }
   }
 
+  // ----- File Input Handlers -----
   function handleNewLogoChange(event) {
     newLogoFile = event.target.files[0];
     newLogoFileName = newLogoFile ? newLogoFile.name : '';
@@ -218,7 +243,6 @@
     color: #e5e7eb;
     width: 100%;
   }
-  /* Custom upload button styling */
   .upload-btn {
     display: inline-block;
     padding: 0.5rem 1rem;
@@ -245,18 +269,10 @@
     <div>
       <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Popular Categories</h2>
       <ul class="space-y-2">
-        <li>
-          <a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Web Applications</a>
-        </li>
-        <li>
-          <a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Mobile Applications</a>
-        </li>
-        <li>
-          <a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Data Science Projects</a>
-        </li>
-        <li>
-          <a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Enterprise Apps</a>
-        </li>
+        <li><a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Web Applications</a></li>
+        <li><a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Mobile Applications</a></li>
+        <li><a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Data Science Projects</a></li>
+        <li><a class="text-blue-600 dark:text-blue-400 hover:underline" href="#">Enterprise Apps</a></li>
       </ul>
     </div>
   </aside>
@@ -375,7 +391,7 @@
           <input id="new-launched" type="date" bind:value={newProject.launched} />
         </div>
         <div>
-          <!-- Custom Upload Button -->
+          <!-- Custom Upload Button for Logo -->
           <label class="upload-btn" for="new-logo">Upload Logo</label>
           <input id="new-logo" type="file" accept="image/*" on:change={handleNewLogoChange} class="hidden-input" />
           {#if newLogoFileName}
@@ -439,7 +455,7 @@
           <input id="edit-launched" type="date" bind:value={updatedProject.launched} />
         </div>
         <div>
-          <!-- Custom Upload Button for Edit -->
+          <!-- Custom Upload Button for Edit Logo -->
           <label class="upload-btn" for="edit-logo">Upload New Logo</label>
           <input id="edit-logo" type="file" accept="image/*" on:change={handleEditLogoChange} class="hidden-input" />
           {#if editLogoFileName}
