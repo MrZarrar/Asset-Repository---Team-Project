@@ -90,7 +90,7 @@ export async function signUp(email, password, passwordConfirm, username, name) {
       email,
       password,
       passwordConfirm,
-      role: "user"
+      role: 'user' // default role
     });
 
     return user;
