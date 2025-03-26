@@ -14,12 +14,13 @@ export const user = writable({
 async function fetchUserData(userId) {
   try {
     const userData = await pb.collection('users').getOne(userId);
+    const avatarUrl = userData.avatar ? `http://127.0.0.1:8090/api/files/users/${userId}/${userData.avatar}` : '';
     user.set({
       userid: userData.id,
       name: userData.name,
       username: userData.username,
       email: userData.email,
-      avatar: userData.avatar,
+      avatar: avatarUrl,
       role: userData.role
     });
   } catch (error) {

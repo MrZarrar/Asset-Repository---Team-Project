@@ -8,7 +8,7 @@
 	let username = $user.username;
 	let name = $user.name;
 	let email = $user.email;
-	let profilePicture = $user.profilePicture || '';
+	let profilePicture = $user.avatar || '';
 	let role = $user.role;
 
 	let fileInput;
@@ -21,7 +21,7 @@
 
 			try {
 				const response = await fetch(
-					`http://127.0.0.1:8090/api/collections/profiles/records/${userid}`,
+					`http://127.0.0.1:8090/api/collections/users/records/${userid}`,
 					{
 						method: 'PATCH',
 						body: formData
@@ -32,12 +32,13 @@
 					throw new Error('Error updating profile picture');
 				}
 				const updatedUser = await response.json();
-				const imageUrl = `http://127.0.0.1:8090/api/files/profiles/${userid}/${updatedUser.profilePicture}`;
+				const imageUrl = `http://127.0.0.1:8090/api/files/users/${userid}/${updatedUser.avatar}`;
 
 				user.update((currentUser) => ({
 					...currentUser,
-					profilePicture: imageUrl
-				}));
+					avatar: imageUrl
+					}));
+				profilePicture = imageUrl; 
 			} catch (error) {
 				console.error('Error updating profile picture:', error);
 				alert('Error updating profile picture. Please try again.');
@@ -46,14 +47,38 @@
 	}
 
 	async function updatedProfile() {
-		if (!userid) {
-			alert('User ID is required.');
-			return;
-		}
 		try {
-			await updateProfile(userid, username, name, email, profilePicture);
-			user.set({ userid, username, name, email, profilePicture });
-			goto('/profile');
+			const formData = new FormData();
+			formData.append('username', username);
+			formData.append('name', name);
+			formData.append('email', email.toLowerCase());
+			formData.append('role', role.toLowerCase());
+			if (profilePicture instanceof File) {
+				formData.append('avatar', profilePicture);
+			}
+
+			const response = await fetch(
+				`http://127.0.0.1:8090/api/collections/users/records/${userid}`,
+				{
+					method: 'PATCH',
+					body: formData
+				}
+			);
+
+			if (!response.ok) {
+				throw new Error('Error updating profile');
+			}
+
+			const updatedUser = await response.json();
+			user.set({
+				userid: updatedUser.id,
+				username: updatedUser.username,
+				name: updatedUser.name,
+				email: updatedUser.email,
+				avatar: updatedUser.avatar,
+				role: updatedUser.role
+			});
+			alert('Profile updated successfully');
 		} catch (error) {
 			console.error('Error updating profile:', error);
 			alert('Error updating profile. Please try again.');
@@ -70,7 +95,7 @@
 	</div>
 
 	<!-- Profile Form -->
-	<form id="profile-settings-form" class="flex justify-between items-start">
+	<form id="profile-settings-form" class="flex justify-between items-start" on:submit|preventDefault={updatedProfile}>
 		<!-- Left Section: Profile Info -->
 		<div class="flex-1">
 			<div class="pb-8">
@@ -83,7 +108,7 @@
 							id="username"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
 							placeholder="Username"
-							bind:value={$user.username}
+							bind:value={username}
 						/>
 					</div>
 					<div class="sm:col-span-3">
@@ -94,7 +119,7 @@
 							id="name"
 							autocomplete="given-name"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={$user.name}
+							bind:value={name}
 						/>
 					</div>
 					<div class="sm:col-span-4">
@@ -105,7 +130,7 @@
 							type="email"
 							autocomplete="email"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={$user.email}
+							bind:value={email}
 						/>
 					</div>
 
@@ -115,7 +140,7 @@
 							id="role"
 							name="role"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={$user.role}
+							bind:value={role}
 						>
 							<option value="admin">Admin</option>
 							<option value="user">User</option>
@@ -125,13 +150,13 @@
 
 				</div>
 				
+				
 			</div>
 			<!-- Save Button -->
 			<div class="flex space-x-4">
 				<button
 					type="submit"
 					class="rounded-md px-3 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-500 transition-all duration-300"
-					on:click={updatedProfile}
 				>
 					Save Changes
 				</button>
