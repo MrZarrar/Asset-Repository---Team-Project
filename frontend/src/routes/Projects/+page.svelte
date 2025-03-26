@@ -75,6 +75,12 @@
   // ----- Create New Project -----
   async function createProject() {
     try {
+      // Validate required fields
+      if (!newProject.name || !newProject.description) {
+        alert('Name and description are required fields');
+        return;
+      }
+      
       let tagParsed = {};
       if (newProject.tag.trim() !== '') {
         try {
@@ -409,7 +415,7 @@
                 on:click={() => editProject(project)}>
                 Edit
               </button>
-              <button class="bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+              <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
                 on:click={() => deleteProject(project.id)}>
                 Delete
               </button>
