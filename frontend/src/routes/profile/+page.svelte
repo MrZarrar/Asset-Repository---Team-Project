@@ -1,45 +1,62 @@
-
 <script>
-	import { fetchUserProfile, updateProfile } from '$lib/api';
+	//import { goto } from '$app/navigation';
+	import { updateProfile } from '$lib/api';
 	import { user } from '../../lib/user.js';
-	import { User } from '@lucide/svelte';
-	import { onMount } from 'svelte';
+	import { User, Download, ChevronDown } from '@lucide/svelte';
 
 	let userid = $user.userid;
 	let username = $user.username;
 	let name = $user.name;
 	let email = $user.email;
-	let profilePicture = $user.profilePicture || '';
+	let profilePicture = $user.avatar || '';
 	let role = $user.role;
 
 	let fileInput;
 
-	onMount(async () => {
-		console.log('User ID from store on mount:', $user.userid);
-
-		if ($user.userid) {
-			await fetchUserProfile($user.userid);
-		} else {
-			console.log('User ID is missing.');
-		}
-	});
-
-	$: {
-		userid = $user.userid;
-		email = $user.email;
-		name = $user.name;
-		avatar = $user.avatar || '';
-		username = $user.username;
-	}
-
 	async function profilePictureChange(event) {
 		const file = event.target.files[0];
-		if (!file) return;
+		if (file) {
+			const formData = new FormData();
+			formData.append('avatar', file);
 
-		const formData = new FormData();
-		formData.append('avatar', file);
+			try {
+				const response = await fetch(
+					`http://127.0.0.1:8090/api/collections/users/records/${userid}`,
+					{
+						method: 'PATCH',
+						body: formData
+					}
+				);
 
+				if (!response.ok) {
+					throw new Error('Error updating profile picture');
+				}
+				const updatedUser = await response.json();
+				const imageUrl = `http://127.0.0.1:8090/api/files/users/${userid}/${updatedUser.avatar}`;
+
+				user.update((currentUser) => ({
+					...currentUser,
+					avatar: imageUrl
+					}));
+				profilePicture = imageUrl; 
+			} catch (error) {
+				console.error('Error updating profile picture:', error);
+				alert('Error updating profile picture. Please try again.');
+			}
+		}
+	}
+
+	async function updatedProfile() {
 		try {
+			const formData = new FormData();
+			formData.append('username', username);
+			formData.append('name', name);
+			formData.append('email', email.toLowerCase());
+			formData.append('role', role.toLowerCase());
+			if (profilePicture instanceof File) {
+				formData.append('avatar', profilePicture);
+			}
+
 			const response = await fetch(
 				`http://127.0.0.1:8090/api/collections/users/records/${userid}`,
 				{
@@ -48,36 +65,23 @@
 				}
 			);
 
-			if (!response.ok) throw new Error('Error updating profile picture');
+			if (!response.ok) {
+				throw new Error('Error updating profile');
+			}
 
 			const updatedUser = await response.json();
-			const imageUrl = `http://127.0.0.1:8090/api/files/users/${userid}/${updatedUser.avatar}`;
-
-			user.update((currentUser) => ({
-				...currentUser,
-				avatar: imageUrl
-			}));
-		} catch (error) {
-			console.error('Error updating profile picture:', error);
-			alert('Error updating profile picture. Please try again.');
-		}
-	}
-
-	async function updatedProfile() {
-		console.log('Updating user:', userid);
-
-		if (!userid) {
-			alert('User ID is required.');
-			return;
-		}
-
-		try {
-			const updatedUser = await updateProfile(userid, email, name, avatar, username);
-			user.set(updatedUser);
-			alert('Profile updated successfully!');
+			user.set({
+				userid: updatedUser.id,
+				username: updatedUser.username,
+				name: updatedUser.name,
+				email: updatedUser.email,
+				avatar: updatedUser.avatar,
+				role: updatedUser.role
+			});
+			alert('Profile updated successfully');
 		} catch (error) {
 			console.error('Error updating profile:', error);
-			alert('Failed to update profile.');
+			alert('Error updating profile. Please try again.');
 		}
 	}
 </script>
@@ -91,11 +95,7 @@
 	</div>
 
 	<!-- Profile Form -->
-	<form
-		id="profile-settings-form"
-		class="flex justify-between items-start"
-		on:submit={updatedProfile}
-	>
+	<form id="profile-settings-form" class="flex justify-between items-start" on:submit|preventDefault={updatedProfile}>
 		<!-- Left Section: Profile Info -->
 		<div class="flex-1">
 			<div class="pb-8">
@@ -104,8 +104,10 @@
 						<label for="username" class="block text-sm font-medium text-gray-900">Username</label>
 						<input
 							type="text"
+							name="username"
 							id="username"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							placeholder="Username"
 							bind:value={username}
 						/>
 					</div>
@@ -113,33 +115,41 @@
 						<label for="name" class="block text-sm font-medium text-gray-900">Name</label>
 						<input
 							type="text"
+							name="name"
 							id="name"
+							autocomplete="given-name"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
 							bind:value={name}
 						/>
 					</div>
 					<div class="sm:col-span-4">
-						<label for="email" class="block text-sm font-medium text-gray-900">Email</label>
+						<label for="email" class="block text-sm font-medium text-gray-900">Email address</label>
 						<input
-							type="email"
 							id="email"
+							name="email"
+							type="email"
+							autocomplete="email"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
 							bind:value={email}
 						/>
 					</div>
+
 					<div class="sm:col-span-4">
 						<label for="role" class="block text-sm font-medium text-gray-900">Role</label>
 						<select
 							id="role"
+							name="role"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={$user.role}
+							bind:value={role}
 						>
 							<option value="admin">Admin</option>
 							<option value="user">User</option>
 							<option value="viewer">Viewer</option>
 						</select>
 					</div>
+
 				</div>
+				
 				
 			</div>
 			<!-- Save Button -->
@@ -153,10 +163,11 @@
 			</div>
 		</div>
 
+		<!-- Right Section: Avatar -->
 		<div class="flex flex-col items-center gap-y-3 mt-5">
-			{#if avatar}
+			{#if profilePicture}
 				<img
-					src={avatar}
+					src={profilePicture}
 					alt={$user.name ? `${$user.name}'s profile picture` : ''}
 					class="w-[250px] h-[250px] rounded-full object-cover border-4 border-gray-300"
 				/>
