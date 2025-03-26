@@ -44,6 +44,7 @@
     $: isDashboardActive = currentPath === '/'
     $: isLoggingActive = currentPath === '/logging';
     $: isMyAssetsActive = currentPath === '/MyAssets';//this page is not created yet
+    $: isProjectsActive = currentPath === '/Projects';
 
     // handles navigation for all pages
     function handleNavigation(event, targetPath) {
@@ -112,6 +113,14 @@
                aria-current={isMyAssetsActive ? 'page' : undefined}>
               My Assets
             </a>
+
+            <a href="/Projects" 
+               on:click={(e) => handleNavigation(e, '/Projects')}
+               class="rounded-md {isMyAssetsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+               aria-current={isProjectsActive ? 'page' : undefined}>
+              Projects
+            </a>
+
           </div>
         </div>
 
@@ -249,6 +258,14 @@
            aria-current={isMyAssetsActive ? 'page' : undefined}>
           My Assets
         </a>
+
+        <a href="/Projects" 
+           on:click={(e) => handleNavigation(e, '/Projects')}
+           class="block rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
+           aria-current={isProjectsActive ? 'page' : undefined}>
+          Projects
+        </a>
+
       </div>
     </div>
   </nav>
