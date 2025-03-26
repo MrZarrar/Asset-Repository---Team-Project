@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
 
+  // Example placeholder JSON for the "tag" field
   let examplePlaceholder = JSON.stringify({ framework: "Svelte" });
 
   // ----- State Variables -----
@@ -23,20 +24,22 @@
     launched: '',
     tag: '',
     project_id: '',
-    linkedAssets: [] // asset IDs selected for linking
+    linkedAssets: [] // array of asset IDs to link
   };
 
-  // For new project logo file
+  // For new project logo file & preview
   let newLogoFile = null;
   let newLogoFileName = '';
+  let newLogoPreview = '';
 
   // For editing an existing project
   let editingProject = null;
   let updatedProject = {};
   let editLogoFile = null;
   let editLogoFileName = '';
+  let editLogoPreview = '';
 
-  // ----- Data Fetching -----
+  // ----- onMount: Fetch Data -----
   onMount(async () => {
     try {
       projects = await pb.collection('projects').getFullList({ sort: '-created' });
@@ -49,13 +52,23 @@
     }
   });
 
-  // Utility: Update linked assets with project_id foreign key
+  // Utility: Link assets to a project as many-to-many relationship
   async function linkAssetsToProject(projectId, assetIds) {
     if (!assetIds || assetIds.length === 0) return;
     await Promise.all(
-      assetIds.map(assetId =>
-        pb.collection('assets').update(assetId, { project_id: projectId })
-      )
+      assetIds.map(async assetId => {
+        // Get the asset record first
+        const assetRecord = await pb.collection('assets').getOne(assetId);
+        let linkedProjects = assetRecord.linked_projects;
+        if (!Array.isArray(linkedProjects)) {
+          linkedProjects = [];
+        }
+        // Add projectId if not already present
+        if (!linkedProjects.includes(projectId)) {
+          linkedProjects.push(projectId);
+          await pb.collection('assets').update(assetId, { linked_projects: linkedProjects });
+        }
+      })
     );
   }
 
@@ -71,6 +84,7 @@
           return;
         }
       }
+
       let formData = new FormData();
       formData.append('name', newProject.name);
       formData.append('description', newProject.description);
@@ -82,14 +96,25 @@
       }
       formData.append('tag', JSON.stringify(tagParsed));
       formData.append('project_id', newProject.project_id);
-      // Also save linked assets list on the project record (if needed)
       formData.append('linkedAssets', JSON.stringify(newProject.linkedAssets));
+
+      // Debug: log form data keys
+      console.log('--- FormData (Create) ---');
+      for (let [key, val] of formData.entries()) {
+        console.log(key, val);
+      }
 
       const record = await pb.collection('projects').create(formData);
       console.log("Project created:", record);
+      if (record.logo) {
+        console.log("Logo field:", record.logo);
+        console.log("Logo URL:", pb.getFileUrl(record, 'logo'));
+      } else {
+        console.warn("Logo not present in record. Check your collection schema.");
+      }
       projects = [record, ...projects];
 
-      // Update each linked asset's "project_id" field to match the new project's id
+      // Update each linked asset's "linked_projects" field
       await linkAssetsToProject(record.id, newProject.linkedAssets);
 
       resetNewProject();
@@ -113,6 +138,7 @@
     };
     newLogoFile = null;
     newLogoFileName = '';
+    newLogoPreview = '';
   }
 
   // ----- Edit Project -----
@@ -124,6 +150,7 @@
     };
     editLogoFile = null;
     editLogoFileName = '';
+    editLogoPreview = '';
     showEditModal = true;
   }
 
@@ -138,6 +165,7 @@
           return;
         }
       }
+
       let formData = new FormData();
       formData.append('name', updatedProject.name);
       formData.append('description', updatedProject.description);
@@ -153,11 +181,22 @@
         formData.append('linkedAssets', JSON.stringify(updatedProject.linkedAssets));
       }
 
+      console.log('--- FormData (Update) ---');
+      for (let [key, val] of formData.entries()) {
+        console.log(key, val);
+      }
+
       const record = await pb.collection('projects').update(editingProject.id, formData);
       console.log("Project updated:", record);
       projects = projects.map(p => p.id === record.id ? record : p);
 
-      // Update linked assets for this project as well.
+      if (record.logo) {
+        console.log("Updated logo:", record.logo);
+        console.log("Updated logo URL:", pb.getFileUrl(record, 'logo'));
+      } else {
+        console.warn("Logo not present in updated record.");
+      }
+
       await linkAssetsToProject(record.id, updatedProject.linkedAssets);
 
       showEditModal = false;
@@ -165,6 +204,7 @@
       updatedProject = {};
       editLogoFile = null;
       editLogoFileName = '';
+      editLogoPreview = '';
     } catch (err) {
       console.error('Error updating project:', err);
       alert('Failed to update project.');
@@ -183,15 +223,40 @@
     }
   }
 
-  // ----- File Input Handlers -----
+  // ----- File Input Handlers (Add) -----
   function handleNewLogoChange(event) {
-    newLogoFile = event.target.files[0];
-    newLogoFileName = newLogoFile ? newLogoFile.name : '';
+    const file = event.target.files[0];
+    if (file) {
+      newLogoFile = file;
+      newLogoFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newLogoPreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      newLogoFile = null;
+      newLogoFileName = '';
+      newLogoPreview = '';
+    }
   }
 
+  // ----- File Input Handlers (Edit) -----
   function handleEditLogoChange(event) {
-    editLogoFile = event.target.files[0];
-    editLogoFileName = editLogoFile ? editLogoFile.name : '';
+    const file = event.target.files[0];
+    if (file) {
+      editLogoFile = file;
+      editLogoFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editLogoPreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      editLogoFile = null;
+      editLogoFileName = '';
+      editLogoPreview = '';
+    }
   }
 </script>
 
@@ -257,6 +322,18 @@
   .hidden-input {
     display: none;
   }
+  .preview-image {
+    margin-top: 10px;
+    max-width: 100px;
+    max-height: 100px;
+    border-radius: 0.375rem;
+  }
+  .flex-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
 </style>
 
 <main class="flex min-h-screen bg-gray-900 text-gray-200">
@@ -277,7 +354,7 @@
     </div>
   </aside>
 
-  <!-- Main Content (center) -->
+  <!-- Main Content -->
   <div class="flex-1 p-8 overflow-y-auto">
     <div class="mb-8 flex justify-between items-center">
       <h1 class="text-3xl font-bold">Projects</h1>
@@ -298,14 +375,21 @@
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         {#each projects as project}
           <div class="card">
-            <h2 class="text-2xl font-semibold mb-4">{project.name}</h2>
+            <!-- Logo next to project name -->
+            <div class="flex-row">
+              {#if project.logo}
+                <img
+                  src={pb.getFileUrl(project, 'logo')}
+                  alt="Project Logo"
+                  style="width: 50px; height: 50px; object-fit: cover; border-radius: 0.375rem;"
+                />
+              {/if}
+              <h2 class="text-2xl font-semibold">{project.name}</h2>
+            </div>
             <p><strong>Language:</strong> {project.language}</p>
             <p><strong>Owner:</strong> {project.owner}</p>
             <p><strong>Launched:</strong> {project.launched}</p>
             <p><strong>Project ID:</strong> {project.project_id}</p>
-            {#if project.logo}
-              <p><strong>Logo:</strong> {project.logo}</p>
-            {/if}
             {#if project.tag}
               <p><strong>Tag:</strong> {JSON.stringify(project.tag)}</p>
             {/if}
@@ -321,10 +405,12 @@
             {/if}
             <p class="mt-2">{project.description}</p>
             <div class="mt-4 flex justify-between items-center">
-              <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm" on:click={() => editProject(project)}>
+              <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                on:click={() => editProject(project)}>
                 Edit
               </button>
-              <button class="bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" on:click={() => deleteProject(project.id)}>
+              <button class="bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                on:click={() => deleteProject(project.id)}>
                 Delete
               </button>
             </div>
@@ -397,6 +483,9 @@
           {#if newLogoFileName}
             <span class="ml-2">{newLogoFileName}</span>
           {/if}
+          {#if newLogoPreview}
+            <img src={newLogoPreview} alt="New Logo Preview" class="preview-image" />
+          {/if}
         </div>
         <div>
           <label for="new-tag">Tag (JSON format)</label>
@@ -421,8 +510,12 @@
         </div>
       </div>
       <div class="mt-6 flex justify-end gap-4">
-        <button class="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded" on:click={() => (showAddModal = false)}>Cancel</button>
-        <button class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded" on:click={createProject}>Save</button>
+        <button class="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded" on:click={() => (showAddModal = false)}>
+          Cancel
+        </button>
+        <button class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded" on:click={createProject}>
+          Save
+        </button>
       </div>
     </div>
   </div>
@@ -461,6 +554,9 @@
           {#if editLogoFileName}
             <span class="ml-2">{editLogoFileName}</span>
           {/if}
+          {#if editLogoPreview}
+            <img src={editLogoPreview} alt="Edit Logo Preview" class="preview-image" />
+          {/if}
         </div>
         <div>
           <label for="edit-tag">Tag (JSON format)</label>
@@ -485,8 +581,12 @@
         </div>
       </div>
       <div class="mt-6 flex justify-end gap-4">
-        <button class="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded" on:click={() => { showEditModal = false; editingProject = null; }}>Cancel</button>
-        <button class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded" on:click={updateProject}>Save Changes</button>
+        <button class="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded" on:click={() => { showEditModal = false; editingProject = null; }}>
+          Cancel
+        </button>
+        <button class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded" on:click={updateProject}>
+          Save Changes
+        </button>
       </div>
     </div>
   </div>
