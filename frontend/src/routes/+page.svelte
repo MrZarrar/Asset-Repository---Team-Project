@@ -164,6 +164,34 @@
       // Rest of your existing code...
       addingAsset = false;
       console.log("Asset added successfully:", createdRecord);
+
+        // Create a new asset record        
+        // Add the new asset to the list (ensure reactivity)
+        assets = [...assets, createdRecord];
+
+        // Reset form fields
+        newAsset = {
+            asset_id: "",
+            logo: null,
+            name: "",
+            version: "",
+            size: 0,
+            type: "",
+            date_updated: "",
+            date_created: "",
+            licence_info: "",
+            usage_info: "",
+            maven_dependency: "",
+            gradle_dependency: "",
+            file: null,
+        };
+
+        addingAsset = false; // Exit add mode after saving
+        console.log("Asset added successfully:", createdRecord);
+
+        // Log creation of new asset
+        //await createLogEntry("added", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+        
     } catch (err) {
       console.error("Error adding asset:", err);
       assetError = `Failed to add asset: ${err.message}`;

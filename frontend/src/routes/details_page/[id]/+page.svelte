@@ -247,7 +247,6 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
       }
     });
   }
-
   // --- Remove Files Functions ---
 
   async function removeLogo() {
@@ -551,12 +550,13 @@ input[type="file"].hidden {
 
                   <button
                     on:click={deleteAsset}
-                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
+                    class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
                   >
                     <X class="w-4 h-4" />
                     Delete Asset
                   </button>
                 {/if}
+                
               </div>
               
               {#if downloadError}
