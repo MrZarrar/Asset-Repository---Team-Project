@@ -6,16 +6,17 @@
     const pb = new PocketBase('http://127.0.0.1:8090');
   
     let logs = [];
+    let error = null;
 
     async function fetchLogs() {
         try {
             logs = await pb.collection('logs').getFullList({ sort: '-created' });
-        } catch (error) {
-            console.error('Error fetching logs:', error);
+        } catch (err) {
+            console.error("Error deleting asset:", err);
         }
     }
   
-    onMount(fetchLogs);
+    onMount(fetchLogs());
 </script>
 
 <svelte:head>
@@ -29,8 +30,10 @@
     <ul class="mt-4 space-y-2">
         {#each logs as log}
             <li class="p-3 bg-gray-100 rounded shadow">
-                <span class="text-blue-600">{log.user}</span><strong>{log.action}</strong><em>{log.file}</em> @ <span class="text-blue-600">{log.time}</span>
-                <div class="text-sm text-gray-500">{new Date(log.time).toLocaleString()}</div>
+                <strong class="text-red-600">user:{log.user} </strong>
+                <span class="text-blue-600">{log.action} </span>
+                <strong class="text-red-600">asset:{log.asset}</strong>
+                <div class="text-sm text-gray-500">{new Date(log.created).toLocaleString()}</div>
             </li>
         {/each}
     </ul>
