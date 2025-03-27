@@ -1,6 +1,4 @@
 <script>
-	//import { goto } from '$app/navigation';
-	import { updateProfile } from '$lib/api';
 	import { user } from '../../lib/user.js';
 	import { User, Download, ChevronDown } from '@lucide/svelte';
 
@@ -108,7 +106,7 @@
 							id="username"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
 							placeholder="Username"
-							bind:value={username}
+							bind:value={$user.username}
 						/>
 					</div>
 					<div class="sm:col-span-3">
@@ -119,7 +117,7 @@
 							id="name"
 							autocomplete="given-name"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={name}
+							bind:value={$user.name}
 						/>
 					</div>
 					<div class="sm:col-span-4">
@@ -130,7 +128,7 @@
 							type="email"
 							autocomplete="email"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={email}
+							bind:value={$user.email}
 						/>
 					</div>
 
@@ -140,7 +138,7 @@
 							id="role"
 							name="role"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 border border-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={role}
+							bind:value={$user.role}
 						>
 							<option value="admin">Admin</option>
 							<option value="user">User</option>
