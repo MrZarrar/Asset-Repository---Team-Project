@@ -2,13 +2,6 @@
 	import { user } from '../../lib/user.js';
 	import { User, Download, ChevronDown } from '@lucide/svelte';
 
-	let userid = $user.userid;
-	let username = $user.username;
-	let name = $user.name;
-	let email = $user.email;
-	let profilePicture = $user.avatar || '';
-	let role = $user.role;
-
 	let fileInput;
 
 	async function profilePictureChange(event) {
@@ -19,7 +12,7 @@
 
 			try {
 				const response = await fetch(
-					`http://127.0.0.1:8090/api/collections/users/records/${userid}`,
+					`http://127.0.0.1:8090/api/collections/users/records/${$user.userid}`,
 					{
 						method: 'PATCH',
 						body: formData
@@ -30,13 +23,12 @@
 					throw new Error('Error updating profile picture');
 				}
 				const updatedUser = await response.json();
-				const imageUrl = `http://127.0.0.1:8090/api/files/users/${userid}/${updatedUser.avatar}`;
+				const imageUrl = `http://127.0.0.1:8090/api/files/users/${$user.userid}/${updatedUser.avatar}`;
 
 				user.update((currentUser) => ({
 					...currentUser,
 					avatar: imageUrl
-					}));
-				profilePicture = imageUrl; 
+				}));
 			} catch (error) {
 				console.error('Error updating profile picture:', error);
 				alert('Error updating profile picture. Please try again.');
@@ -47,16 +39,16 @@
 	async function updatedProfile() {
 		try {
 			const formData = new FormData();
-			formData.append('username', username);
-			formData.append('name', name);
-			formData.append('email', email.toLowerCase());
-			formData.append('role', role.toLowerCase());
-			if (profilePicture instanceof File) {
-				formData.append('avatar', profilePicture);
+			formData.append('username', $user.username);
+			formData.append('name', $user.name);
+			formData.append('email', $user.email.toLowerCase());
+			formData.append('role', $user.role.toLowerCase());
+			if ($user.avatar instanceof File) {
+				formData.append('avatar', $user.avatar);
 			}
 
 			const response = await fetch(
-				`http://127.0.0.1:8090/api/collections/users/records/${userid}`,
+				`http://127.0.0.1:8090/api/collections/users/records/${$user.userid}`,
 				{
 					method: 'PATCH',
 					body: formData
@@ -163,9 +155,9 @@
 
 		<!-- Right Section: Avatar -->
 		<div class="flex flex-col items-center gap-y-3 mt-5">
-			{#if profilePicture}
+			{#if $user.avatar}
 				<img
-					src={profilePicture}
+					src={$user.avatar}
 					alt={$user.name ? `${$user.name}'s profile picture` : ''}
 					class="w-[250px] h-[250px] rounded-full object-cover border-4 border-gray-300"
 				/>
