@@ -725,33 +725,33 @@
         pomFile: pomFile
       };
       
-      // Let user know we're creating the asset
+      // Let user know we're redirecting to the Workspace page
       $chatMessages = [...$chatMessages, { 
         role: 'assistant', 
-        content: `Found "${bestMatch.artifactId}" (${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}). Creating asset...`
+        content: `Found "${bestMatch.artifactId}" (${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}). Opening the asset form in Workspace...`
       }];
       
-      // Navigate to homepage first (where the asset form is)
-      goto('/');
+      // Navigate to Workspace page with capital W
+      goto('/Workspace');
       
       // Give the page a moment to load before dispatching the event
       setTimeout(() => {
         try {
-          // Create and dispatch the event to trigger asset creation
+          // Create and dispatch the event to trigger asset creation in Workspace
           const event = new CustomEvent('createMavenAsset', {
             detail: assetData
           });
           
           window.dispatchEvent(event);
           
-          // Add confirmation message
+          // Add confirmation message with updated instructions for Workspace
           setTimeout(() => {
             $chatMessages = [...$chatMessages, { 
               role: 'assistant', 
-              content: `I've opened the asset form with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
+              content: `I've opened the asset form in Workspace with details for ${bestMatch.artifactId}. You should now see the form with all fields pre-filled. Please review and click 'Save' to complete the process.`
             }];
             
-            // NEW: Reset context to allow for new asset generation
+            // Reset context to allow for new asset generation
             resetChatContext();
             
             $isLoading = false;
@@ -760,7 +760,7 @@
           console.error('Error creating asset:', error);
           $chatMessages = [...$chatMessages, { 
             role: 'assistant', 
-            content: 'Sorry, I encountered an error while creating the asset. Please try again.'
+            content: 'Sorry, I encountered an error while creating the asset in Workspace. Please try again or create the asset manually in the Workspace section.'
           }];
           $isLoading = false;
         }
@@ -770,7 +770,7 @@
       console.error('Error in generateAsset:', error);
       $chatMessages = [...$chatMessages, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error while trying to generate the asset. Please try again later.'
+        content: 'Sorry, I encountered an error while trying to generate the asset. Please try again later or create the asset manually in the Workspace section.'
       }];
       $isLoading = false;
     }
@@ -780,7 +780,7 @@
   function resetChatContext() {
     // Keep only the most recent messages but add a system message indicating context reset
     const lastFewMessages = $chatMessages.slice(-3);
-    
+  
     // Add a system message to provide a clean break for context
     $chatMessages = [
       ...$chatMessages.filter(msg => msg.role === 'system'),
@@ -1039,10 +1039,10 @@
             </button>
             <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
               on:click={() => { 
-                goto('/myAssets');
+                goto('/Workspace');
                 document.getElementById('directMenu').classList.add('hidden');
               }}>
-              My Assets
+              Workspace
             </button>
             <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
               on:click={() => { 

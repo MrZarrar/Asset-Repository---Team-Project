@@ -1,4 +1,4 @@
-<script>
+  <script>
     import { writable } from 'svelte/store';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
@@ -43,8 +43,8 @@
     $: currentPath = $page.url.pathname;
     $: isDashboardActive = currentPath === '/'
     $: isLoggingActive = currentPath === '/logging';
-    $: isMyAssetsActive = currentPath === '/MyAssets';//this page is not created yet
-    $: isProjectsActive = currentPath === '/Projects';
+    $: isProjectsActive = currentPath === '/Projects'; // Add this for Projects page
+    $: isWorkspaceActive = currentPath === '/Workspace';//this page is not created yet
 
     // handles navigation for all pages
     function handleNavigation(event, targetPath) {
@@ -107,20 +107,18 @@
                aria-current={isLoggingActive ? 'page' : undefined}>
               Log History
             </a>
-            <a href="/MyAssets" 
-               on:click={(e) => handleNavigation(e, '/MyAssets')}
-               class="rounded-md {isMyAssetsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
-               aria-current={isMyAssetsActive ? 'page' : undefined}>
-              My Assets
-            </a>
-
             <a href="/Projects" 
                on:click={(e) => handleNavigation(e, '/Projects')}
-               class="rounded-md {isMyAssetsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+               class="rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
                aria-current={isProjectsActive ? 'page' : undefined}>
               Projects
             </a>
-
+            <a href="/Workspace" 
+               on:click={(e) => handleNavigation(e, '/Workspace')}
+               class="rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+               aria-current={isWorkspaceActive ? 'page' : undefined}>
+              Workspace
+            </a>
           </div>
         </div>
 
@@ -251,20 +249,18 @@
            aria-current={isLoggingActive ? 'page' : undefined}>
           Log History
         </a>
-        <a href="/MyAssets" 
-           on:click={(e) => handleNavigation(e, '/MyAssets')}
-           class="block rounded-md {isMyAssetsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
-           aria-current={isMyAssetsActive ? 'page' : undefined}>
-          My Assets
-        </a>
-
         <a href="/Projects" 
            on:click={(e) => handleNavigation(e, '/Projects')}
            class="block rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
            aria-current={isProjectsActive ? 'page' : undefined}>
           Projects
         </a>
-
+        <a href="/Workspace" 
+           on:click={(e) => handleNavigation(e, '/Workspace')}
+           class="block rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
+           aria-current={isWorkspaceActive ? 'page' : undefined}>
+          Workspace
+        </a>
       </div>
     </div>
   </nav>
