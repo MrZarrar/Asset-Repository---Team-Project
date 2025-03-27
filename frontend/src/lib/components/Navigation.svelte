@@ -219,7 +219,6 @@
                 {#if $user.role !== 'viewer'}
                   <a href="/profile" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
                 {/if}
-                <a class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-1">Settings</a>    
                 <button 
                   on:click={handleLogout}
                   class="block w-full text-left px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" 
