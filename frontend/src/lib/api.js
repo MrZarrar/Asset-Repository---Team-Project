@@ -42,11 +42,26 @@ export async function accountDelete(userid) {
     }
 
     try {
-        alert('Account deleted successfully');
+        alert('Account has been successfully deleted');
         goto('/login');
         await pb.collection('users').delete(userid);
     } catch (error) {
         console.error('Error deleting account:', error);
         throw new Error('An error occurred while deleting the account.');
+    }
+}
+
+export async function removeAvatar(userid) {
+    if (!userid) {
+        console.error("resetPicture: Missing user ID");
+        throw new Error("User ID is required.");
+    }
+
+    try {
+        alert('Picture has been successfully removed');
+        await pb.collection('users').update(userid, { avatar: "" });
+    } catch (error) {
+        console.error('Error resetting picture:', error);
+        throw new Error('An error occurred while resetting the picture.');
     }
 }
