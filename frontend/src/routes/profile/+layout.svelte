@@ -8,10 +8,10 @@
 	<title>Profile Settings</title>
 </svelte:head>
 
-<main class="bg-white dark:bg-gray-900 min-h-screen">
-	<div class="flex h-screen">
+<main class="bg-white dark:bg-gray-900">
+	<div class="flex flex-col md:flex-row h-screen">
 		<!--  Sidebar -->
-		<div class="w-64 text-black p-6 border-r border-gray-200 dark:border-gray-700">
+		<div class="w-full md:w-64 text-black p-6 border-r border-gray-200 dark:border-gray-700">
 			<div class="text-center font-bold text-gray-900 dark:text-gray-100 ">User Settings</div>
 			<div>
 				<ul>
