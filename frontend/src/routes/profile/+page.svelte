@@ -78,107 +78,27 @@
 </script>
 
 <!-- Profile Section -->
-<div class="flex-1 p-10 flex flex-col min-h-screen">
+<div class="flex-1 p-5 pb-10 flex flex-col min-h-0 overflow-y-auto">
 	<!-- Profile Title + Divider -->
 	<div class="border-b border-gray-200 dark:border-gray-800">
 		<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 pb-2">Profile</h2>
 	</div>
 
 	<!-- Profile Form -->
-	<form id="profile-settings-form" class="flex justify-between items-start" on:submit|preventDefault={updatedProfile}>
-		<!-- Left Section: Profile Info -->
-		<div class="flex-1">
-			<div class="pb-8">
-				<div class="mt-5 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-					<div class="sm:col-span-4">
-						<label
-							for="username"
-							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100"
-							>Username</label
-						>
-						<input
-							type="text"
-							name="username"
-							id="username"
-							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							placeholder="Username"
-							bind:value={$user.username}
-						/>
-					</div>
-					<div class="sm:col-span-3">
-						<label
-							for="name"
-							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100">Name</label
-						>
-						<input
-							type="text"
-							name="name"
-							id="name"
-							autocomplete="given-name"
-							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							placeholder="Name"
-							bind:value={$user.name}
-						/>
-					</div>
-					<div class="sm:col-span-4">
-						<label
-							for="email"
-							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100"
-							>Email address</label
-						>
-						<input
-							id="email"
-							name="email"
-							type="email"
-							autocomplete="email"
-							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							placeholder="Email address"
-							bind:value={$user.email}
-						/>
-					</div>
-
-					<div class="sm:col-span-4">
-						<label
-							for="role"
-							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100">Role</label
-						>
-						<select
-							id="role"
-							name="role"
-							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
-							bind:value={$user.role}
-						>
-							<option value="admin">Admin</option>
-							<option value="user">User</option>
-							<option value="viewer">Viewer</option>
-						</select>
-					</div>
-				</div>
-			</div>
-			<!-- Save Button -->
-			<div class="flex space-x-4">
-				<button
-					type="submit"
-					class="rounded-md px-3 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-500 transition-all duration-300"
-				>
-					Save Changes
-				</button>
-			</div>
-		</div>
-
+	<form id="profile-settings-form" class="flex flex-col md:flex-row justify-between items-start mb-10" on:submit|preventDefault={updatedProfile}>
 		<!-- Right Section: Avatar -->
-		<div class="flex flex-col items-center gap-y-3 mt-5">
+		<div class="flex flex-col items-center gap-y-3 mt-5 md:mt-5">
 			{#if $user.avatar}
 				<img
 					src={$user.avatar}
 					alt={$user.name ? `${$user.name}'s profile picture` : ''}
-					class="w-[250px] h-[250px] rounded-full object-cover border-4 border-gray-300"
+					class="w-[150px] h-[150px] md:w-[250px] md:h-[250px] rounded-full object-cover border-4 border-gray-300"
 				/>
 			{:else}
 				<div
-					class="w-[250px] h-[250px] flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 border-4 border-gray-900 dark:border-gray-100"
+					class="flex items-center justify-center w-[150px] h-[150px] md:w-[250px] md:h-[250px] rounded-full bg-gray-100 dark:bg-gray-800 border-4 border-gray-900 dark:border-gray-100"
 				>
-					<User class="size-16 text-gray-900 dark:text-gray-100" />
+					<User class="size-12 md:size-16 text-gray-900 dark:text-gray-100" />
 				</div>
 			{/if}
 			<input
@@ -189,7 +109,7 @@
 				class="hidden"
 				bind:this={fileInput}
 			/>
-			<div class="flex flex-row gap-x-2 m-auto">
+			<div class="flex flex-row justify-center md:justify-start gap-x-2">
 				<button
 					type="button"
 					class="flex gap-2 rounded-md bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-900 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-sm font-semibold mt-1"
@@ -224,6 +144,86 @@
 						/></svg
 					>
 					<span>Remove</span>
+				</button>
+			</div>
+		</div>
+
+		<!-- Left Section: Profile Info -->
+		<div class="flex-1 w-full md:ml-5">
+			<div class="pb-8">
+				<div class="grid grid-cols-6 mt-5 gap-x-6 gap-y-8 ">
+					<div class="col-span-4">
+						<label
+							for="username"
+							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100"
+							>Username</label
+						>
+						<input
+							type="text"
+							name="username"
+							id="username"
+							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							placeholder="Username"
+							bind:value={$user.username}
+						/>
+					</div>
+					<div class="col-span-3">
+						<label
+							for="name"
+							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100">Name</label
+						>
+						<input
+							type="text"
+							name="name"
+							id="name"
+							autocomplete="given-name"
+							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							placeholder="Name"
+							bind:value={$user.name}
+						/>
+					</div>
+					<div class="col-span-4">
+						<label
+							for="email"
+							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100"
+							>Email address</label
+						>
+						<input
+							id="email"
+							name="email"
+							type="email"
+							autocomplete="email"
+							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							placeholder="Email address"
+							bind:value={$user.email}
+						/>
+					</div>
+
+					<div class="col-span-4">
+						<label
+							for="role"
+							class="block text-sm font-medium pb-2 text-gray-900 dark:text-gray-100">Role</label
+						>
+						<select
+							id="role"
+							name="role"
+							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
+							bind:value={$user.role}
+						>
+							<option value="admin">Admin</option>
+							<option value="user">User</option>
+							<option value="viewer">Viewer</option>
+						</select>
+					</div>
+				</div>
+			</div>
+			<!-- Save Button -->
+			<div class="flex justify-center md:justify-start space-x-4 mb-5">
+				<button
+					type="submit"
+					class="rounded-md px-3 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-500 transition-all duration-300"
+				>
+					Save Changes
 				</button>
 			</div>
 		</div>
