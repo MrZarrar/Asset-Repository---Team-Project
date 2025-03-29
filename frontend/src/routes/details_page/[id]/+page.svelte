@@ -71,7 +71,7 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
       const record = await pb.collection('assets').getOne(id, { expand: 'logo' });
 
       // Log viewing of an asset
-        logActions("viewed", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+      logActions("viewed", assetId, $user.email);
 
       return record;
     } catch (err) {
@@ -158,7 +158,7 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
       console.log("Asset updated successfully:", updatedRecord);
 
       // Log updating of an asset
-      logActions("updated", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+      logActions("updated", assetId, $user.email);
 
     } catch (err) {
       console.error("Error updating asset:", err);
@@ -167,11 +167,12 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
 
   async function deleteAsset() {
     try {
+      id_ = assetId
       await pb.collection('assets').delete(assetId);
       console.log("Asset deleted successfully");
 
       // Log deleting of an asset
-      logActions("deleted", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+      logActions("deleted", id_, $user.email);
 
       window.location.href = '/'; // Redirect to home page after deletion
     } catch (err) {

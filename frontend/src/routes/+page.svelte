@@ -190,7 +190,7 @@
         console.log("Asset added successfully:", createdRecord);
 
         // Log creation of new asset
-        //await createLogEntry("added", "[INSERT filename]", "[CALL username]", new Date().toLocaleString());
+        logActions("added", assetId, $user.email);
         
     } catch (err) {
       console.error("Error adding asset:", err);
