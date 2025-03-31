@@ -224,7 +224,7 @@
           }
         }
       });
-Z
+
       const createdRecord = await pb.collection('assets').create(formData);
       console.log("Asset copied successfully:", createdRecord);
 
@@ -556,7 +556,7 @@ input[type="file"].hidden {
     {/if}
   </div>
 
-  <!-- Add the popup notification -->
+  <!-- Update the popup notification -->
   {#if showCopyPopup}
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
       <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4">
