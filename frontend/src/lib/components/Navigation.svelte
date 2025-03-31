@@ -43,8 +43,8 @@
     $: currentPath = $page.url.pathname;
     $: isDashboardActive = currentPath === '/'
     $: isLoggingActive = currentPath === '/logging';
-    $: isProjectsActive = currentPath === '/Projects'; // Add this for Projects page
-    $: isWorkspaceActive = currentPath === '/Workspace';//this page is not created yet
+    $: isProjectsActive = currentPath === '/Projects'; 
+    $: isWorkspaceActive = currentPath === '/Workspace';
 
     // handles navigation for all pages
     function handleNavigation(event, targetPath) {
