@@ -223,9 +223,9 @@
         }
       }
       
-      // Now fetch the assets with our authenticated session
+      // Fetch assets with the filter for add_type
       try {
-        const assetResponse = await fetchAssets(1, 6);
+        const assetResponse = await fetchAssets(1, 6, { add_type: 'original' || 'added' });
         assets = assetResponse.items;
         
         if (assets.length === 0) {
