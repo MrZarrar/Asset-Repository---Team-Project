@@ -1,5 +1,7 @@
 import pb from '$lib/pocketbase';
 import { refreshToken } from './authManager';
+import { user } from '$lib/user.js';
+import { UsersRoundIcon } from '@lucide/svelte';
 
 // Fetch all assets with pagination support
 export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
@@ -55,6 +57,62 @@ export async function fetchDashboardAssets(page = 1, perPage = 20) {
       }
     }
     console.error("Error fetching dashboard assets:", error);
+    throw error;
+  }
+}
+
+// Fetch added assets 
+export async function fetchAddedAssets(page = 1, perPage = 20) {
+  try {
+    let userId;
+    user.subscribe(($user) => {
+      userId = $user.userid;
+    });
+
+    const response = await pb.collection('assets').getList(page, perPage, {
+      filter: `owner_id = "${userId}" && (type = "added")`,
+      sort: '-created',
+      expand: 'category' // Add any relations you need to expand
+    });
+    return response;
+  } catch (error) {
+    // Handle token expiration
+    if (error.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        // Retry the request after refresh
+        return fetchAddedAssets(page, perPage);
+      }
+    }
+    console.error("Error fetching added assets:", error);
+    throw error;
+  }
+}
+
+// Fetch added assets 
+export async function fetchCopiedAssets(page = 1, perPage = 20) {
+  try {
+    let userId;
+    user.subscribe(($user) => {
+      userId = $user.userid;
+    });
+
+    const response = await pb.collection('assets').getList(page, perPage, {
+      filter: `owner_id = "${userId}" && (type = "copied")`,
+      sort: '-created',
+      expand: 'category' // Add any relations you need to expand
+    });
+    return response;
+  } catch (error) {
+    // Handle token expiration
+    if (error.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        // Retry the request after refresh
+        return fetchCopiedAssets(page, perPage);
+      }
+    }
+    console.error("Error fetching copied assets:", error);
     throw error;
   }
 }
