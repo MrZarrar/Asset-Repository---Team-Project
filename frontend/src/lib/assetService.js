@@ -36,6 +36,29 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
   }
 }
 
+// Fetch dashboard assets (only "original" and "added" assets)
+export async function fetchDashboardAssets(page = 1, perPage = 20) {
+  try {
+    const response = await pb.collection('assets').getList(page, perPage, {
+      filter: 'add_type = "original" || add_type = "added"',
+      sort: '-created',
+      expand: 'category' // Add any relations you need to expand
+    });
+    return response;
+  } catch (error) {
+    // Handle token expiration
+    if (error.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        // Retry the request after refresh
+        return fetchDashboardAssets(page, perPage);
+      }
+    }
+    console.error("Error fetching dashboard assets:", error);
+    throw error;
+  }
+}
+
 // Get a single asset by ID
 export async function getAssetById(id) {
   try {
@@ -82,4 +105,4 @@ export async function uploadAsset(assetData, fileData) {
     console.error("Error uploading asset:", error);
     throw error;
   }
-} 
+}

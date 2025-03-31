@@ -3,7 +3,7 @@
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
-  import { fetchAssets } from '$lib/assetService';
+  import { fetchDashboardAssets } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
   import { user } from '$lib/user.js';
@@ -225,7 +225,7 @@
       
       // Now fetch the assets with our authenticated session
       try {
-        const assetResponse = await fetchAssets(1, 6);
+        const assetResponse = await fetchDashboardAssets(1, 6);
         assets = assetResponse.items;
         
         if (assets.length === 0) {
