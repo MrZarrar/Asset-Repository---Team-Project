@@ -199,6 +199,8 @@
   }
 
   // Add the copyAsset function
+  let showCopyPopup = false;
+
   async function copyAsset(asset) {
     try {
       const copiedAsset = {
@@ -222,14 +224,25 @@
           }
         }
       });
-
+Z
       const createdRecord = await pb.collection('assets').create(formData);
       console.log("Asset copied successfully:", createdRecord);
-      assets = [...assets, createdRecord]; // Add the copied asset to the list
+
+      // Show the popup notification
+      showCopyPopup = true;
+
+      // Automatically hide the popup after 5 seconds
+      setTimeout(() => {
+        showCopyPopup = false;
+      }, 5000);
     } catch (err) {
       console.error("Error copying asset:", err);
       alert("Failed to copy asset. Please try again.");
     }
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
   }
 
   // Update your onMount function to use proper authentication
@@ -542,4 +555,19 @@ input[type="file"].hidden {
       <!-- Rest of your homepage content -->
     {/if}
   </div>
+
+  <!-- Add the popup notification -->
+  {#if showCopyPopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+        <p class="text-lg font-semibold">Asset copied successfully!</p>
+        <button
+          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100"
+          on:click={goToWorkspace}
+        >
+          Go to My Assets
+        </button>
+      </div>
+    </div>
+  {/if}
 </main>
