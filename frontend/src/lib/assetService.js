@@ -15,7 +15,7 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
       filterString = filterString.slice(0, -4); // Remove trailing ' && '
     }
 
-    const response = await pb.collection('assets').getList(page, perPage, {
+    const response = await pb.collection('Assets').getList(page, perPage, {
       filter: filterString,
       sort: '-created',
       expand: 'category' // Add any relations you need to expand
@@ -39,9 +39,7 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
 // Get a single asset by ID
 export async function getAssetById(id) {
   try {
-    const asset = await pb.collection('assets').getOne(id, {
-      expand: 'category,owner'
-    });
+    const asset = await pb.collection('Assets').getOne(id);
     return asset;
   } catch (error) {
     if (error.status === 401) {
