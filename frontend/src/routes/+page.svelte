@@ -198,6 +198,40 @@
     }
   }
 
+  // Add the copyAsset function
+  async function copyAsset(asset) {
+    try {
+      const copiedAsset = {
+        ...asset,
+        owner_id: $user.userid,
+        add_type: 'copied',
+        id: undefined, // Remove the ID to create a new asset
+        created: undefined, // Remove timestamps
+        updated: undefined,
+      };
+
+      const formData = new FormData();
+      Object.entries(copiedAsset).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          if (key === 'file' || key === 'logo') {
+            if (value instanceof File) {
+              formData.append(key, value, value.name);
+            }
+          } else {
+            formData.append(key, value);
+          }
+        }
+      });
+
+      const createdRecord = await pb.collection('assets').create(formData);
+      console.log("Asset copied successfully:", createdRecord);
+      assets = [...assets, createdRecord]; // Add the copied asset to the list
+    } catch (err) {
+      console.error("Error copying asset:", err);
+      alert("Failed to copy asset. Please try again.");
+    }
+  }
+
   // Update your onMount function to use proper authentication
   onMount(async () => {
     try {
@@ -444,6 +478,17 @@ input[type="file"].hidden {
                         License: {asset.licence_info.length > 20 ? asset.licence_info.substring(0, 20) + '...' : asset.licence_info}
                       </p>
                     {/if}
+
+                    <!-- Add the plus icon for copying -->
+                    <div class="mt-2 flex justify-end">
+                      <button
+                        class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+                        on:click={() => copyAsset(asset)}
+                      >
+                        <Plus class="w-3 h-3" />
+                        Copy
+                      </button>
+                    </div>
                   </div>
                 </div>
               {/each}
