@@ -4,7 +4,7 @@
   import pb from '$lib/pocketbase';
   import { user } from '$lib/user.js';
   import { fetchProjects } from '$lib/projectsService';
-  import { fetchAssets, fetchAddedAssets, fetchCopiedAssets } from '$lib/assetService';
+  import { fetchAssets } from '$lib/assetService';
   
   // Tab state
   let activeTab = 'projects'; // Default to projects tab
@@ -478,7 +478,7 @@
     loadingAddedAssets = true;
 
     try {
-      const response = await fetchAddedAssets(addedAssetsPage, addedAssetsPerPage);
+      const response = await fetchAssets(addedAssetsPage, addedAssetsPerPage, { add_type: 'added', owner_id: userId });
       addedAssets = response.items;
       addedAssetsTotalPages = Math.ceil(response.totalItems / addedAssetsPerPage);
       loadingAddedAssets = false;
@@ -496,7 +496,7 @@
     loadingCopiedAssets = true;
 
     try {
-      const response = await fetchCopiedAssets(copiedAssetsPage, copiedAssetsPerPage);
+      const response = await fetchAssets(copiedAssetsPage, copiedAssetsPerPage, { add_type: 'copied', owner_id: userId });
       copiedAssets = response.items;
       copiedAssetsTotalPages = Math.ceil(response.totalItems / copiedAssetsPerPage);
       loadingCopiedAssets = false;

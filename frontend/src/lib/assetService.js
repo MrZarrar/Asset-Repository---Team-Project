@@ -3,10 +3,12 @@ import { refreshToken } from './authManager';
 import { user } from '$lib/user.js';
 import { UsersRoundIcon } from '@lucide/svelte';
 
-
 // Fetch all assets with pagination support
 export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
   try {
+    // Disable auto-cancellation globally for the PocketBase client
+    pb.autoCancellation(false);
+
     // Build filter string if needed
     let filterString = '';
     Object.entries(filters).forEach(([key, value]) => {
@@ -21,9 +23,10 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
     const response = await pb.collection('assets').getList(page, perPage, {
       filter: filterString,
       sort: '-created',
-      expand: 'category' // Add any relations you need to expand
+      expand: 'category', // Add any relations you need to expand
+      autoCancel: false // Disable auto-cancellation
     });
-    
+
     return response;
   } catch (error) {
     // Handle token expiration
