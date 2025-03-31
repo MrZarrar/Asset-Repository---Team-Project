@@ -80,7 +80,7 @@
   }
   
   // Current user data
-  $: userId = $user?.id;
+  $: userId = $user?.userid;
   $: role = $user?.role;
   
   // Helper function for admin authentication
@@ -134,6 +134,10 @@
         }
       }
       
+      // Add additional fields
+      newAsset.add_type = 'added';
+      newAsset.owner_id = userId;
+
       // Now continue with your existing form submission
       // Create form data for the API call
       const formData = new FormData();
@@ -159,7 +163,7 @@
       console.log("Asset added successfully:", createdRecord);
 
       // Add the new asset to the list (ensure reactivity)
-      myAssets = [...myAssets, createdRecord];
+      myAssets = [...myAssets, addedAssets, createdRecord];
 
       // Reset form fields
       newAsset = {
@@ -290,7 +294,7 @@
     try {
       // Fetch user's own assets with pagination
       loadingMyAssets = true;
-      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, { created_by: userId });
+      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage,);
       myAssets = myAssetsResponse.items;
       
       // Calculate total pages for my assets pagination
@@ -313,7 +317,7 @@
     loadingMyAssets = true;
     
     try {
-      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, { created_by: userId });
+      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, );
       myAssets = myAssetsResponse.items;
       loadingMyAssets = false;
     } catch (err) {
