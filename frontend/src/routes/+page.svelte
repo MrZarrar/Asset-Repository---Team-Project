@@ -492,16 +492,18 @@ input[type="file"].hidden {
                       </p>
                     {/if}
 
-                    <!-- Add the plus icon for copying -->
-                    <div class="mt-2 flex justify-end">
-                      <button
-                        class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
-                        on:click={() => copyAsset(asset)}
-                      >
-                        <Plus class="w-3 h-3" />
-                        Copy
-                      </button>
-                    </div>
+                    <!-- Add the plus icon for copying, hidden for viewers -->
+                    {#if $user.role !== 'viewer'}
+                      <div class="mt-2 flex justify-end">
+                        <button
+                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+                          on:click={() => copyAsset(asset)}
+                        >
+                          <Plus class="w-3 h-3" />
+                          Copy
+                        </button>
+                      </div>
+                    {/if}
                   </div>
                 </div>
               {/each}
