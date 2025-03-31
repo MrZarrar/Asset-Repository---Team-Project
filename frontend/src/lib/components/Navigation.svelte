@@ -1,4 +1,4 @@
-  <script>
+<script>
     import { writable } from 'svelte/store';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
@@ -65,6 +65,15 @@
         }
     }
 
+    $: role = $user.role;
+
+    function handleWorkspaceNavigation(event) {
+      if (role === 'viewer') {
+        event.preventDefault();
+        goto('/AccessDenied');
+      }
+    }
+
 </script>
   
 {#if !isAuthPage}
@@ -114,7 +123,7 @@
               Projects
             </a>
             <a href="/Workspace" 
-               on:click={(e) => handleNavigation(e, '/Workspace')}
+               on:click={handleWorkspaceNavigation}
                class="rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
                aria-current={isWorkspaceActive ? 'page' : undefined}>
               Workspace
@@ -256,7 +265,7 @@
           Projects
         </a>
         <a href="/Workspace" 
-           on:click={(e) => handleNavigation(e, '/Workspace')}
+           on:click={handleWorkspaceNavigation}
            class="block rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
            aria-current={isWorkspaceActive ? 'page' : undefined}>
           Workspace

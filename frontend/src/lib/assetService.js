@@ -89,7 +89,7 @@ export async function fetchAddedAssets(page = 1, perPage = 20) {
   }
 }
 
-// Fetch added assets 
+// Fetch copied assets 
 export async function fetchCopiedAssets(page = 1, perPage = 20) {
   try {
     let userId;
