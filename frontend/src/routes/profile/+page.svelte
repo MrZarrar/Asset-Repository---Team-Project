@@ -212,7 +212,6 @@
 						>
 							<option value="admin">Admin</option>
 							<option value="user">User</option>
-							<option value="viewer">Viewer</option>
 						</select>
 					</div>
 				</div>

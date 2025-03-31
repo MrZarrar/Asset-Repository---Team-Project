@@ -80,7 +80,7 @@
   }
   
   // Current user data
-  $: userId = $user?.id;
+  $: userId = $user?.userid;
   $: role = $user?.role;
   
   // Helper function for admin authentication
@@ -134,6 +134,10 @@
         }
       }
       
+      // Add additional fields
+      newAsset.add_type = 'added';
+      newAsset.owner_id = userId;
+
       // Now continue with your existing form submission
       // Create form data for the API call
       const formData = new FormData();
@@ -159,7 +163,7 @@
       console.log("Asset added successfully:", createdRecord);
 
       // Add the new asset to the list (ensure reactivity)
-      myAssets = [...myAssets, createdRecord];
+      myAssets = [...myAssets, addedAssets, createdRecord];
 
       // Reset form fields
       newAsset = {
@@ -290,7 +294,7 @@
     try {
       // Fetch user's own assets with pagination
       loadingMyAssets = true;
-      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, { created_by: userId });
+      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage,);
       myAssets = myAssetsResponse.items;
       
       // Calculate total pages for my assets pagination
@@ -313,7 +317,7 @@
     loadingMyAssets = true;
     
     try {
-      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, { created_by: userId });
+      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, );
       myAssets = myAssetsResponse.items;
       loadingMyAssets = false;
     } catch (err) {
@@ -450,6 +454,62 @@
     }
     
     // Existing code...
+  });
+
+  let addedAssets = [];
+  let copiedAssets = [];
+  let loadingAddedAssets = true;
+  let loadingCopiedAssets = true;
+  let addedAssetsError = null;
+  let copiedAssetsError = null;
+
+  let addedAssetsPage = 1;
+  let addedAssetsTotalPages = 1;
+  let addedAssetsPerPage = 6;
+
+  let copiedAssetsPage = 1;
+  let copiedAssetsTotalPages = 1;
+  let copiedAssetsPerPage = 6;
+
+  async function loadAddedAssetsPage(page) {
+    if (page < 1 || page > addedAssetsTotalPages) return;
+
+    addedAssetsPage = page;
+    loadingAddedAssets = true;
+
+    try {
+      const response = await fetchAssets(addedAssetsPage, addedAssetsPerPage, { add_type: 'added', owner_id: userId });
+      addedAssets = response.items;
+      addedAssetsTotalPages = Math.ceil(response.totalItems / addedAssetsPerPage);
+      loadingAddedAssets = false;
+    } catch (err) {
+      console.error('Error fetching added assets:', err);
+      addedAssetsError = 'Failed to load added assets: ' + err.message;
+      loadingAddedAssets = false;
+    }
+  }
+
+  async function loadCopiedAssetsPage(page) {
+    if (page < 1 || page > copiedAssetsTotalPages) return;
+
+    copiedAssetsPage = page;
+    loadingCopiedAssets = true;
+
+    try {
+      const response = await fetchAssets(copiedAssetsPage, copiedAssetsPerPage, { add_type: 'copied', owner_id: userId });
+      copiedAssets = response.items;
+      copiedAssetsTotalPages = Math.ceil(response.totalItems / copiedAssetsPerPage);
+      loadingCopiedAssets = false;
+    } catch (err) {
+      console.error('Error fetching copied assets:', err);
+      copiedAssetsError = 'Failed to load copied assets: ' + err.message;
+      loadingCopiedAssets = false;
+    }
+  }
+
+  onMount(async () => {
+    await loadAddedAssetsPage(1);
+    await loadCopiedAssetsPage(1);
   });
 </script>
 
@@ -926,6 +986,88 @@
             </nav>
           </div>
         {/if}
+
+        <!-- Added Assets Section -->
+        <div class="mb-8">
+          <h2 class="text-2xl font-semibold">Added Assets</h2>
+          {#if loadingAddedAssets}
+            <div class="flex justify-center items-center h-32">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
+              <p class="ml-3 text-gray-600 dark:text-gray-400">Loading added assets...</p>
+            </div>
+          {:else if addedAssetsError}
+            <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md">
+              <p>{addedAssetsError}</p>
+            </div>
+          {:else if addedAssets.length === 0}
+            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
+              <p>No added assets found.</p>
+            </div>
+          {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-items-center">
+              {#each addedAssets as asset}
+                <div class="relative w-64 group">
+                  <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
+                  <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">v{asset.version}</p>
+                    <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
+                      View details
+                    </a>
+                  </div>
+                </div>
+              {/each}
+            </div>
+            {#if addedAssetsTotalPages > 1}
+              <div class="flex justify-center mt-6">
+                <button on:click={() => loadAddedAssetsPage(addedAssetsPage - 1)} disabled={addedAssetsPage === 1} class="px-3 py-2 bg-gray-300 rounded-l-md">Previous</button>
+                <span class="px-4 py-2">Page {addedAssetsPage} of {addedAssetsTotalPages}</span>
+                <button on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)} disabled={addedAssetsPage === addedAssetsTotalPages} class="px-3 py-2 bg-gray-300 rounded-r-md">Next</button>
+              </div>
+            {/if}
+          {/if}
+        </div>
+
+        <!-- Copied Assets Section -->
+        <div>
+          <h2 class="text-2xl font-semibold">Copied Assets</h2>
+          {#if loadingCopiedAssets}
+            <div class="flex justify-center items-center h-32">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
+              <p class="ml-3 text-gray-600 dark:text-gray-400">Loading copied assets...</p>
+            </div>
+          {:else if copiedAssetsError}
+            <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md">
+              <p>{copiedAssetsError}</p>
+            </div>
+          {:else if copiedAssets.length === 0}
+            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
+              <p>No copied assets found.</p>
+            </div>
+          {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-items-center">
+              {#each copiedAssets as asset}
+                <div class="relative w-64 group">
+                  <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
+                  <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">v{asset.version}</p>
+                    <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
+                      View details
+                    </a>
+                  </div>
+                </div>
+              {/each}
+            </div>
+            {#if copiedAssetsTotalPages > 1}
+              <div class="flex justify-center mt-6">
+                <button on:click={() => loadCopiedAssetsPage(copiedAssetsPage - 1)} disabled={copiedAssetsPage === 1} class="px-3 py-2 bg-gray-300 rounded-l-md">Previous</button>
+                <span class="px-4 py-2">Page {copiedAssetsPage} of {copiedAssetsTotalPages}</span>
+                <button on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)} disabled={copiedAssetsPage === copiedAssetsTotalPages} class="px-3 py-2 bg-gray-300 rounded-r-md">Next</button>
+              </div>
+            {/if}
+          {/if}
+        </div>
       </section>
     {/if}
     

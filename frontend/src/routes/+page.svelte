@@ -198,6 +198,53 @@
     }
   }
 
+  // Add the copyAsset function
+  let showCopyPopup = false;
+
+  async function copyAsset(asset) {
+    try {
+      const copiedAsset = {
+        ...asset,
+        owner_id: $user.userid,
+        add_type: 'copied',
+        id: undefined, // Remove the ID to create a new asset
+        created: undefined, // Remove timestamps
+        updated: undefined,
+      };
+
+      const formData = new FormData();
+      Object.entries(copiedAsset).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          if (key === 'file' || key === 'logo') {
+            if (value instanceof File) {
+              formData.append(key, value, value.name);
+            }
+          } else {
+            formData.append(key, value);
+          }
+        }
+      });
+
+      const createdRecord = await pb.collection('assets').create(formData);
+      console.log("Asset copied successfully:", createdRecord);
+
+      // Show the popup notification
+      showCopyPopup = true;
+
+      // Automatically hide the popup after 5 seconds
+      setTimeout(() => {
+        showCopyPopup = false;
+      }, 5000);
+    } catch (err) {
+      console.error("Error copying asset:", err);
+      alert("Failed to copy asset. Please try again.");
+    }
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
+  }
+
   // Update your onMount function to use proper authentication
   onMount(async () => {
     try {
@@ -223,9 +270,9 @@
         }
       }
       
-      // Now fetch the assets with our authenticated session
+      // Fetch assets with the filter for add_type
       try {
-        const assetResponse = await fetchAssets(1, 6);
+        const assetResponse = await fetchAssets(1, 6, { add_type: 'original' || 'added' });
         assets = assetResponse.items;
         
         if (assets.length === 0) {
@@ -444,6 +491,19 @@ input[type="file"].hidden {
                         License: {asset.licence_info.length > 20 ? asset.licence_info.substring(0, 20) + '...' : asset.licence_info}
                       </p>
                     {/if}
+
+                    <!-- Add the plus icon for copying, hidden for viewers -->
+                    {#if $user.role !== 'viewer'}
+                      <div class="mt-2 flex justify-end">
+                        <button
+                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+                          on:click={() => copyAsset(asset)}
+                        >
+                          <Plus class="w-3 h-3" />
+                          Copy
+                        </button>
+                      </div>
+                    {/if}
                   </div>
                 </div>
               {/each}
@@ -497,4 +557,19 @@ input[type="file"].hidden {
       <!-- Rest of your homepage content -->
     {/if}
   </div>
+
+  <!-- Update the popup notification -->
+  {#if showCopyPopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+        <p class="text-lg font-semibold">Asset copied successfully!</p>
+        <button
+          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100"
+          on:click={goToWorkspace}
+        >
+          Go to My Assets
+        </button>
+      </div>
+    </div>
+  {/if}
 </main>
