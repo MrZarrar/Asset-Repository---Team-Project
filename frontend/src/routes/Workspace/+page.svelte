@@ -1,8 +1,10 @@
 <script>
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { Search, User, Download, ChevronDown, Plus, Upload, Check, X } from "@lucide/svelte";
   import pb from '$lib/pocketbase';
   import { user } from '$lib/user.js';
+  import { isAuthenticated } from '$lib/auth';
   import { fetchProjects } from '$lib/projectsService';
   import { fetchAssets } from '$lib/assetService';
   
@@ -12,8 +14,8 @@
   // State variables
   let projects = [];
   let assets = [];
-  let loadingProjects = true;
-  let loadingAssets = true;
+  let loadingProjects = false;
+  let loadingAssets = false;
   let projectsError = null;
   let assetsError = null;
 
@@ -174,19 +176,26 @@
     }
   }
   
+  // Removed duplicate declaration of isAuthenticated
+
   onMount(async () => {
-    loadData();
-    
-    // Listen for tab switching events from the chatbot
-    const switchTabHandler = (event) => {
-      // Set the active tab to "My Assets"
-      activeTab = 'assets';
-      
-      // If requested, also open the asset form
-      if (event.detail && event.detail.openAssetForm) {
-        addingAsset = true;
+    // Check if the user is authenticated
+    if (!pb.authStore.isValid) {
+        const authenticated = await authenticateAdmin();
+        if (!authenticated) {
+          assetError = "Authentication failed. Please check PocketBase credentials.";
+          loadingAssets = false;
+          return;
+        }
       }
-    };
+
+    // Load data only if authenticated
+    await loadData();
+    await loadAddedAssetsPage(1);
+    await loadCopiedAssetsPage(1);
+
+    // Listen for tab switching events from the chatbot
+    
 
     // Add handler for createMavenAsset event
     const createAssetHandler = (event) => {
@@ -424,7 +433,7 @@
   let copiedAssetsPerPage = 6;
 
   async function loadAddedAssetsPage(page) {
-    if (page < 1 || page > addedAssetsTotalPages) return;
+    if (!isAuthenticated || page < 1 || page > addedAssetsTotalPages) return;
 
     addedAssetsPage = page;
     loadingAddedAssets = true;
@@ -442,7 +451,7 @@
   }
 
   async function loadCopiedAssetsPage(page) {
-    if (page < 1 || page > copiedAssetsTotalPages) return;
+    if (!isAuthenticated || page < 1 || page > copiedAssetsTotalPages) return;
 
     copiedAssetsPage = page;
     loadingCopiedAssets = true;
@@ -459,12 +468,9 @@
     }
   }
 
-  onMount(async () => {
-    await loadAddedAssetsPage(1);
-    await loadCopiedAssetsPage(1);
-  });
 </script>
 
+{#if isAuthenticated}
 <main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-8">
   <div class="container mx-auto">
     
@@ -1051,6 +1057,7 @@
     <!-- Quick Actions Panel for both tabs -->
   </div>
 </main>
+{/if}
 
 <style>
   input[type="search"]::-webkit-search-cancel-button {
