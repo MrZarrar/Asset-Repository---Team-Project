@@ -1020,9 +1020,25 @@
             </div>
             {#if addedAssetsTotalPages > 1}
               <div class="flex justify-center mt-6">
-                <button on:click={() => loadAddedAssetsPage(addedAssetsPage - 1)} disabled={addedAssetsPage === 1} class="px-3 py-2 bg-gray-300 rounded-l-md">Previous</button>
-                <span class="px-4 py-2">Page {addedAssetsPage} of {addedAssetsTotalPages}</span>
-                <button on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)} disabled={addedAssetsPage === addedAssetsTotalPages} class="px-3 py-2 bg-gray-300 rounded-r-md">Next</button>
+                <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+                  <button 
+                    class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {addedAssetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
+                    on:click={() => loadAddedAssetsPage(addedAssetsPage - 1)}
+                    disabled={addedAssetsPage === 1}
+                  >
+                    Previous
+                  </button>
+                  <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
+                    Page {addedAssetsPage} of {addedAssetsTotalPages}
+                  </div>
+                  <button 
+                    class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {addedAssetsPage === addedAssetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
+                    on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)}
+                    disabled={addedAssetsPage === addedAssetsTotalPages}
+                  >
+                    Next
+                  </button>
+                </nav>
               </div>
             {/if}
           {/if}
@@ -1061,9 +1077,25 @@
             </div>
             {#if copiedAssetsTotalPages > 1}
               <div class="flex justify-center mt-6">
-                <button on:click={() => loadCopiedAssetsPage(copiedAssetsPage - 1)} disabled={copiedAssetsPage === 1} class="px-3 py-2 bg-gray-300 rounded-l-md">Previous</button>
-                <span class="px-4 py-2">Page {copiedAssetsPage} of {copiedAssetsTotalPages}</span>
-                <button on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)} disabled={copiedAssetsPage === copiedAssetsTotalPages} class="px-3 py-2 bg-gray-300 rounded-r-md">Next</button>
+                <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+                  <button 
+                    class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {copiedAssetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
+                    on:click={() => loadCopiedAssetsPage(copiedAssetsPage - 1)}
+                    disabled={copiedAssetsPage === 1}
+                  >
+                    Previous
+                  </button>
+                  <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
+                    Page {copiedAssetsPage} of {copiedAssetsTotalPages}
+                  </div>
+                  <button 
+                    class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {copiedAssetsPage === copiedAssetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
+                    on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)}
+                    disabled={copiedAssetsPage === copiedAssetsTotalPages}
+                  >
+                    Next
+                  </button>
+                </nav>
               </div>
             {/if}
           {/if}
