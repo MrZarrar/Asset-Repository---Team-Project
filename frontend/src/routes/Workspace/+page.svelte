@@ -7,7 +7,7 @@
   import { fetchAssets } from '$lib/assetService';
   
   // Tab state
-  let activeTab = 'projects'; // Default to projects tab
+  let activeTab = 'assets'; // Default to projects tab
   
   // State variables
   let projects = [];
