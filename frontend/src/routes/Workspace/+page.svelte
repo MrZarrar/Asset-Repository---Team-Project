@@ -78,18 +78,7 @@
   $: role = $user?.role;
   
   // Helper function for admin authentication
-  async function authenticateAdmin() {
-    try {
-      // Use your admin/superuser credentials
-      // These should be stored securely in environment variables in production
-      await pb.admins.authWithPassword('Super.user@pocketbase.com', 'SuperPassword');
-      console.log("Admin authenticated successfully");
-      return true;
-    } catch (error) {
-      console.error("Admin authentication failed:", error);
-      return false;
-    }
-  }
+
   
   // Function to add a new asset
   async function addAsset() {

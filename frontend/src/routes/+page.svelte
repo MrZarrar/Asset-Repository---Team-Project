@@ -92,19 +92,7 @@
     });
   }
 
-  // Add this function to authenticate with PocketBase
-  async function authenticateAdmin() {
-    try {
-      // Use your admin/superuser credentials
-      // These should be stored securely in environment variables in production
-      await pb.admins.authWithPassword('Super.user@pocketbase.com', 'SuperPassword');
-      console.log("Admin authenticated successfully");
-      return true;
-    } catch (error) {
-      console.error("Admin authentication failed:", error);
-      return false;
-    }
-  }
+
 
   // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
@@ -272,9 +260,10 @@
         }
       }
       
-      // Fetch assets with the filter for add_type
       try {
-        const assetResponse = await fetchAssets(1, 6, { add_type: 'original' || 'added' });
+        const assetResponse = await fetchAssets(1, 6, { add_type: ['original', 'added'] });
+        console.log(assetResponse.items);
+        // Filter out assets with add_type: 'copied'
         assets = assetResponse.items;
         
         if (assets.length === 0) {
