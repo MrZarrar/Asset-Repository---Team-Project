@@ -29,7 +29,7 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
     const response = await pb.collection('assets').getList(page, perPage, {
       filter: filterString,
       sort: '-created',
-      expand: 'category', // Add any relations you need to expand
+      expand: 'category, logo, file', // Add any relations you need to expand
       autoCancel: false // Disable auto-cancellation
     });
 

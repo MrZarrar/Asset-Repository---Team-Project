@@ -193,6 +193,31 @@
 
   async function copyAsset(asset) {
     try {
+      // Fetch the original file and logo
+      let fileBlob = null;
+      let logoBlob = null;
+
+      if (asset.file) {
+        const fileUrl = pb.files.getUrl(asset, asset.file);
+        const fileResponse = await fetch(fileUrl);
+        if (fileResponse.ok) {
+          fileBlob = await fileResponse.blob();
+        } else {
+          console.error('Failed to fetch the file for copying.');
+        }
+      }
+
+      if (asset.logo) {
+        const logoUrl = pb.files.getUrl(asset, asset.logo);
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          logoBlob = await logoResponse.blob();
+        } else {
+          console.error('Failed to fetch the logo for copying.');
+        }
+      }
+
+      // Prepare the copied asset data
       const copiedAsset = {
         ...asset,
         owner_id: $user.userid,
@@ -202,21 +227,25 @@
         updated: undefined,
       };
 
+      // Create FormData for the new asset
       const formData = new FormData();
       Object.entries(copiedAsset).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
-          if (key === 'file' || key === 'logo') {
-            if (value instanceof File) {
-              formData.append(key, value, value.name);
-            }
-          } else {
-            formData.append(key, value);
-          }
+          formData.append(key, value);
         }
       });
 
+      // Attach the file and logo blobs if they exist
+      if (fileBlob) {
+        formData.append('file', fileBlob, asset.file);
+      }
+      if (logoBlob) {
+        formData.append('logo', logoBlob, asset.logo);
+      }
+
+      // Create the new asset in PocketBase
       const createdRecord = await pb.collection('assets').create(formData);
-      console.log("Asset copied successfully:", createdRecord);
+      console.log('Asset copied successfully:', createdRecord);
 
       // Show the popup notification
       showCopyPopup = true;
