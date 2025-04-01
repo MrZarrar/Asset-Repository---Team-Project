@@ -752,14 +752,16 @@
       <section>
         <div class="flex justify-between items-center mb-8">
           <h2 class="text-2xl font-semibold">Added Assets</h2>
-          {#if !addingAsset}
-            <button 
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
-              on:click={() => addingAsset = true}
-            >
-              <Plus class="w-4 h-4" />
-              Add New Asset
-            </button>
+          {#if role === 'user' || role === 'admin'}
+            {#if !addingAsset}
+              <button 
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                on:click={() => addingAsset = true}
+              >
+                <Plus class="w-4 h-4" />
+                Add New Asset
+              </button>
+            {/if}
           {/if}
         </div>
         
