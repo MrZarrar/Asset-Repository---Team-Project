@@ -12,18 +12,12 @@
   // State variables
   let projects = [];
   let assets = [];
-  let myAssets = []; // Assets owned by the user
   let loadingProjects = true;
   let loadingAssets = true;
-  let loadingMyAssets = true;
   let projectsError = null;
   let assetsError = null;
-  let myAssetsError = null;
-  
+
   // Pagination state
-  let myAssetsPage = 1;
-  let myAssetsTotalPages = 1;
-  let myAssetsPerPage = 6;
   let assetsPage = 1;
   let assetsTotalPages = 1;
   let assetsPerPage = 3;
@@ -291,41 +285,10 @@
       loadingAssets = false;
     }
     
-    try {
-      // Fetch user's own assets with pagination
-      loadingMyAssets = true;
-      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage,);
-      myAssets = myAssetsResponse.items;
-      
-      // Calculate total pages for my assets pagination
-      const totalMyAssets = myAssetsResponse.totalItems;
-      myAssetsTotalPages = Math.ceil(totalMyAssets / myAssetsPerPage);
-      
-      loadingMyAssets = false;
-    } catch (err) {
-      console.error('Error fetching my assets:', err);
-      myAssetsError = 'Failed to load your assets: ' + err.message;
-      loadingMyAssets = false;
-    }
+    
   }
   
   // Functions to handle pagination
-  async function loadMyAssetsPage(page) {
-    if (page < 1 || page > myAssetsTotalPages) return;
-    
-    myAssetsPage = page;
-    loadingMyAssets = true;
-    
-    try {
-      const myAssetsResponse = await fetchAssets(myAssetsPage, myAssetsPerPage, );
-      myAssets = myAssetsResponse.items;
-      loadingMyAssets = false;
-    } catch (err) {
-      console.error('Error fetching my assets:', err);
-      myAssetsError = 'Failed to load your assets: ' + err.message;
-      loadingMyAssets = false;
-    }
-  }
   
   async function loadAssociatedAssetsPage(page) {
     if (page < 1 || page > assetsTotalPages) return;
@@ -743,8 +706,8 @@
     {:else}
       <!-- My Assets Tab Content -->
       <section>
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-semibold">My Assets</h2>
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-2xl font-semibold">Added Assets</h2>
           {#if !addingAsset}
             <button 
               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
@@ -861,162 +824,97 @@
           </div>
         {/if}
         
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-items-center">
-          {#each myAssets as asset, i}
-            <div class="relative w-64 group">
-              <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
-              <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  {#if asset.version}v{asset.version}{/if}
-                  {#if asset.type} · {asset.type}{/if}
-                </p>
-                <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
-                  {asset.description || "View details"}
-                </a>
-                
-                <!-- Maven dependency info for maven/java assets -->
-                {#if asset.type === 'maven'}
-                  <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <div class="flex mt-1 space-x-1">
-                      <button 
-                        class="px-2 py-1 text-xs {myMavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {myMavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
-                        on:click|stopPropagation={(e) => {
-                          e.preventDefault();
-                          const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
-                          copyToClipboard(xmlDependency, 'maven', i, true);
-                        }}
-                      >
-                        {#if myMavenCopiedIndex === i}
-                          <Check class="w-3 h-3" />
-                          Copied!
-                        {:else}
-                          Copy Mvn XML
-                        {/if}
-                      </button>
-                      <button 
-                        class="px-2 py-1 text-xs {myGradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {myGradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
-                        on:click|stopPropagation={(e) => {
-                          e.preventDefault();
-                          const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
-                          copyToClipboard(gradleDependency, 'gradle', i, true);
-                        }}
-                      >
-                        {#if myGradleCopiedIndex === i}
-                          <Check class="w-3 h-3" />
-                          Copied!
-                        {:else}
-                          Copy Gradle
-                        {/if}
-                      </button>
-                      
-                      <!-- Download button added inside the button group -->
-                      {#if asset.file}
-                        <a 
-                          href={pb.files.getUrl(asset, asset.file)} 
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                          on:click|stopPropagation
-                        >
-                          <Download class="w-3 h-3" />
-                        </a>
-                      {/if}
-                    </div>
-                  </div>
-                {:else}
-                  <!-- For non-maven assets, still show download button if available -->
-                  {#if asset.file}
-                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
-                      <div class="flex mt-1 space-x-1">
-                        <a 
-                          href={pb.files.getUrl(asset, asset.file)} 
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                          on:click|stopPropagation
-                        >
-                          <Download class="w-3 h-3" />
-                        </a>
-                      </div>
-                    </div>
-                  {/if}
-                {/if}
-                
-                {#if asset.last_updated || asset.date_updated}
-                  <p class="mt-2 text-xs text-gray-400">
-                    Updated: {new Date(asset.last_updated || asset.date_updated).toLocaleDateString()}
-                  </p>
-                {/if}
-                
-                {#if asset.licence_info}
-                  <p class="mt-1 text-xs text-gray-400">
-                    License: {asset.licence_info.length > 20 ? asset.licence_info.substring(0, 20) + '...' : asset.licence_info}
-                  </p>
-                {/if}
-              </div>
-            </div>
-          {/each}
-        </div>
-        
-        <!-- Pagination for My Assets -->
-        {#if myAssetsTotalPages > 1}
-          <div class="flex justify-center mt-6">
-            <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
-              <button 
-                class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {myAssetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                on:click={() => loadMyAssetsPage(myAssetsPage - 1)}
-                disabled={myAssetsPage === 1}
-              >
-                Previous
-              </button>
-              <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
-                Page {myAssetsPage} of {myAssetsTotalPages}
-              </div>
-              <button 
-                class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {myAssetsPage === myAssetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
-                on:click={() => loadMyAssetsPage(myAssetsPage + 1)}
-                disabled={myAssetsPage === myAssetsTotalPages}
-              >
-                Next
-              </button>
-            </nav>
-          </div>
-        {/if}
+    
 
         <!-- Added Assets Section -->
-        <div class="mb-8">
-          <h2 class="text-2xl font-semibold">Added Assets</h2>
+        <div class="mb-12">
           {#if loadingAddedAssets}
-            <div class="flex justify-center items-center h-32">
+            <div class="col-span-full text-center py-8">
               <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
-              <p class="ml-3 text-gray-600 dark:text-gray-400">Loading added assets...</p>
+              <p class="mt-2 text-gray-600 dark:text-gray-400">Loading added assets...</p>
             </div>
           {:else if addedAssetsError}
-            <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md">
-              <p>{addedAssetsError}</p>
+            <div class="col-span-full text-center py-8">
+              <p class="text-red-500">{addedAssetsError}</p>
             </div>
           {:else if addedAssets.length === 0}
-            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
-              <p>No added assets found.</p>
+            <div class="col-span-full text-center py-8">
+              <p class="text-gray-600 dark:text-gray-400">No added assets found.</p>
             </div>
           {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-items-center">
-              {#each addedAssets as asset}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+              {#each addedAssets as asset, i}
                 <div class="relative w-64 group">
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name}</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">v{asset.version}</p>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      {#if asset.version}v{asset.version}{/if}
+                      {#if asset.type} · {asset.type}{/if}
+                    </p>
                     <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
-                      View details
+                      {asset.description || "View details"}
                     </a>
+                    <!-- Maven dependency info for maven/java assets -->
+                    {#if asset.type === 'maven'}
+                      <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                        <div class="flex mt-1 space-x-1">
+                          <button 
+                            class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              copyToClipboard(xmlDependency, 'maven', i);
+                            }}
+                          >
+                            {#if mavenCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Mvn XML
+                            {/if}
+                          </button>
+                          <button 
+                            class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              copyToClipboard(gradleDependency, 'gradle', i);
+                            }}
+                          >
+                            {#if gradleCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Gradle
+                            {/if}
+                          </button>
+                          <!-- Download button -->
+                          {#if asset.file}
+                            <a 
+                              href={pb.files.getUrl(asset, asset.file)} 
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
+                              on:click|stopPropagation
+                            >
+                              <Download class="w-3 h-3" />
+                            </a>
+                          {/if}
+                        </div>
+                      </div>
+                    {/if}
+                    {#if asset.last_updated || asset.date_updated}
+                      <p class="mt-2 text-xs text-gray-400">
+                        Updated: {new Date(asset.last_updated || asset.date_updated).toLocaleDateString()}
+                      </p>
+                    {/if}
                   </div>
                 </div>
               {/each}
             </div>
+            <!-- Pagination for Added Assets -->
             {#if addedAssetsTotalPages > 1}
               <div class="flex justify-center mt-6">
                 <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
@@ -1044,36 +942,95 @@
         </div>
 
         <!-- Copied Assets Section -->
-        <div>
-          <h2 class="text-2xl font-semibold">Copied Assets</h2>
+        <div class="mb-12">
+          <h2 class="text-2xl font-semibold mb-6">Copied Assets</h2> <!-- Added bottom margin -->
           {#if loadingCopiedAssets}
-            <div class="flex justify-center items-center h-32">
+            <div class="col-span-full text-center py-8">
               <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
-              <p class="ml-3 text-gray-600 dark:text-gray-400">Loading copied assets...</p>
+              <p class="mt-2 text-gray-600 dark:text-gray-400">Loading copied assets...</p>
             </div>
           {:else if copiedAssetsError}
-            <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md">
-              <p>{copiedAssetsError}</p>
+            <div class="col-span-full text-center py-8">
+              <p class="text-red-500">{copiedAssetsError}</p>
             </div>
           {:else if copiedAssets.length === 0}
-            <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
-              <p>No copied assets found.</p>
+            <div class="col-span-full text-center py-8">
+              <p class="text-gray-600 dark:text-gray-400">No copied assets found.</p>
             </div>
           {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 justify-items-center">
-              {#each copiedAssets as asset}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+              {#each copiedAssets as asset, i}
                 <div class="relative w-64 group">
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name}</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">v{asset.version}</p>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      {#if asset.version}v{asset.version}{/if}
+                      {#if asset.type} · {asset.type}{/if}
+                    </p>
                     <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
-                      View details
+                      {asset.description || "View details"}
                     </a>
+                    <!-- Maven dependency info for maven/java assets -->
+                    {#if asset.type === 'maven'}
+                      <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                        <div class="flex mt-1 space-x-1">
+                          <button 
+                            class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              copyToClipboard(xmlDependency, 'maven', i);
+                            }}
+                          >
+                            {#if mavenCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Mvn XML
+                            {/if}
+                          </button>
+                          <button 
+                            class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              copyToClipboard(gradleDependency, 'gradle', i);
+                            }}
+                          >
+                            {#if gradleCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Gradle
+                            {/if}
+                          </button>
+                          <!-- Download button -->
+                          {#if asset.file}
+                            <a 
+                              href={pb.files.getUrl(asset, asset.file)} 
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
+                              on:click|stopPropagation
+                            >
+                              <Download class="w-3 h-3" />
+                            </a>
+                          {/if}
+                        </div>
+                      </div>
+                    {/if}
+                    {#if asset.last_updated || asset.date_updated}
+                      <p class="mt-2 text-xs text-gray-400">
+                        Updated: {new Date(asset.last_updated || asset.date_updated).toLocaleDateString()}
+                      </p>
+                    {/if}
                   </div>
                 </div>
               {/each}
             </div>
+            <!-- Pagination for Copied Assets -->
             {#if copiedAssetsTotalPages > 1}
               <div class="flex justify-center mt-6">
                 <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
