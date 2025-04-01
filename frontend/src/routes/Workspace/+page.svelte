@@ -85,6 +85,11 @@
   // Function to add a new asset
   async function addAsset() {
     try {
+      // Set asset_id to undefined if left blank
+      if (!newAsset.asset_id) {
+        newAsset.asset_id = undefined;
+      }
+
       // Check if we have a POM file in newAsset
       if (!newAsset.file && newAsset.type === 'maven') {
         console.log("No POM file found, searching for it...");
@@ -123,7 +128,6 @@
       newAsset.add_type = 'added';
       newAsset.owner_id = userId;
 
-      // Now continue with your existing form submission
       // Create form data for the API call
       const formData = new FormData();
       
@@ -140,15 +144,15 @@
         }
       }
       
-      // Your existing API call to save the asset
+      // API call to save the asset
       const createdRecord = await pb.collection('assets').create(formData);
       
       // Reset form state
       addingAsset = false;
       console.log("Asset added successfully:", createdRecord);
 
-      // Add the new asset to the list (ensure reactivity)
-      myAssets = [...myAssets, addedAssets, createdRecord];
+      // Add the new asset to the addedAssets list (ensure reactivity)
+      addedAssets = [...addedAssets, createdRecord];
 
       // Reset form fields
       newAsset = {
@@ -468,6 +472,45 @@
     }
   }
 
+  // Ensure addedAssets includes the correct file URL for download
+  function getFileUrl(asset) {
+    return pb.files.getUrl(asset, asset.file);
+  }
+
+  // Function to handle downloading the file
+  async function downloadAssetFile(asset) {
+    if (!asset || !asset.file) {
+      console.error("Cannot download: Asset file is missing");
+      return;
+    }
+
+    try {
+      const fileUrl = getFileUrl(asset);
+
+      // Fetch the file as a blob
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Create a temporary link element and trigger the download
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = asset.file; // Use the original file name
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed:", err);
+    }
+  }
+
 </script>
 
 {#if isAuthenticated}
@@ -721,7 +764,8 @@
             <form on:submit|preventDefault={addAsset}>
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
-                <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
+                <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to auto-generate an ID</p>
               </div>
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
@@ -886,19 +930,29 @@
                           </button>
                           <!-- Download button -->
                           {#if asset.file}
-                            <a 
-                              href={pb.files.getUrl(asset, asset.file)} 
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                              on:click|stopPropagation
+                            <button 
+                              on:click={() => downloadAssetFile(asset)}
+                              class="p-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center"
                             >
-                              <Download class="w-3 h-3" />
-                            </a>
+                              <Download class="w-4 h-4" />
+                            </button>
                           {/if}
                         </div>
                       </div>
+                    {:else}
+                      <!-- For non-maven assets, still show download button if available -->
+                      {#if asset.file}
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                          <div class="flex mt-1 space-x-1">
+                            <button 
+                              on:click={() => downloadAssetFile(asset)}
+                              class="p-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center"
+                            >
+                              <Download class="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      {/if}
                     {/if}
                     {#if asset.last_updated || asset.date_updated}
                       <p class="mt-2 text-xs text-gray-400">

@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Plus, Upload, Check } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Plus, Upload, Check, X } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -97,6 +97,11 @@
   // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
     try {
+      // Set asset_id to undefined if left blank
+      if (!newAsset.asset_id) {
+        newAsset.asset_id = undefined;
+      }
+
       // Check if we have a POM file in newAsset
       if (!newAsset.file && newAsset.type === 'maven') {
         console.log("No POM file found, searching for it...");
@@ -193,6 +198,31 @@
 
   async function copyAsset(asset) {
     try {
+      // Fetch the original file and logo
+      let fileBlob = null;
+      let logoBlob = null;
+
+      if (asset.file) {
+        const fileUrl = pb.files.getUrl(asset, asset.file);
+        const fileResponse = await fetch(fileUrl);
+        if (fileResponse.ok) {
+          fileBlob = await fileResponse.blob();
+        } else {
+          console.error('Failed to fetch the file for copying.');
+        }
+      }
+
+      if (asset.logo) {
+        const logoUrl = pb.files.getUrl(asset, asset.logo);
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          logoBlob = await logoResponse.blob();
+        } else {
+          console.error('Failed to fetch the logo for copying.');
+        }
+      }
+
+      // Prepare the copied asset data
       const copiedAsset = {
         ...asset,
         owner_id: $user.userid,
@@ -202,21 +232,25 @@
         updated: undefined,
       };
 
+      // Create FormData for the new asset
       const formData = new FormData();
       Object.entries(copiedAsset).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
-          if (key === 'file' || key === 'logo') {
-            if (value instanceof File) {
-              formData.append(key, value, value.name);
-            }
-          } else {
-            formData.append(key, value);
-          }
+          formData.append(key, value);
         }
       });
 
+      // Attach the file and logo blobs if they exist
+      if (fileBlob) {
+        formData.append('file', fileBlob, asset.file);
+      }
+      if (logoBlob) {
+        formData.append('logo', logoBlob, asset.logo);
+      }
+
+      // Create the new asset in PocketBase
       const createdRecord = await pb.collection('assets').create(formData);
-      console.log("Asset copied successfully:", createdRecord);
+      console.log('Asset copied successfully:', createdRecord);
 
       // Show the popup notification
       showCopyPopup = true;
@@ -233,6 +267,10 @@
 
   function goToWorkspace() {
     window.location.href = '/Workspace';
+  }
+
+  function closeCopyPopup() {
+    showCopyPopup = false;
   }
 
   // Update your onMount function to use proper authentication
@@ -553,8 +591,14 @@ input[type="file"].hidden {
   {#if showCopyPopup}
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
          transition:fade={{ duration: 300 }}>
-      <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+      <div class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={closeCopyPopup}
+        >
+          <X class="w-5 h-5" />
+        </button>
         <p class="text-lg font-semibold">Asset copied successfully!</p>
         <button
           class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
