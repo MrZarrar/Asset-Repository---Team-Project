@@ -97,6 +97,11 @@
   // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
     try {
+      // Set asset_id to undefined if left blank
+      if (!newAsset.asset_id) {
+        newAsset.asset_id = undefined;
+      }
+
       // Check if we have a POM file in newAsset
       if (!newAsset.file && newAsset.type === 'maven') {
         console.log("No POM file found, searching for it...");
