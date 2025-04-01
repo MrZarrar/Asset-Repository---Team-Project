@@ -7,6 +7,8 @@
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
   import { user } from '$lib/user.js';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
 
 
   $: role = $user.role;
@@ -294,7 +296,7 @@
     // Add event listener for chatbot interaction
     const createAssetHandler = (event) => {
       // Redirect to the workspace page instead of opening the asset form
-      window.location.href = '/workspace';
+      window.location.href = '/Workspace';
     };
     
     window.addEventListener('createMavenAsset', createAssetHandler);
@@ -379,7 +381,7 @@ input[type="file"].hidden {
         <div class="container mx-auto px-4">
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Most Popular
+              Latest Assets
             </h1>
             <!-- Add Asset button has been removed -->
             
@@ -406,9 +408,22 @@ input[type="file"].hidden {
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
                     </p>
-                    <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
-                      {asset.description || "View details"}
-                    </a>
+                    <div class="flex justify-between items-center">
+                      <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
+                        {asset.description || "View details"}
+                      </a>
+                      
+                      <!-- Copy button moved next to "View details" -->
+                      {#if $user.role !== 'viewer'}
+                        <button
+                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+                          on:click={() => copyAsset(asset)}
+                        >
+                          <Plus class="w-3 h-3" />
+                          Copy
+                        </button>
+                      {/if}
+                    </div>
                     
                     <!-- Maven dependency info for maven/java assets -->
                     {#if asset.type === 'maven'}
@@ -491,19 +506,6 @@ input[type="file"].hidden {
                         License: {asset.licence_info.length > 20 ? asset.licence_info.substring(0, 20) + '...' : asset.licence_info}
                       </p>
                     {/if}
-
-                    <!-- Add the plus icon for copying, hidden for viewers -->
-                    {#if $user.role !== 'viewer'}
-                      <div class="mt-2 flex justify-end">
-                        <button
-                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
-                          on:click={() => copyAsset(asset)}
-                        >
-                          <Plus class="w-3 h-3" />
-                          Copy
-                        </button>
-                      </div>
-                    {/if}
                   </div>
                 </div>
               {/each}
@@ -558,13 +560,15 @@ input[type="file"].hidden {
     {/if}
   </div>
 
-  <!-- Update the popup notification -->
+  <!-- Update the popup notification with smooth transitions -->
   {#if showCopyPopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
         <p class="text-lg font-semibold">Asset copied successfully!</p>
         <button
-          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100"
+          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
           on:click={goToWorkspace}
         >
           Go to My Assets

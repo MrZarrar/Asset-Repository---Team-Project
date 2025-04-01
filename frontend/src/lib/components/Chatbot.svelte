@@ -19,8 +19,8 @@
 
   const specificAnswers = [
     {
-      keywords: ['User Profile', 'Profile', 'my profile', 'user account', 'account page'],
-      answer: 'To access the user profile, you should sign up or login to your account. If you already done that, you can access the user profile by clicking on the user icon in the top right corner of the screen and selecting "User Profile".'
+      keywords: ['User Profile', 'Profile', 'my profile', 'user account', 'account page', 'profile page'],
+      topicId: 'profile'
     },
     {
       keywords: ['log history', 'logs', 'loggins history', 'loggins history page'],
@@ -35,15 +35,14 @@
     },
 
     {
-      keywords: ['profile', 'my profile', 'user profile', 'user account', 'account page', 'profile page'],
-      answer: 'I will direct you to the profile page now.',
-      action: () => goto('/profile')
+      keywords: ['workspace', 'workspace page', 'workspace page', 'workspace page', 'workspace page', 'workspace page', 'my assets', 'my assets page','my projects', 'my projects page'],
+      topicId: 'workspace'
     },
 
     {
-      keywords:["user settings", "user settings page", "settings", "settings page", "settings page", "settings page", "profile settings", "profile settings page"],
-      answer: 'I will direct you to the settings page now.',
-      action: () => goto('/profile_settings')
+      keywords: ["Projects", "Projects page", "projects", "projects page", "projects page", "projects page"],
+      answer: 'I will direct you to the projects page now.',
+      action: () => goto('/Projects')
     },
 
     {
@@ -67,20 +66,42 @@
 
   function checkSpecificAnswers(message) {
     const normalizedInput = message.toLowerCase();
-    
+    const isAuthenticated = !!$page.data.user; 
+
     for (const topic of specificAnswers) {
-      // More robust matching that checks for whole words
       if (topic.keywords.some(keyword => {
         const keywordLower = keyword.toLowerCase();
-        return normalizedInput.includes(keywordLower);
+        const regex = new RegExp(`\\b${keywordLower.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i');
+        return regex.test(normalizedInput);
       })) {
-        // Execute action if it exists
-        if (topic.action) {
-          setTimeout(() => {
-            topic.action();
-          }, 1000); // Short delay to allow user to see the message
+        let responseMessage = topic.answer;
+        let action = topic.action;
+
+        if (topic.topicId === 'profile') {
+          if (isAuthenticated) {
+            responseMessage = 'I will direct you to the profile page now.';
+            action = () => goto('/profile');
+          } else {
+            responseMessage = 'To access the user profile, you should sign up or login to your account. You can do this by clicking on the user icon in the top right corner of the screen.';
+            action = null;
+          }
+        } 
+        else if (topic.topicId === 'workspace') {
+          if (isAuthenticated) {
+            responseMessage = 'I will direct you to the workspace page now.';
+            action = () => goto('/Workspace');
+          } else {
+            responseMessage = 'To access the workspace, you need to be logged in. Please sign up or log in first.';
+            action = null;
+          }
         }
-        return topic.answer;
+
+        if (action) {
+          setTimeout(() => {
+            action();
+          }, 1000);
+        }
+        return responseMessage;
       }
     }
     
@@ -731,7 +752,6 @@
         content: `Found "${bestMatch.artifactId}" (${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}). Opening the asset form in Workspace...`
       }];
       
-      // Navigate to Workspace page with capital W
       goto('/Workspace');
       
       // Give the page a moment to load before dispatching the event
@@ -949,61 +969,66 @@
 
 <!-- Chat Interface - conditionally rendered -->
 {#if !isAuthPage}
-<div class="fixed bottom-5 right-5 z-50">
+<div class="fixed bottom-0 right-0 z-50 sm:bottom-5 sm:right-5">
   {#if $isChatOpen}
     <div class="relative group">
-      <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:blur-md transition-all duration-1000 group-hover:duration-200"></div>
-      <div class="relative w-[470px] h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col overflow-hidden">
-        <div class="p-4 bg-blue-600 text-white flex justify-between items-center">
-          <h3 class="m-0 font-medium">My Chatbot</h3>
+      <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:blur-md transition-all duration-1000 group-hover:duration-200 sm:block hidden"></div>
+      <!-- Adjusted size for mobile -->
+      <div class="relative w-screen h-[60vh] sm:w-[470px] sm:h-[500px] bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow-sm flex flex-col overflow-hidden">
+        <!-- Header - made more compact on mobile -->
+        <div class="p-2 sm:p-4 bg-blue-600 text-white flex justify-between items-center">
+          <h3 class="m-0 font-medium text-sm sm:text-base">My Chatbot</h3>
           <button 
-            class="bg-transparent border-none text-white text-2xl cursor-pointer" 
+            class="bg-transparent border-none text-white text-xl sm:text-2xl cursor-pointer" 
             on:click={toggleChat}
           >
             ×
           </button> 
         </div>
+
+        <!-- Chat Messages - adjusted padding for mobile -->
         <div 
-          class="flex-1 p-4 overflow-y-auto flex flex-col space-y-4" 
+          class="flex-1 p-2 sm:p-4 overflow-y-auto flex flex-col space-y-2 sm:space-y-4" 
           bind:this={chatContainer}
           on:scroll={handleScroll}
         >
           {#each $chatMessages.filter(msg => msg.role !== 'system') as message}
-            <div class={`p-3 rounded-2xl max-w-[90%] shadow-sm ${
+            <div class={`p-2 sm:p-3 rounded-2xl max-w-[90%] shadow-sm ${
               message.role === 'user' 
                 ? 'self-end bg-blue-600 text-white' 
                 : 'self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
             }`}
             in:fade={{ duration: 150 }}
             >
-              <p class="m-0 break-words whitespace-normal">{message.content}</p>
+              <p class="m-0 break-words whitespace-normal text-xs sm:text-sm">{message.content}</p>
             </div>
           {/each}
           {#if $isLoading}
-            <div class="self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-2xl max-w-[80%] opacity-70 shadow-sm"
+            <div class="self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-2 sm:p-3 rounded-2xl max-w-[80%] opacity-70 shadow-sm"
             in:fade={{ duration: 150 }}>
-              <p class="m-0">Thinking...</p>
+              <p class="m-0 text-xs sm:text-sm">Thinking...</p>
             </div>
           {/if}
         </div>
 
-        <div class="flex p-4 border-t border-gray-200 dark:border-gray-700">
-          <div class="p-1 flex gap-2">
+        <!-- Input Area - more compact for mobile -->
+        <div class="flex p-1 sm:p-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="p-1 flex gap-1 sm:gap-2 w-full">
             <input
               bind:value={userInput}
               placeholder="Type your message..."
-              class="flex-1 p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              class="flex-1 p-1 sm:p-2 text-xs sm:text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
               on:keydown={handleInputKeydown}
               on:input={handleInputChange}
             />
             <button 
               on:click={sendMessage} 
-              class="py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="py-1 px-2 sm:py-2 sm:px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
             >
               Send
             </button>
             <button 
-              class="bg-green-600 text-white border-none border-2 border-green-600 rounded-md px-2 py-1 cursor-pointer hover:bg-green-700 transition-colors"
+              class="bg-green-600 text-white border-none rounded-md px-2 py-1 cursor-pointer hover:bg-green-700 transition-colors text-xs sm:text-sm"
               on:click={() => {
                 const directMenu = document.getElementById('directMenu');
                 directMenu.classList.toggle('hidden');
@@ -1013,60 +1038,36 @@
             </button>
             <button 
               on:click={toggleGenerateMode} 
-              class={`py-1 px-3 ${isGenerateMode ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-${isGenerateMode ? 'red' : 'green'}-500`}
+              class={`py-1 px-2 ${isGenerateMode ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-${isGenerateMode ? 'red' : 'green'}-500 text-xs sm:text-sm`}
             >
               {isGenerateMode ? 'Cancel' : 'Generate'}
             </button>
           </div>
         </div> 
         
-        <!-- Direct menu dropdown -->
-        <div id="directMenu" class="hidden absolute bottom-[80px] right-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm z-10">
-          <div class="p-1 flex flex-col space-y-1">
-            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
-              on:click={() => { 
-                goto('/');
-                document.getElementById('directMenu').classList.add('hidden');
-              }}>
-              Home
-            </button>
-            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
-              on:click={() => { 
-                goto('/profile');
-                document.getElementById('directMenu').classList.add('hidden');
-              }}>
-              Profile
-            </button>
-            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
-              on:click={() => { 
-                goto('/Workspace');
-                document.getElementById('directMenu').classList.add('hidden');
-              }}>
-              Workspace
-            </button>
-            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
-              on:click={() => { 
-                goto('/logging');
-                document.getElementById('directMenu').classList.add('hidden');
-              }}>
-              Log History
-            </button>
-            <button class="text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
-              on:click={() => { 
-                goto('/profile_settings');
-                document.getElementById('directMenu').classList.add('hidden');
-              }}>
-              Settings
-            </button>
+        <!-- Direct menu dropdown - adjusted for mobile -->
+        <div id="directMenu" class="hidden absolute bottom-[60px] right-2 sm:bottom-[80px] sm:right-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm z-10 w-[150px] sm:w-[200px]">
+          <div class="p-1 flex flex-col space-y-1 max-h-[250px] sm:max-h-[300px] overflow-y-auto">
+            {#each ['Home', 'Profile', 'Workspace', 'Log History', 'Projects'] as route}
+              <button 
+                class="text-left px-3 py-2 sm:px-4 sm:py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors whitespace-normal w-full text-xs sm:text-sm"
+                on:click={() => { 
+                  goto(route === 'Log History' ? '/logging' : route === 'Workspace' ? '/Workspace' : route === 'Profile' ? '/profile' : `/${route === 'Home' ? '' : route}`);
+                  document.getElementById('directMenu').classList.add('hidden');
+                }}
+              >
+                {route}
+              </button>
+            {/each}
           </div>
         </div>
       </div>
     </div>
   {:else}
     <div class="relative group">
-      <div class="absolute -inset-1 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-full blur-md opacity-75 group-hover:blur-lg transition-all duration-1000 group-hover:duration-200"></div>
+      <div class="absolute -inset-1 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-full blur-md opacity-75 group-hover:blur-lg transition-all duration-1000 group-hover:duration-200 sm:block hidden"></div>
       <button 
-        class="relative bg-blue-600 text-white border-none rounded-full w-[60px] h-[60px] text-base cursor-pointer shadow-md hover:bg-blue-700 transition-colors"
+        class="relative bg-blue-600 text-white border-none rounded-full w-[40px] h-[40px] sm:w-[60px] sm:h-[60px] text-xs sm:text-base cursor-pointer shadow-md hover:bg-blue-700 transition-colors"
         on:click={toggleChat}
       >
         Chat
