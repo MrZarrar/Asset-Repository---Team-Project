@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Plus, Upload, Check } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Plus, Upload, Check, X } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -262,6 +262,10 @@
 
   function goToWorkspace() {
     window.location.href = '/Workspace';
+  }
+
+  function closeCopyPopup() {
+    showCopyPopup = false;
   }
 
   // Update your onMount function to use proper authentication
@@ -582,8 +586,14 @@ input[type="file"].hidden {
   {#if showCopyPopup}
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
          transition:fade={{ duration: 300 }}>
-      <div class="bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+      <div class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={closeCopyPopup}
+        >
+          <X class="w-5 h-5" />
+        </button>
         <p class="text-lg font-semibold">Asset copied successfully!</p>
         <button
           class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
