@@ -52,24 +52,30 @@
   let myMavenCopiedIndex = -1;
   let myGradleCopiedIndex = -1;
 
+  // Add separate state variables for added and copied assets
+  let addedMavenCopiedIndex = -1;
+  let addedGradleCopiedIndex = -1;
+  let copiedMavenCopiedIndex = -1;
+  let copiedGradleCopiedIndex = -1;
+
   // Function to handle copying with visual feedback
-  function copyToClipboard(text, type, index, isMyAsset = false) {
+  function copyToClipboard(text, type, index, isAddedAsset = true) {
     navigator.clipboard.writeText(text).then(() => {
       if (type === 'maven') {
-        if (isMyAsset) {
-          myMavenCopiedIndex = index;
-          setTimeout(() => myMavenCopiedIndex = -1, 2000); // Reset after 2 seconds
+        if (isAddedAsset) {
+          addedMavenCopiedIndex = index;
+          setTimeout(() => (addedMavenCopiedIndex = -1), 2000); // Reset after 2 seconds
         } else {
-          mavenCopiedIndex = index;
-          setTimeout(() => mavenCopiedIndex = -1, 2000); // Reset after 2 seconds
+          copiedMavenCopiedIndex = index;
+          setTimeout(() => (copiedMavenCopiedIndex = -1), 2000); // Reset after 2 seconds
         }
       } else if (type === 'gradle') {
-        if (isMyAsset) {
-          myGradleCopiedIndex = index;
-          setTimeout(() => myGradleCopiedIndex = -1, 2000); 
+        if (isAddedAsset) {
+          addedGradleCopiedIndex = index;
+          setTimeout(() => (addedGradleCopiedIndex = -1), 2000);
         } else {
-          gradleCopiedIndex = index;
-          setTimeout(() => gradleCopiedIndex = -1, 2000); 
+          copiedGradleCopiedIndex = index;
+          setTimeout(() => (copiedGradleCopiedIndex = -1), 2000);
         }
       }
     });
@@ -746,14 +752,16 @@
       <section>
         <div class="flex justify-between items-center mb-8">
           <h2 class="text-2xl font-semibold">Added Assets</h2>
-          {#if !addingAsset}
-            <button 
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
-              on:click={() => addingAsset = true}
-            >
-              <Plus class="w-4 h-4" />
-              Add New Asset
-            </button>
+          {#if role === 'user' || role === 'admin'}
+            {#if !addingAsset}
+              <button 
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                on:click={() => addingAsset = true}
+              >
+                <Plus class="w-4 h-4" />
+                Add New Asset
+              </button>
+            {/if}
           {/if}
         </div>
         
@@ -899,14 +907,14 @@
                       <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
                         <div class="flex mt-1 space-x-1">
                           <button 
-                            class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            class="px-2 py-1 text-xs {addedMavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {addedMavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
                               const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
-                              copyToClipboard(xmlDependency, 'maven', i);
+                              copyToClipboard(xmlDependency, 'maven', i, true);
                             }}
                           >
-                            {#if mavenCopiedIndex === i}
+                            {#if addedMavenCopiedIndex === i}
                               <Check class="w-3 h-3" />
                               Copied!
                             {:else}
@@ -914,14 +922,14 @@
                             {/if}
                           </button>
                           <button 
-                            class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            class="px-2 py-1 text-xs {addedGradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {addedGradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
                               const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
-                              copyToClipboard(gradleDependency, 'gradle', i);
+                              copyToClipboard(gradleDependency, 'gradle', i, true);
                             }}
                           >
-                            {#if gradleCopiedIndex === i}
+                            {#if addedGradleCopiedIndex === i}
                               <Check class="w-3 h-3" />
                               Copied!
                             {:else}
@@ -1025,14 +1033,14 @@
                       <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
                         <div class="flex mt-1 space-x-1">
                           <button 
-                            class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            class="px-2 py-1 text-xs {copiedMavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {copiedMavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
                               const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
-                              copyToClipboard(xmlDependency, 'maven', i);
+                              copyToClipboard(xmlDependency, 'maven', i, false);
                             }}
                           >
-                            {#if mavenCopiedIndex === i}
+                            {#if copiedMavenCopiedIndex === i}
                               <Check class="w-3 h-3" />
                               Copied!
                             {:else}
@@ -1040,14 +1048,14 @@
                             {/if}
                           </button>
                           <button 
-                            class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            class="px-2 py-1 text-xs {copiedGradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {copiedGradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
                               const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
-                              copyToClipboard(gradleDependency, 'gradle', i);
+                              copyToClipboard(gradleDependency, 'gradle', i, false);
                             }}
                           >
-                            {#if gradleCopiedIndex === i}
+                            {#if copiedGradleCopiedIndex === i}
                               <Check class="w-3 h-3" />
                               Copied!
                             {:else}

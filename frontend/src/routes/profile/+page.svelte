@@ -2,8 +2,21 @@
 	import { removeAvatar } from '../../lib/api.js';
 	import { user } from '../../lib/user.js';
 	import { User, Download, ChevronDown } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 
 	let fileInput;
+	let popupMessage = '';
+	let showPopup = false;
+	let popupType = 'success'; // 'success' or 'error'
+
+	function showPopupMessage(message, type = 'success') {
+		popupMessage = message;
+		popupType = type;
+		showPopup = true;
+		setTimeout(() => {
+			showPopup = false;
+		}, 3000); // Hide popup after 3 seconds
+	}
 
 	async function profilePictureChange(event) {
 		const file = event.target.files[0];
@@ -29,10 +42,11 @@
 				user.update((currentUser) => ({
 					...currentUser,
 					avatar: imageUrl
-				}));
+					}));
+				showPopupMessage('Profile picture updated successfully!', 'success');
 			} catch (error) {
 				console.error('Error updating profile picture:', error);
-				alert('Error updating profile picture. Please try again.');
+				showPopupMessage('Error updating profile picture. Please try again.', 'error');
 			}
 		}
 	}
@@ -69,10 +83,11 @@
 				avatar: updatedUser.avatar,
 				role: updatedUser.role
 			});
-			alert('Profile updated successfully');
+			showPopupMessage('Profile updated successfully!', 'success');
+			location.reload(); // Refresh the page after saving changes
 		} catch (error) {
 			console.error('Error updating profile:', error);
-			alert('Error updating profile. Please try again.');
+			showPopupMessage('Error updating profile. Please try again.', 'error');
 		}
 	}
 </script>
@@ -228,3 +243,29 @@
 		</div>
 	</form>
 </div>
+
+<!-- Popup Component -->
+{#if showPopup}
+	<div
+		class="fixed inset-0 flex items-center justify-center"
+		style="align-items: flex-end; padding-right:5% ;padding-bottom: 29%;"
+	>
+		<div
+			class="px-6 py-4 rounded-md shadow-lg text-white text-lg"
+			class:success={popupType === 'success'}
+			class:error={popupType === 'error'}
+			style="background-color: {popupType === 'success' ? '#4CAF50' : '#F44336'};"
+		>
+			{popupMessage}
+		</div>
+	</div>
+{/if}
+
+<style>
+	.success {
+		background-color: #4caf50;
+	}
+	.error {
+		background-color: #f44336;
+	}
+</style>
