@@ -13,7 +13,13 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
     let filterString = '';
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
-        filterString += `${key}="${value}" && `;
+        if (Array.isArray(value)) {
+          // Fix: Use OR (||) condition instead of invalid syntax
+          const orConditions = value.map(val => `${key}="${val}"`).join(' || ');
+          filterString += `(${orConditions}) && `;
+        } else {
+          filterString += `${key}="${value}" && `;
+        }
       }
     });
     if (filterString) {
