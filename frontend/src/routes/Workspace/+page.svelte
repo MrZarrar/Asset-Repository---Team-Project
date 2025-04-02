@@ -31,7 +31,7 @@
   let addingAsset = false;
   let assetError = null;
   let newAsset = {
-    asset_id: "",
+    id: "",
     logo: null,
     name: "",
     version: "",
@@ -91,9 +91,9 @@
   // Function to add a new asset
   async function addAsset() {
     try {
-      // Set asset_id to undefined if left blank
-      if (!newAsset.asset_id) {
-        newAsset.asset_id = undefined;
+      // Set id to undefined if left blank
+      if (!newAsset.id) {
+        newAsset.id = undefined;
       }
 
       // Check if we have a POM file in newAsset
@@ -101,8 +101,8 @@
         console.log("No POM file found, searching for it...");
         // Try to fetch POM file as a backup if not already present
         try {
-          const groupId = newAsset.asset_id.split(':')[0];
-          const artifactId = newAsset.asset_id.split(':')[1] || newAsset.name;
+          const groupId = newAsset.id.split(':')[0];
+          const artifactId = newAsset.id.split(':')[1] || newAsset.name;
           const version = newAsset.version;
           
           const response = await fetch(
@@ -162,7 +162,7 @@
 
       // Reset form fields
       newAsset = {
-        asset_id: "",
+        id: "",
         logo: null,
         name: "",
         version: "",
@@ -219,7 +219,7 @@
         // Fill the form with the data from the event
         newAsset = {
           ...newAsset,
-          asset_id: event.detail.asset_id || "",
+          id: event.detail.id || "",
           name: event.detail.name || "",
           version: event.detail.version || "",
           type: event.detail.type || "maven",
@@ -642,7 +642,7 @@
                           class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                           on:click|stopPropagation={(e) => {
                             e.preventDefault();
-                            const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                            const xmlDependency = `<dependency>\n    <groupId>${asset.id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
                             copyToClipboard(xmlDependency, 'maven', i);
                           }}
                         >
@@ -657,7 +657,7 @@
                           class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                           on:click|stopPropagation={(e) => {
                             e.preventDefault();
-                            const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                            const gradleDependency = `implementation '${asset.id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
                             copyToClipboard(gradleDependency, 'gradle', i);
                           }}
                         >
@@ -772,7 +772,7 @@
             <form on:submit|preventDefault={addAsset}>
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
-                <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                <input type="text" bind:value={newAsset.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to auto-generate an ID</p>
               </div>
               <div class="mb-4">
@@ -910,7 +910,7 @@
                             class="px-2 py-1 text-xs {addedMavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {addedMavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
                               copyToClipboard(xmlDependency, 'maven', i, true);
                             }}
                           >
@@ -925,7 +925,7 @@
                             class="px-2 py-1 text-xs {addedGradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {addedGradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              const gradleDependency = `implementation '${asset.id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
                               copyToClipboard(gradleDependency, 'gradle', i, true);
                             }}
                           >
@@ -1039,7 +1039,7 @@
                             class="px-2 py-1 text-xs {copiedMavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {copiedMavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
                               copyToClipboard(xmlDependency, 'maven', i, false);
                             }}
                           >
@@ -1054,7 +1054,7 @@
                             class="px-2 py-1 text-xs {copiedGradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {copiedGradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              const gradleDependency = `implementation '${asset.id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
                               copyToClipboard(gradleDependency, 'gradle', i, false);
                             }}
                           >
