@@ -210,6 +210,7 @@
 							autocomplete="email"
 							class="block w-full rounded-md bg-white px-3 py-1.5 text-base bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-black focus:ring-2 focus:ring-indigo-600 sm:text-sm"
 							placeholder="Email address"
+							disabled
 							bind:value={$user.email}
 						/>
 					</div>
