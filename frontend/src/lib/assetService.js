@@ -36,10 +36,38 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
   }
 }
 
+// Get a single asset by Filtering
+export async function getAssetByFilters(filters = {}) {
+  let filterString = '';
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        filterString += `${key}="${value}" && `;
+      }
+    });
+    if (filterString) {
+      filterString = filterString.slice(0, -4); // Remove trailing ' && '
+    }
+  try {
+    const asset = await pb.collection('Assets').getFullList({filter: filterString, sort: '-created',});
+    console.log(asset)
+    return asset;
+  } catch (error) {
+    if (error.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return getAssetByFilters(filters);
+      }
+    }
+    console.error(`Error fetching asset ${filters}:`, error);
+    throw error;
+  }
+}
+
 // Get a single asset by ID
 export async function getAssetById(id) {
   try {
     const asset = await pb.collection('Assets').getOne(id);
+    console.log(asset)
     return asset;
   } catch (error) {
     if (error.status === 401) {
