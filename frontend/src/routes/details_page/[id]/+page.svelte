@@ -102,6 +102,8 @@ implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.v
           console.log("License info:", asset.licence_info);
           // Compute dependency texts after the asset is loaded:
           computeDependencyTexts(asset);
+          originalMavenDep = mavenDep;
+          originalGradleDep = gradleDep;
         } catch (err) {
           error = `Failed to load asset details: ${err.message}`;
         }
@@ -272,6 +274,35 @@ implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.v
   }
 
   let updatedAsset = { ...asset };
+  let hasChanges = false;
+  
+  // Function to check if there are any changes
+  function checkForChanges() {
+    // Compare updatedAsset with original asset
+    for (const key in updatedAsset) {
+      if (updatedAsset[key] !== asset[key]) {
+        hasChanges = true;
+        return;
+      }
+    }
+    // Also check dependency text changes
+    if (mavenDep !== originalMavenDep || gradleDep !== originalGradleDep) {
+      hasChanges = true;
+      return;
+    }
+    hasChanges = false;
+  }
+  
+  // Store original dependency texts
+  let originalMavenDep = "";
+  let originalGradleDep = "";
+  
+  // Add a reactive statement to check for changes whenever updatedAsset, mavenDep, or gradleDep changes
+  $: {
+    if (asset && updatedAsset) {
+      checkForChanges();
+    }
+  }
 
   // Function to handle copying with visual feedback
   function copyToClipboard(text, type) {
@@ -490,14 +521,22 @@ input[type="file"].hidden {
           <div>
             <h1 class="text-3xl font-bold mb-4">
               {#if editing}
-                <input type="text" bind:value={updatedAsset.name} class="border rounded p-2 w-full editing" />
+                <input type="text" 
+                  bind:value={updatedAsset.name} 
+                  on:input={checkForChanges}
+                  class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" 
+                />
               {:else}
                 {asset ? asset.name : 'Asset Not Found'}
               {/if}
             </h1>
             <p class="text-gray-600 dark:text-gray-300 max-w-3xl">
               {#if editing}
-                <textarea bind:value={updatedAsset.usage_info} class="border rounded p-2 w-full editing"></textarea>
+                <textarea 
+                  bind:value={updatedAsset.usage_info} 
+                  on:input={checkForChanges}
+                  class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                ></textarea>
               {:else}
                 {asset ? asset.usage_info : "Unable to find the requested asset."}
               {/if}
@@ -513,7 +552,11 @@ input[type="file"].hidden {
               <div class="font-semibold mb-2">Version</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <input type="text" bind:value={updatedAsset.version} class="border rounded p-2 w-full editing" />
+                  <input type="text" 
+                    bind:value={updatedAsset.version} 
+                    on:input={checkForChanges}
+                    class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" 
+                  />
                 {:else}
                   {asset.version || "Not specified"}
                 {/if}
@@ -525,7 +568,11 @@ input[type="file"].hidden {
               <div class="font-semibold mb-2">Type</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <input type="text" bind:value={updatedAsset.type} class="border rounded p-2 w-full editing" />
+                  <input type="text" 
+                    bind:value={updatedAsset.type} 
+                    on:input={checkForChanges}
+                    class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" 
+                  />
                 {:else}
                   {asset.type || "Not specified"}
                 {/if}
@@ -536,7 +583,11 @@ input[type="file"].hidden {
               <div class="font-semibold mb-2">Last Updated</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <input type="date" bind:value={updatedAsset.date_updated} class="border rounded p-2 w-full editing" />
+                  <input type="date" 
+                    bind:value={updatedAsset.date_updated} 
+                    on:input={checkForChanges}
+                    class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" 
+                  />
                 {:else}
                   {asset.date_updated ? new Date(asset.date_updated).toISOString().split('T')[0] : "Not specified"}
                 {/if}
@@ -547,7 +598,11 @@ input[type="file"].hidden {
               <div class="font-semibold mb-2">Created</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <input type="date" bind:value={updatedAsset.date_created} class="border rounded p-2 w-full editing" />
+                  <input type="date" 
+                    bind:value={updatedAsset.date_created} 
+                    on:input={checkForChanges}
+                    class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white" 
+                  />
                 {:else}
                   {asset.date_created ? new Date(asset.date_created).toISOString().split('T')[0] : "Not specified"}
                 {/if}
@@ -559,7 +614,11 @@ input[type="file"].hidden {
               <div class="font-semibold mb-2">License</div>
               <div class="text-gray-800 dark:text-gray-200">
                 {#if editing}
-                  <textarea bind:value={updatedAsset.licence_info} class="border rounded p-2 w-full editing"></textarea>
+                  <textarea 
+                    bind:value={updatedAsset.licence_info} 
+                    on:input={checkForChanges}
+                    class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  ></textarea>
                 {:else}
                   {asset.licence_info || "Not specified"}
                 {/if}
@@ -573,9 +632,17 @@ input[type="file"].hidden {
                 {#if editing}
                   <div class="flex flex-col gap-2">
                     <label class="text-sm">Maven Dependency (XML):</label>
-                    <textarea bind:value={mavenDep} class="border rounded p-2 w-full editing"></textarea>
+                    <textarea 
+                      bind:value={mavenDep} 
+                      on:input={checkForChanges}
+                      class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                    ></textarea>
                     <label class="text-sm">Gradle Dependency:</label>
-                    <textarea bind:value={gradleDep} class="border rounded p-2 w-full editing"></textarea>
+                    <textarea 
+                      bind:value={gradleDep} 
+                      on:input={checkForChanges}
+                      class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                    ></textarea>
                   </div>
                 {:else}
                   <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
@@ -650,7 +717,9 @@ input[type="file"].hidden {
                   {#if editing}
                     <button
                       on:click={updateAsset}
-                      class="bg-green-600 hover:bg-green-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2"
+                      disabled={!hasChanges}
+                      class="bg-green-600 hover:bg-green-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2 
+                      {!hasChanges ? 'opacity-50 cursor-not-allowed bg-green-700' : ''}"
                     >
                       Save
                     </button>
@@ -741,7 +810,7 @@ input[type="file"].hidden {
 
   <!-- Add the confirmation popup -->
   {#if showConfirmPopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white bg-opacity-50 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
@@ -769,7 +838,7 @@ input[type="file"].hidden {
 
   <!-- Add the delete popup notification -->
   {#if showDeletePopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
@@ -798,7 +867,7 @@ input[type="file"].hidden {
 
   <!-- Update Popup Notification -->
   {#if showUpdatePopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>

@@ -300,7 +300,7 @@
 <!-- Popup Component -->
 {#if showPopup}
 	<div
-		class="fixed inset-0 flex items-center justify-center bg-black z-50"
+		class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
 		transition:fade={{ duration: 300 }}
 	>
 		<div
