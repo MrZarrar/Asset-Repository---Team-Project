@@ -37,16 +37,17 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
 }
 
 // Get a single asset by Filtering
-export async function getAssetByFilters(filters = {}) {
+export async function getAssetsByFilters(filters = {}) {
   let filterString = '';
   filterString += '('
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         filterString += `${key}="${value}" && `;
       }
-      filterString += `add_type!="copied")`;
     });
+
     if (filterString) {
+      filterString += `add_type!="copied")`;
       //filterString = filterString.slice(0, -4); // Remove trailing ' && '
       //filterString.concat("add_type != copied ");
     }
@@ -58,7 +59,7 @@ export async function getAssetByFilters(filters = {}) {
     if (error.status === 401) {
       const refreshed = await refreshToken();
       if (refreshed) {
-        return getAssetByFilters(filters);
+        return getAssetsByFilters(filters);
       }
     }
     console.error(`Error fetching asset ${filters}:`, error);
