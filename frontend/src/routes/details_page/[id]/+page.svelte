@@ -390,6 +390,27 @@ input[type="file"].hidden {
     transform: scale(1);
   }
 }
+
+/* Update delete circle styles to match the image */
+.delete-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #e74c3c; /* Solid red background */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add subtle shadow */
+}
+
+.delete-icon {
+  width: 24px; /* Shorter width for the minus sign */
+  height: 4px; /* Thicker height for the minus sign */
+  background-color: white;
+  border-radius: 2px; /* Slightly rounded edges */
+}
 </style>
 
 <svelte:head>
@@ -720,8 +741,10 @@ input[type="file"].hidden {
 
   <!-- Add the confirmation popup -->
   {#if showConfirmPopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4">
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400">
           Are you sure you want to delete this asset? This action cannot be undone.
@@ -746,18 +769,24 @@ input[type="file"].hidden {
 
   <!-- Add the delete popup notification -->
   {#if showDeletePopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-red-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        
+        <div class="delete-circle">
+          <div class="delete-icon"></div>
+        </div>
         <p class="text-lg font-semibold">Asset deleted successfully!</p>
-        <div class="flex space-x-4">
+        <div class="flex space-x-4 mt-2">
           <button
-            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100"
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
             on:click={goToDashboard}
           >
-            Go to Dashboard
+            Go to Home Page
           </button>
           <button
-            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100"
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
             on:click={goToWorkspace}
           >
             Go to My Assets
