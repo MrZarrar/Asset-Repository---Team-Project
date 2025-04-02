@@ -25,7 +25,7 @@
     licence_info: "",
     usage_info: "",
     file: "",
-    asset_id: "", // used to compute dependency text (e.g., "group:artifact")
+    id: "", // used to compute dependency text (e.g., "group:artifact")
     
   };
   
@@ -57,13 +57,13 @@
   function computeDependencyTexts(assetData) {
     mavenDep = `// Maven
 <dependency>
-  <groupId>${assetData.asset_id?.split(':')[0] || 'com.example'}</groupId>
-  <artifactId>${assetData.asset_id?.split(':')[1] || assetData.name}</artifactId>
+  <groupId>${assetData.id?.split(':')[0] || 'com.example'}</groupId>
+  <artifactId>${assetData.id?.split(':')[1] || assetData.name}</artifactId>
   <version>${assetData.version || '1.0.0'}</version>
 </dependency>`;
   
     gradleDep = `// Gradle
-implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${assetData.version || '1.0.0'}'`;
+implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.version || '1.0.0'}'`;
   }
 
   // Function to fetch a specific asset by id

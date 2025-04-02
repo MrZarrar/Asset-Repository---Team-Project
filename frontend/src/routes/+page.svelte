@@ -60,7 +60,7 @@
   // Add these variables for adding a new asset
   let addingAsset = false;
   let newAsset = {
-    asset_id: "",
+    id: "",
     logo: null,
     name: "",
     version: "",
@@ -97,9 +97,9 @@
   // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
     try {
-      // Set asset_id to undefined if left blank
-      if (!newAsset.asset_id) {
-        newAsset.asset_id = undefined;
+      // Set id to undefined if left blank
+      if (!newAsset.id) {
+        newAsset.id = undefined;
       }
 
       // Check if we have a POM file in newAsset
@@ -107,8 +107,8 @@
         console.log("No POM file found, searching for it...");
         // Try to fetch POM file as a backup if not already present
         try {
-          const groupId = newAsset.asset_id.split(':')[0];
-          const artifactId = newAsset.asset_id.split(':')[1] || newAsset.name;
+          const groupId = newAsset.id.split(':')[0];
+          const artifactId = newAsset.id.split(':')[1] || newAsset.name;
           const version = newAsset.version;
           
           const response = await fetch(
@@ -166,7 +166,7 @@
 
         // Reset form fields
         newAsset = {
-            asset_id: "",
+            id: "",
             logo: null,
             name: "",
             version: "",
@@ -491,7 +491,7 @@ input[type="file"].hidden {
                             class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
                               copyToClipboard(xmlDependency, 'maven', i);
                             }}
                           >
@@ -506,7 +506,7 @@ input[type="file"].hidden {
                             class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              const gradleDependency = `implementation '${asset.id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
                               copyToClipboard(gradleDependency, 'gradle', i);
                             }}
                           >
