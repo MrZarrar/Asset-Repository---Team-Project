@@ -1,10 +1,12 @@
-  <script>
+<script>
     import { writable } from 'svelte/store';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import { Search, User, Download, ChevronDown } from "@lucide/svelte";
     import { authStore, logout } from '$lib/auth';
     import { user } from '$lib/user.js';
+    import { onMount, onDestroy } from 'svelte';
+    import { browser } from '$app/environment';
   
     let isMobileMenuOpen = false;
     let isSearchMenuOpen = false;
@@ -43,8 +45,8 @@
     $: currentPath = $page.url.pathname;
     $: isDashboardActive = currentPath === '/'
     $: isLoggingActive = currentPath === '/logging';
-    $: isProjectsActive = currentPath === '/Projects'; // Add this for Projects page
-    $: isWorkspaceActive = currentPath === '/Workspace';//this page is not created yet
+    $: isProjectsActive = currentPath === '/Projects'; 
+    $: isWorkspaceActive = currentPath === '/Workspace';
 
     // handles navigation for all pages
     function handleNavigation(event, targetPath) {
@@ -64,6 +66,49 @@
             console.error("Logout error:", error);
         }
     }
+
+    $: role = $user.role;
+
+    function handleWorkspaceNavigation(event) {
+      if (role === 'viewer') {
+        event.preventDefault();
+        goto('/AccessDenied');
+      }
+    }
+
+    // Handle clicking outside of menus
+    function handleClickOutside(event) {
+      // User menu outside click
+      if (isUserMenuOpen && !event.target.closest('#user-menu-button') && 
+          !event.target.closest('[role="menu"]')) {
+        isUserMenuOpen = false;
+      }
+      
+      // Download menu outside click
+      if (isDownloadMenuOpen && !event.target.closest('[on\\:click="toggleDownloadMenu"]') && 
+          !event.target.closest('[role="menu"]')) {
+        isDownloadMenuOpen = false;
+      }
+      
+      // Search menu outside click
+      if (isSearchMenuOpen && !event.target.closest('#dropdown-button') && 
+          !event.target.closest('.absolute.z-50')) {
+        isSearchMenuOpen = false;
+      }
+    }
+    
+    // Set up and clean up click handler
+    onMount(() => {
+      if (browser) {
+        document.addEventListener('click', handleClickOutside);
+      }
+    });
+    
+    onDestroy(() => {
+      if (browser) {
+        document.removeEventListener('click', handleClickOutside);
+      }
+    });
 
 </script>
   
@@ -99,14 +144,16 @@
                on:click={(e) => handleNavigation(e, '/')}
                class="rounded-md {isDashboardActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300" 
                aria-current={isDashboardActive ? 'page' : undefined}>
-              Dashboard
+              Home
             </a>
-            <a href="/logging" 
-               on:click={(e) => handleNavigation(e, '/logging')}
-               class="rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
-               aria-current={isLoggingActive ? 'page' : undefined}>
-              Log History
-            </a>
+            {#if role === 'admin'}
+              <a href="/logging" 
+                 on:click={(e) => handleNavigation(e, '/logging')}
+                 class="rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+                 aria-current={isLoggingActive ? 'page' : undefined}>
+                Log History
+              </a>
+            {/if}
             <a href="/Projects" 
                on:click={(e) => handleNavigation(e, '/Projects')}
                class="rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
@@ -114,7 +161,7 @@
               Projects
             </a>
             <a href="/Workspace" 
-               on:click={(e) => handleNavigation(e, '/Workspace')}
+               on:click={handleWorkspaceNavigation}
                class="rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
                aria-current={isWorkspaceActive ? 'page' : undefined}>
               Workspace
@@ -185,21 +232,7 @@
           </div>
         </div>
 
-        <!-- Desktop right icons (Download and Profile) -->
-        <div class="flex items-center space-x-4 ml-auto">
-          <div class="relative">
-            <button type="button"
-              on:click={toggleDownloadMenu}
-              class="rounded-full text-black dark:bg-gray-800 p-1 dark:text-gray-400 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden hover:scale-105 transition-all duration-300">
-              <span class="absolute -inset-1.5"></span>
-              <span class="sr-only">View notifications</span>
-              <Download class="size-6" />
-            </button>   
-            <div class={`${isDownloadMenuOpen ? 'block' : 'hidden'} absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md dark:bg-gray-800 dark:text-white bg-white py-1  shadow-lg ring-1 ring-black/5 focus:outline-hidden`}
-              role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-              <span class="block px-4 py-2 text-sm font-semibold text-gray-700 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-all duration-300">Nothing is downloaded yet.</span>
-            </div>
-          </div>
+
 
           <!-- Profile dropdown -->
           <div class="relative">
@@ -231,7 +264,6 @@
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Mobile Menu (visible only on screens below md) -->
     <div class={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden`} id="mobile-menu">
@@ -241,14 +273,16 @@
            on:click={(e) => handleNavigation(e, '/')}
            class="block rounded-md {isDashboardActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium" 
            aria-current={isDashboardActive ? 'page' : undefined}>
-          Dashboard
+          Home
         </a>
-        <a href="/logging" 
-           on:click={(e) => handleNavigation(e, '/logging')}
-           class="block rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
-           aria-current={isLoggingActive ? 'page' : undefined}>
-          Log History
-        </a>
+        {#if role === 'admin'}
+          <a href="/logging" 
+             on:click={(e) => handleNavigation(e, '/logging')}
+             class="block rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
+             aria-current={isLoggingActive ? 'page' : undefined}>
+            Log History
+          </a>
+        {/if}
         <a href="/Projects" 
            on:click={(e) => handleNavigation(e, '/Projects')}
            class="block rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
@@ -256,7 +290,7 @@
           Projects
         </a>
         <a href="/Workspace" 
-           on:click={(e) => handleNavigation(e, '/Workspace')}
+           on:click={handleWorkspaceNavigation}
            class="block rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
            aria-current={isWorkspaceActive ? 'page' : undefined}>
           Workspace

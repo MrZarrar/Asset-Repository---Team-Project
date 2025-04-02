@@ -1,14 +1,25 @@
 import pb from '$lib/pocketbase';
 import { refreshToken } from './authManager';
+import { user } from '$lib/user.js';
+import { UsersRoundIcon } from '@lucide/svelte';
 
 // Fetch all assets with pagination support
 export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
   try {
+    // Disable auto-cancellation globally for the PocketBase client
+    pb.autoCancellation(false);
+
     // Build filter string if needed
     let filterString = ''; // initalises an empty string to hold all the filters
     Object.entries(filters).forEach(([key, value]) => { // for each value in the JSON filters input, it will format it into a string to be sent with the GET command
       if (value) {
-        filterString += `${key}="${value}" && `;
+        if (Array.isArray(value)) {
+          // Fix: Use OR (||) condition instead of invalid syntax
+          const orConditions = value.map(val => `${key}="${val}"`).join(' || ');
+          filterString += `(${orConditions}) && `;
+        } else {
+          filterString += `${key}="${value}" && `;
+        }
       }
     });
     if (filterString) {
@@ -18,9 +29,10 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
     const response = await pb.collection('Assets').getList(page, perPage, {
       filter: filterString,
       sort: '-created',
-      expand: 'category' // Add any relations you need to expand
-    }); // ACTUALLY fetches the assets from pocketbase
-    
+      expand: 'category, logo, file', // Add any relations you need to expand
+      autoCancel: false // Disable auto-cancellation
+    });
+
     return response;
   } catch (error) {
     // Handle token expiration
@@ -110,4 +122,4 @@ export async function uploadAsset(assetData, fileData) {
     console.error("Error uploading asset:", error);
     throw error;
   }
-} 
+}

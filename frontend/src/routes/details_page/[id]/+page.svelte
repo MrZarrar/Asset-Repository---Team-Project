@@ -6,6 +6,8 @@
   import { page } from '$app/stores';
   import { logActions } from '../../../js/logging.pb.js';
   import { user } from '$lib/user.js';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
 
   $: role = $user.role;
 
@@ -25,7 +27,7 @@
     licence_info: "",
     usage_info: "",
     file: "",
-    asset_id: "", // used to compute dependency text (e.g., "group:artifact")
+    id: "", // used to compute dependency text (e.g., "group:artifact")
     
   };
   
@@ -43,6 +45,7 @@
   let downloading = false;
   let downloadError = null;
   let availableFields = [];
+  let showDeletePopup = false;
 
   // Add state for copy feedback
   let mavenCopied = false;
@@ -56,13 +59,13 @@
   function computeDependencyTexts(assetData) {
     mavenDep = `// Maven
 <dependency>
-  <groupId>${assetData.asset_id?.split(':')[0] || 'com.example'}</groupId>
-  <artifactId>${assetData.asset_id?.split(':')[1] || assetData.name}</artifactId>
+  <groupId>${assetData.id?.split(':')[0] || 'com.example'}</groupId>
+  <artifactId>${assetData.id?.split(':')[1] || assetData.name}</artifactId>
   <version>${assetData.version || '1.0.0'}</version>
 </dependency>`;
   
     gradleDep = `// Gradle
-implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${assetData.version || '1.0.0'}'`;
+implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.version || '1.0.0'}'`;
   }
 
   // Function to fetch a specific asset by id
@@ -136,6 +139,15 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
     }
   });
 
+  let showUpdatePopup = false;
+
+  function showUpdateNotification() {
+    showUpdatePopup = true;
+    setTimeout(() => {
+      showUpdatePopup = false;
+    }, 2000);
+  }
+
   async function updateAsset() {
     try {
       const formData = new FormData();
@@ -157,6 +169,9 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
       editing = false; // Exit edit mode after saving
       console.log("Asset updated successfully:", updatedRecord);
 
+      // Show the update popup notification
+      showUpdateNotification();
+
       // Log updating of an asset
       logActions("updated", assetId, $user.email);
 
@@ -165,20 +180,42 @@ implementation '${assetData.asset_id || `com.example:${assetData.name}`}:${asset
     }
   }
 
+  let showConfirmPopup = false;
+
   async function deleteAsset() {
+    if (!showConfirmPopup) {
+      showConfirmPopup = true;
+      return;
+    }
+
     try {
-      id_ = assetId
       await pb.collection('assets').delete(assetId);
       console.log("Asset deleted successfully");
 
-      // Log deleting of an asset
-      logActions("deleted", id_, $user.email);
+      // Show the popup notification
+      showDeletePopup = true;
 
-      window.location.href = '/'; // Redirect to home page after deletion
+      // Log deleting of an asset
+      logActions("deleted", assetId, $user.email);
     } catch (err) {
       console.error("Error deleting asset:", err);
+    } finally {
+      showConfirmPopup = false;
     }
   }
+
+  function cancelDelete() {
+    showConfirmPopup = false;
+  }
+
+  function goToDashboard() {
+    window.location.href = '/';
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
+  }
+
 
   /**
    * Function to download an asset file from meta_data
@@ -631,4 +668,70 @@ input[type="file"].hidden {
       
     </aside>
   </div>
+
+  <!-- Add the confirmation popup -->
+  {#if showConfirmPopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to delete this asset? This action cannot be undone.
+        </p>
+        <div class="flex justify-center space-x-4">
+          <button
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+            on:click={deleteAsset}
+          >
+            Confirm
+          </button>
+          <button
+            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
+            on:click={cancelDelete}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Add the delete popup notification -->
+  {#if showDeletePopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-red-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4">
+        <p class="text-lg font-semibold">Asset deleted successfully!</p>
+        <div class="flex space-x-4">
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100"
+            on:click={goToDashboard}
+          >
+            Go to Dashboard
+          </button>
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100"
+            on:click={goToWorkspace}
+          >
+            Go to My Assets
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Update Popup Notification -->
+  {#if showUpdatePopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-blue-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={() => (showUpdatePopup = false)}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <p class="text-lg font-semibold">Asset updated successfully!</p>
+      </div>
+    </div>
+  {/if}
 </main>

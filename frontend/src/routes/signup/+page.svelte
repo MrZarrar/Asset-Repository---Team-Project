@@ -2,6 +2,8 @@
     import { signUp } from '$lib/auth';
     import { goto } from '$app/navigation';
     import { user } from '$lib/user.js';
+    import { login } from '$lib/auth';
+    import { onMount } from 'svelte';
 
     let email = "";
     let password = "";
@@ -9,12 +11,17 @@
     let username = "";
     let name = "";
     let errorMessage = "";
+    let successMessage = "";
 
     async function handleSignUp() {
         try {
-            await signUp(email, password, confirmPassword,username,name);
-            alert("Sign-up successful! You can now log in.");
-            goto('/login')
+            await signUp(email, password, confirmPassword, username, name);
+            await login(email, password);
+            successMessage = "Sign-up successful! You are now logged in."; // Set success message
+            setTimeout(() => {
+                successMessage = ""; // Clear message after 3 seconds
+                goto('/');
+            }, 1200);
         } catch (error) {
             errorMessage = error.message;
         }
@@ -40,6 +47,12 @@
         <div class="relative w-full p-6 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-md">
             <h1 class="text-4xl font-bold mb-6 text-center">Sign Up</h1>
             
+            {#if successMessage}
+                <div class="mb-4 p-3 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg">
+                    {successMessage}
+                </div>
+            {/if}
+
             {#if errorMessage}
                 <div class="mb-4 p-3 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg">
                     {errorMessage}

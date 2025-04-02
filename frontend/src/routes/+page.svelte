@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Plus, Upload, Check } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Plus, Upload, Check, X } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -7,6 +7,8 @@
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
   import { user } from '$lib/user.js';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
 
 
   $: role = $user.role;
@@ -58,7 +60,7 @@
   // Add these variables for adding a new asset
   let addingAsset = false;
   let newAsset = {
-    asset_id: "",
+    id: "",
     logo: null,
     name: "",
     version: "",
@@ -90,30 +92,23 @@
     });
   }
 
-  // Add this function to authenticate with PocketBase
-  async function authenticateAdmin() {
-    try {
-      // Use your admin/superuser credentials
-      // These should be stored securely in environment variables in production
-      await pb.admins.authWithPassword('Super.user@pocketbase.com', 'SuperPassword');
-      console.log("Admin authenticated successfully");
-      return true;
-    } catch (error) {
-      console.error("Admin authentication failed:", error);
-      return false;
-    }
-  }
+
 
   // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
     try {
+      // Set id to undefined if left blank
+      if (!newAsset.id) {
+        newAsset.id = undefined;
+      }
+
       // Check if we have a POM file in newAsset
       if (!newAsset.file && newAsset.type === 'maven') {
         console.log("No POM file found, searching for it...");
         // Try to fetch POM file as a backup if not already present
         try {
-          const groupId = newAsset.asset_id.split(':')[0];
-          const artifactId = newAsset.asset_id.split(':')[1] || newAsset.name;
+          const groupId = newAsset.id.split(':')[0];
+          const artifactId = newAsset.id.split(':')[1] || newAsset.name;
           const version = newAsset.version;
           
           const response = await fetch(
@@ -141,6 +136,9 @@
         }
       }
       
+      // Set add_type based on user role
+      newAsset.add_type = role === 'admin' ? 'original' : 'added';
+
       // Now continue with your existing form submission
       // Create form data for the API call
       const formData = new FormData();
@@ -171,7 +169,7 @@
 
         // Reset form fields
         newAsset = {
-            asset_id: "",
+            id: "",
             logo: null,
             name: "",
             version: "",
@@ -195,6 +193,109 @@
     } catch (err) {
       console.error("Error adding asset:", err);
       assetError = `Failed to add asset: ${err.message}`;
+    }
+  }
+
+  // Add the copyAsset function
+  let showCopyPopup = false;
+
+  async function copyAsset(asset) {
+    try {
+      // Fetch the original file and logo
+      let fileBlob = null;
+      let logoBlob = null;
+
+      if (asset.file) {
+        const fileUrl = pb.files.getUrl(asset, asset.file);
+        const fileResponse = await fetch(fileUrl);
+        if (fileResponse.ok) {
+          fileBlob = await fileResponse.blob();
+        } else {
+          console.error('Failed to fetch the file for copying.');
+        }
+      }
+
+      if (asset.logo) {
+        const logoUrl = pb.files.getUrl(asset, asset.logo);
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          logoBlob = await logoResponse.blob();
+        } else {
+          console.error('Failed to fetch the logo for copying.');
+        }
+      }
+
+      // Prepare the copied asset data
+      const copiedAsset = {
+        ...asset,
+        owner_id: $user.userid,
+        add_type: 'copied',
+        id: undefined, // Remove the ID to create a new asset
+        created: undefined, // Remove timestamps
+        updated: undefined,
+      };
+
+      // Create FormData for the new asset
+      const formData = new FormData();
+      Object.entries(copiedAsset).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formData.append(key, value);
+        }
+      });
+
+      // Attach the file and logo blobs if they exist
+      if (fileBlob) {
+        formData.append('file', fileBlob, asset.file);
+      }
+      if (logoBlob) {
+        formData.append('logo', logoBlob, asset.logo);
+      }
+
+      // Create the new asset in PocketBase
+      const createdRecord = await pb.collection('assets').create(formData);
+      console.log('Asset copied successfully:', createdRecord);
+
+      // Show the popup notification
+      showCopyPopup = true;
+
+      // Automatically hide the popup after 5 seconds
+      setTimeout(() => {
+        showCopyPopup = false;
+      }, 5000);
+    } catch (err) {
+      console.error("Error copying asset:", err);
+      alert("Failed to copy asset. Please try again.");
+    }
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
+  }
+
+  function closeCopyPopup() {
+    showCopyPopup = false;
+  }
+
+  // Pagination variables
+  let currentPage = 1;
+  let totalPages = 1;
+
+  // Function to fetch assets with pagination
+  async function fetchPaginatedAssets(page = 1) {
+    try {
+      loadingAssets = true;
+      const assetResponse = await fetchAssets(page, 6, { add_type: ['original', 'added'] });
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = page;
+      if (assets.length === 0) {
+        assetError = "No assets found. Please add assets to your collection.";
+      }
+    } catch (err) {
+      console.error("Error fetching assets:", err);
+      assetError = `Failed to load assets: ${err.message}`;
+    } finally {
+      loadingAssets = false;
     }
   }
 
@@ -223,9 +324,10 @@
         }
       }
       
-      // Now fetch the assets with our authenticated session
       try {
-        const assetResponse = await fetchAssets(1, 6);
+        const assetResponse = await fetchAssets(1, 6, { add_type: ['original', 'added'] });
+        console.log(assetResponse.items);
+        // Filter out assets with add_type: 'copied'
         assets = assetResponse.items;
         
         if (assets.length === 0) {
@@ -244,10 +346,12 @@
       loadingAssets = false;
     }
 
+    await fetchPaginatedAssets(currentPage);
+
     // Add event listener for chatbot interaction
     const createAssetHandler = (event) => {
       // Redirect to the workspace page instead of opening the asset form
-      window.location.href = '/workspace';
+      window.location.href = '/Workspace';
     };
     
     window.addEventListener('createMavenAsset', createAssetHandler);
@@ -257,6 +361,12 @@
       window.removeEventListener('createMavenAsset', createAssetHandler);
     };
   });
+
+  function goToPage(page) {
+    if (page >= 1 && page <= totalPages) {
+      fetchPaginatedAssets(page);
+    }
+  }
 
 </script>
 
@@ -332,7 +442,7 @@ input[type="file"].hidden {
         <div class="container mx-auto px-4">
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Most Popular
+              Latest Assets
             </h1>
             <!-- Add Asset button has been removed -->
             
@@ -359,9 +469,22 @@ input[type="file"].hidden {
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
                     </p>
-                    <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
-                      {asset.description || "View details"}
-                    </a>
+                    <div class="flex justify-between items-center">
+                      <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
+                        {asset.description || "View details"}
+                      </a>
+                      
+                      <!-- Copy button moved next to "View details" -->
+                      {#if $user.role !== 'viewer'}
+                        <button
+                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+                          on:click={() => copyAsset(asset)}
+                        >
+                          <Plus class="w-3 h-3" />
+                          Copy
+                        </button>
+                      {/if}
+                    </div>
                     
                     <!-- Maven dependency info for maven/java assets -->
                     {#if asset.type === 'maven'}
@@ -371,7 +494,7 @@ input[type="file"].hidden {
                             class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const xmlDependency = `<dependency>\n    <groupId>${asset.asset_id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.asset_id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
                               copyToClipboard(xmlDependency, 'maven', i);
                             }}
                           >
@@ -386,7 +509,7 @@ input[type="file"].hidden {
                             class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                             on:click|stopPropagation={(e) => {
                               e.preventDefault();
-                              const gradleDependency = `implementation '${asset.asset_id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              const gradleDependency = `implementation '${asset.id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
                               copyToClipboard(gradleDependency, 'gradle', i);
                             }}
                           >
@@ -449,6 +572,34 @@ input[type="file"].hidden {
               {/each}
             {/if}
           </div>
+
+          <!-- Pagination controls -->
+          {#if totalPages > 1}
+            <div class="flex justify-center mt-6 space-x-2">
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              {#each Array(totalPages).fill(0) as _, i}
+                <button
+                  class="px-3 py-1 {currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => goToPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              {/each}
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          {/if}
         </div>
       </section>    
     </div>
@@ -497,4 +648,27 @@ input[type="file"].hidden {
       <!-- Rest of your homepage content -->
     {/if}
   </div>
+
+  <!-- Update the popup notification with smooth transitions -->
+  {#if showCopyPopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={closeCopyPopup}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <p class="text-lg font-semibold">Asset copied successfully!</p>
+        <button
+          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
+          on:click={goToWorkspace}
+        >
+          Go to My Assets
+        </button>
+      </div>
+    </div>
+  {/if}
 </main>
