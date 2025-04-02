@@ -1,8 +1,10 @@
 <script>
 	import { removeAvatar } from '../../lib/api.js';
 	import { user } from '../../lib/user.js';
-	import { User, Download, ChevronDown } from '@lucide/svelte';
+	import { User, Download, ChevronDown, X } from '@lucide/svelte';
 	import { onMount } from 'svelte';
+	import { fade, scale } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
 
 	let fileInput;
 	let popupMessage = '';
@@ -248,25 +250,130 @@
 <!-- Popup Component -->
 {#if showPopup}
 	<div
-		class="fixed inset-0 flex items-center justify-center"
-		style="align-items: flex-end; padding-right:5% ;padding-bottom: 29%;"
+		class="fixed inset-0 flex items-center justify-center bg-black z-50"
+		transition:fade={{ duration: 300 }}
 	>
 		<div
-			class="px-6 py-4 rounded-md shadow-lg text-white text-lg"
+			class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
 			class:success={popupType === 'success'}
 			class:error={popupType === 'error'}
-			style="background-color: {popupType === 'success' ? '#4CAF50' : '#F44336'};"
+			transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}
 		>
-			{popupMessage}
+			<button
+				class="absolute top-2 right-2 text-white hover:text-gray-300"
+				on:click={() => showPopup = false}
+			>
+				<X class="w-5 h-5" />
+			</button>
+			
+			{#if popupType === 'success'}
+				<div class="success-circle">
+					<User class="success-icon" />
+				</div>
+				<p class="text-lg font-semibold">{popupMessage}</p>
+			{:else}
+				<div class="error-circle">
+					<X class="error-icon" />
+				</div>
+				<p class="text-lg font-semibold">{popupMessage}</p>
+			{/if}
 		</div>
 	</div>
 {/if}
 
 <style>
+	/* Pulse Animation for Success */
+	.success-circle {
+		width: 60px;
+		height: 60px;
+		border-radius: 50%;
+		background-color: rgba(255, 255, 255, 0.2);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.success-icon {
+		width: 30px;
+		height: 30px;
+		color: white;
+		opacity: 0;
+		animation: fade-in 0.5s ease-in-out 0.3s forwards;
+	}
+	
+	/* Error Animation */
+	.error-circle {
+		width: 60px;
+		height: 60px;
+		border-radius: 50%;
+		background-color: rgba(255, 255, 255, 0.2);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		animation: error-pulse 1.5s ease-in-out infinite;
+	}
+
+	.error-icon {
+		width: 30px;
+		height: 30px;
+		color: white;
+		opacity: 0;
+		animation: fade-in 0.5s ease-in-out 0.3s forwards;
+	}
+
+	@keyframes pulse {
+		0% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+		}
+		
+		70% {
+			transform: scale(1);
+			box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
+		}
+		
+		100% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+		}
+	}
+	
+	@keyframes error-pulse {
+		0% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.5);
+		}
+		
+		70% {
+			transform: scale(1);
+			box-shadow: 0 0 0 15px rgba(244, 67, 54, 0);
+		}
+		
+		100% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+		}
+	}
+
+	@keyframes fade-in {
+		0% {
+			opacity: 0;
+			transform: scale(0.7);
+		}
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+	
 	.success {
-		background-color: #4caf50;
+		background-color: transparent;
 	}
 	.error {
-		background-color: #f44336;
+		background-color: transparent;
+		background-image: linear-gradient(to right, rgba(244, 67, 54, 0.5), rgba(233, 30, 99, 0.5));
 	}
 </style>
