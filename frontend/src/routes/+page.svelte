@@ -747,7 +747,7 @@ input[type="file"].hidden {
 
   <!-- Update the popup notification with smooth transitions -->
   {#if showCopyPopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
