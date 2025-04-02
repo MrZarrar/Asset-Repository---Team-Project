@@ -7,6 +7,9 @@
   import { isAuthenticated } from '$lib/auth';
   import { fetchProjects } from '$lib/projectsService';
   import { fetchAssets } from '$lib/assetService';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
+  
   
   // Tab state
   let activeTab = 'assets'; // Default to projects tab
@@ -156,6 +159,9 @@
       // Reset form state
       addingAsset = false;
       console.log("Asset added successfully:", createdRecord);
+
+      // Show the asset created popup
+      showAssetCreatedNotification();
 
       // Add the new asset to the addedAssets list (ensure reactivity)
       addedAssets = [...addedAssets, createdRecord];
@@ -515,6 +521,19 @@
     } catch (err) {
       console.error("Download failed:", err);
     }
+  }
+
+  let showAssetCreatedPopup = false;
+
+  function showAssetCreatedNotification() {
+    showAssetCreatedPopup = true;
+    setTimeout(() => {
+      showAssetCreatedPopup = false;
+    }, 2000);
+  }
+
+  function closeAssetCreatedPopup() {
+    showAssetCreatedPopup = false;
   }
 
 </script>
@@ -1124,6 +1143,27 @@
     
     <!-- Quick Actions Panel for both tabs -->
   </div>
+
+  <!-- Asset Created Popup -->
+  {#if showAssetCreatedPopup}
+    <div
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+      transition:fade={{ duration: 300 }}
+    >
+      <div
+        class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+        transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}
+      >
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={closeAssetCreatedPopup}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <p class="text-lg font-semibold">Asset created successfully!</p>
+      </div>
+    </div>
+  {/if}
 </main>
 {/if}
 
