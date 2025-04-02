@@ -455,7 +455,7 @@
     loadingAddedAssets = true;
 
     try {
-      const response = await fetchAssets(addedAssetsPage, addedAssetsPerPage, { add_type: 'added', owner_id: userId });
+      const response = await fetchAssets(page, 6, { add_type: ['original', 'added'], owner_id: userId });
       addedAssets = response.items;
       addedAssetsTotalPages = Math.ceil(response.totalItems / addedAssetsPerPage);
       loadingAddedAssets = false;
