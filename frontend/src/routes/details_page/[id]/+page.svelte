@@ -1,5 +1,5 @@
 <script>
-  import { Search, User, Download, ChevronDown, Upload, X, Check } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Upload, X, Check, Pen } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
@@ -341,6 +341,55 @@ input.editing, textarea.editing {
 input[type="file"].hidden {
   display: none;
 }
+
+/* Pulse Animation for Update */
+.success-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.success-icon {
+  width: 30px;
+  height: 30px;
+  color: white;
+  opacity: 0;
+  animation: fade-in 0.5s ease-in-out 0.3s forwards;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 </style>
 
 <svelte:head>
@@ -520,7 +569,7 @@ input[type="file"].hidden {
                       class="px-3 py-1 {mavenCopied ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                     >
                       {#if mavenCopied}
-                        <Check class="w-4 h-4" /> Copied!
+                        <Pen class="w-4 h-4" /> Copied!
                       {:else}
                         Copy Maven XML
                       {/if}
@@ -530,7 +579,7 @@ input[type="file"].hidden {
                       class="px-3 py-1 {gradleCopied ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
                     >
                       {#if gradleCopied}
-                        <Check class="w-4 h-4" /> Copied!
+                        <Pen class="w-4 h-4" /> Copied!
                       {:else}
                         Copy Gradle
                       {/if}
@@ -720,9 +769,9 @@ input[type="file"].hidden {
 
   <!-- Update Popup Notification -->
   {#if showUpdatePopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
          transition:fade={{ duration: 300 }}>
-      <div class="relative bg-blue-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+      <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
         <button
           class="absolute top-2 right-2 text-white hover:text-gray-300"
@@ -730,6 +779,9 @@ input[type="file"].hidden {
         >
           <X class="w-5 h-5" />
         </button>
+        <div class="success-circle">
+          <Pen class="success-icon" />
+        </div>
         <p class="text-lg font-semibold">Asset updated successfully!</p>
       </div>
     </div>

@@ -213,8 +213,9 @@
     // Listen for tab switching events from the chatbot
     
 
-    // Add handler for createMavenAsset event
+    // Enhanced event handler with debug logging
     const createAssetHandler = (event) => {
+      console.log('Received createMavenAsset event:', event.detail);
       if (event.detail) {
         // Switch to the assets tab
         activeTab = 'assets';
@@ -246,7 +247,9 @@
       }
     };
 
-    window.addEventListener('switchToMyAssetsTab', switchTabHandler);
+    // Make sure to remove existing listeners before adding new ones 
+    // to prevent duplicate handlers
+    window.removeEventListener('createMavenAsset', createAssetHandler);
     window.addEventListener('createMavenAsset', createAssetHandler);
 
     // Clean up event listener on component destruction
@@ -1147,11 +1150,11 @@
   <!-- Asset Created Popup -->
   {#if showAssetCreatedPopup}
     <div
-      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+      class="fixed inset-0 flex items-center justify-center bg-black z-50"
       transition:fade={{ duration: 300 }}
     >
       <div
-        class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+        class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
         transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}
       >
         <button
@@ -1160,6 +1163,9 @@
         >
           <X class="w-5 h-5" />
         </button>
+        <div class="success-circle">
+          <Check class="success-icon" />
+        </div>
         <p class="text-lg font-semibold">Asset created successfully!</p>
       </div>
     </div>
@@ -1176,5 +1182,54 @@
   /* Remove the editing class that was causing dark backgrounds in light mode */
   input[type="file"].hidden {
     display: none;
+  }
+
+  /* Pulse Animation for Success */
+  .success-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .success-icon {
+    width: 30px;
+    height: 30px;
+    color: white;
+    opacity: 0;
+    animation: fade-in 0.5s ease-in-out 0.3s forwards;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+    }
+    
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
+    }
+    
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+  }
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 </style>

@@ -545,9 +545,34 @@
 
               const gradleDependency = `implementation '${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}'`;
 
+              // Check if we're already on the workspace page or need to navigate there
+              const currentPath = window.location.pathname;
+              const isOnWorkspace = currentPath === '/Workspace';
+              
+              if (isOnWorkspace) {
+                console.log('Already on Workspace page, directly dispatching event');
+              } else {
+                console.log('Not on Workspace page, setting localStorage for navigation handling');
+                // Store data for navigation handling
+                localStorage.setItem('autoAddAsset', 'true');
+                localStorage.setItem('pendingAssetData', JSON.stringify({
+                  id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
+                  name: bestMatch.artifactId,
+                  version: bestMatch.version,
+                  type: 'maven',
+                  date_updated: today,
+                  date_created: today,
+                  licence_info: bestMatch.license || 'Apache 2.0',
+                  usage_info: `Use this dependency in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
+                  maven_dependency: dependencyXml,
+                  gradle_dependency: gradleDependency
+                }));
+              }
+
               const event = new CustomEvent('createMavenAsset', {
                 detail: {
                   asset_id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
+                  id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
                   name: bestMatch.artifactId,
                   version: bestMatch.version,
                   type: 'maven',
@@ -567,6 +592,11 @@
                 role: 'assistant', 
                 content: `I found a matching Maven dependency: ${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}. I've filled out the form for you.`
               }];
+              
+              // If not already on workspace page, navigate there
+              if (!isOnWorkspace) {
+                window.location.href = '/Workspace';
+              }
             }
           })
           .catch(error => {
@@ -621,7 +651,7 @@
     return pomFile;
   }
 
-  // Updated generateAsset function with real Maven repository search
+  // Updated generateAsset function with better integration
   async function generateAsset() {
     try {
       $isLoading = true;
@@ -702,24 +732,21 @@
       const bestMatch = searchResults[0];
       
       // Fetch the POM file for this artifact
-      let pomFile = null;
+      let pomContent = null;
+      let pomFileName = null;
       try {
-        const pomContent = await fetchPomFile(
+        pomContent = await fetchPomFile(
           bestMatch.groupId, 
           bestMatch.artifactId, 
           bestMatch.version
         );
         
         if (pomContent) {
-          pomFile = createPomFile(
-            pomContent, 
-            bestMatch.artifactId, 
-            bestMatch.version
-          );
-          console.log('POM file created successfully');
+          pomFileName = `${bestMatch.artifactId}-${bestMatch.version}.pom`;
+          console.log('POM file content fetched successfully');
         }
       } catch (e) {
-        console.error('Error creating POM file:', e);
+        console.error('Error fetching POM file:', e);
       }
       
       // Prepare the asset data
@@ -743,7 +770,7 @@
         usage_info: `Use this asset in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
         maven_dependency: dependencyXml,
         gradle_dependency: gradleDependency,
-        pomFile: pomFile
+        hasPomFile: pomContent !== null
       };
       
       // Let user know we're redirecting to the Workspace page
@@ -752,11 +779,21 @@
         content: `Found "${bestMatch.artifactId}" (${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}). Opening the asset form in Workspace...`
       }];
       
-      goto('/Workspace');
+      // Check if we're already on the Workspace page
+      const isOnWorkspacePage = $page.route?.id === '/Workspace';
       
-      // Give the page a moment to load before dispatching the event
-      setTimeout(() => {
+      if (isOnWorkspacePage) {
+        // If already on Workspace page, use the event approach
         try {
+          // Create a File object from the POM content if available
+          if (pomContent) {
+            const pomBlob = new Blob([pomContent], { type: 'application/xml' });
+            assetData.pomFile = new File([pomBlob], pomFileName, { 
+              type: 'application/xml',
+              lastModified: new Date().getTime()
+            });
+          }
+          
           // Create and dispatch the event to trigger asset creation in Workspace
           const event = new CustomEvent('createMavenAsset', {
             detail: assetData
@@ -764,27 +801,56 @@
           
           window.dispatchEvent(event);
           
-          // Add confirmation message with updated instructions for Workspace
-          setTimeout(() => {
-            $chatMessages = [...$chatMessages, { 
-              role: 'assistant', 
-              content: `I've opened the asset form in Workspace with details for ${bestMatch.artifactId}. You should now see the form with all fields pre-filled. Please review and click 'Save' to complete the process.`
-            }];
-            
-            // Reset context to allow for new asset generation
-            resetChatContext();
-            
-            $isLoading = false;
-          }, 1000); 
+          // Add confirmation message
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: `I've filled the asset form in Workspace with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
+          }];
         } catch (error) {
           console.error('Error creating asset:', error);
           $chatMessages = [...$chatMessages, { 
             role: 'assistant', 
-            content: 'Sorry, I encountered an error while creating the asset in Workspace. Please try again or create the asset manually in the Workspace section.'
+            content: 'Sorry, I encountered an error while creating the asset. Please try again or create the asset manually.'
           }];
-          $isLoading = false;
         }
-      }, 1000);
+      } else {
+        // If not on Workspace page, use localStorage to pass data between pages
+        try {
+          // Store asset data in localStorage (but don't store the File object directly as it's not serializable)
+          localStorage.setItem('autoAddAsset', 'true');
+          localStorage.setItem('pendingAssetData', JSON.stringify(assetData));
+          
+          // Store POM content separately if available
+          if (pomContent) {
+            localStorage.setItem('pendingPomContent', pomContent);
+            localStorage.setItem('pendingPomFilename', pomFileName);
+          }
+          
+          // Navigate to the Workspace page
+          goto('/Workspace');
+          
+          // Add a message about the navigation
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: `Navigating to Workspace page where the form will be automatically filled with ${bestMatch.artifactId} details.`
+          }];
+        } catch (error) {
+          console.error('Error setting up asset creation:', error);
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: 'Sorry, I encountered an error while setting up the asset creation. Please try navigating to the Workspace page manually.'
+          }];
+          
+          // Clean up any partial localStorage data
+          localStorage.removeItem('autoAddAsset');
+          localStorage.removeItem('pendingAssetData');
+          localStorage.removeItem('pendingPomContent');
+          localStorage.removeItem('pendingPomFilename');
+        }
+      }
+      
+      // Reset context to allow for new asset generation
+      resetChatContext();
       
     } catch (error) {
       console.error('Error in generateAsset:', error);
@@ -792,6 +858,7 @@
         role: 'assistant', 
         content: 'Sorry, I encountered an error while trying to generate the asset. Please try again later or create the asset manually in the Workspace section.'
       }];
+    } finally {
       $isLoading = false;
     }
   }
