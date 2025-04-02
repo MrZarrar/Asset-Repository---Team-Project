@@ -3,7 +3,7 @@
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
-  import { fetchAssets } from '$lib/assetService';
+  import { fetchAssets, getAssetsByFilters } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
   import { user } from '$lib/user.js';
