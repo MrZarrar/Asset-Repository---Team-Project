@@ -133,8 +133,8 @@
         }
       }
       
-      // Add additional fields
-      newAsset.add_type = 'added';
+      // Set add_type based on user role
+      newAsset.add_type = role === 'admin' ? 'original' : 'added';
       newAsset.owner_id = userId;
 
       // Create form data for the API call
