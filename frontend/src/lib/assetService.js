@@ -39,13 +39,16 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
 // Get a single asset by Filtering
 export async function getAssetByFilters(filters = {}) {
   let filterString = '';
+  filterString += '('
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         filterString += `${key}="${value}" && `;
       }
+      filterString += `add_type!="copied")`;
     });
     if (filterString) {
-      filterString = filterString.slice(0, -4); // Remove trailing ' && '
+      //filterString = filterString.slice(0, -4); // Remove trailing ' && '
+      //filterString.concat("add_type != copied ");
     }
   try {
     const asset = await pb.collection('Assets').getFullList({filter: filterString, sort: '-created',});
