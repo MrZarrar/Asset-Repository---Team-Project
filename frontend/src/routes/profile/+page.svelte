@@ -55,9 +55,38 @@
 
 	async function updatedProfile() {
 		try {
+			// Validate required fields before submission
+			if (!$user.username || !$user.email) {
+				showPopupMessage('Username and email are required fields.', 'error');
+				return;
+			}
+
+			// Get the current user data from the server to compare
+			const getCurrentUser = await fetch(
+				`http://127.0.0.1:8090/api/collections/users/records/${$user.userid}`
+			);
+			
+			if (!getCurrentUser.ok) {
+				throw new Error('Could not retrieve current user data');
+			}
+			
+			const currentUserData = await getCurrentUser.json();
+			
+			// Check if any changes were made
+			const hasChanges = 
+				currentUserData.username !== $user.username ||
+				currentUserData.name !== $user.name ||
+				currentUserData.role.toLowerCase() !== $user.role.toLowerCase() ||
+				$user.avatar instanceof File;
+				
+			if (!hasChanges) {
+				showPopupMessage('No changes detected to update.', 'error');
+				return;
+			}
+
 			const formData = new FormData();
 			formData.append('username', $user.username);
-			formData.append('name', $user.name);
+			formData.append('name', $user.name || '');
 			formData.append('email', $user.email.toLowerCase());
 			formData.append('role', $user.role.toLowerCase());
 			if ($user.avatar instanceof File) {
@@ -72,24 +101,45 @@
 				}
 			);
 
+			const responseData = await response.json();
+
 			if (!response.ok) {
-				throw new Error('Error updating profile');
+				// Extract error message from response if available
+				const errorMessage = responseData.message || 'Error updating profile';
+				throw new Error(errorMessage);
 			}
 
-			const updatedUser = await response.json();
+			// Verify that we received valid data back
+			if (!responseData.id) {
+				throw new Error('Invalid response from server');
+			}
+
+			const updatedUser = responseData;
+			
+			// Properly handle the avatar URL
+			let avatarUrl = $user.avatar;
+			if (updatedUser.avatar) {
+				// Check if it's already a full URL or needs to be constructed
+				if (typeof updatedUser.avatar === 'string' && !updatedUser.avatar.startsWith('http')) {
+					avatarUrl = `http://127.0.0.1:8090/api/files/users/${$user.userid}/${updatedUser.avatar}`;
+				} else {
+					avatarUrl = updatedUser.avatar;
+				}
+			}
+			
 			user.set({
 				userid: updatedUser.id,
 				username: updatedUser.username,
 				name: updatedUser.name,
-				email: updatedUser.email,
-				avatar: updatedUser.avatar,
+				email: updatedUser.email || $user.email,
+				avatar: avatarUrl,
 				role: updatedUser.role
 			});
+			
 			showPopupMessage('Profile updated successfully!', 'success');
-			location.reload(); // Refresh the page after saving changes
 		} catch (error) {
 			console.error('Error updating profile:', error);
-			showPopupMessage('Error updating profile. Please try again.', 'error');
+			showPopupMessage(`Error updating profile: ${error.message}`, 'error');
 		}
 	}
 </script>
