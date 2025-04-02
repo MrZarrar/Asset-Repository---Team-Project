@@ -2,10 +2,12 @@
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { Search, User, Download, X } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, X } from "@lucide/svelte";
   import { authStore, logout } from '$lib/auth';
+  import { user } from '$lib/user.js';
+  import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import { performSearch, searchTerm, searchResults, isSearching, searchError, clearSearch } from '$lib/stores/searchStore';
-  import { onMount } from 'svelte';
   import { debounce } from '$lib/debounce';
 
   let isMobileMenuOpen = false;
@@ -44,22 +46,6 @@
     showSearchResults = false;
   }
   
-  // Handle document clicks to close search results
-  function handleClickOutside(event) {
-    const searchContainer = document.getElementById('search-container');
-    if (searchContainer && !searchContainer.contains(event.target)) {
-      showSearchResults = false;
-    }
-  }
-  
-  // Setup click outside listener
-  onMount(() => {
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  });
-
   let isUserMenuOpen = false;
   function toggleUserMenu() {
     // Toggle the user menu and close the download menu if it is open
@@ -90,7 +76,8 @@
   $: currentPath = $page.url.pathname;
   $: isDashboardActive = currentPath === '/'
   $: isLoggingActive = currentPath === '/logging';
-  $: isMyAssetsActive = currentPath === '/MyAssets';
+  $: isProjectsActive = currentPath === '/Projects'; 
+  $: isWorkspaceActive = currentPath === '/Workspace';
 
   // handles navigation for all pages
   function handleNavigation(event, targetPath) {
@@ -103,13 +90,56 @@
   }
 
   async function handleLogout() {
-      try {
-          logout();
-          await goto('/login');
-      } catch (error) {
-          console.error("Logout error:", error);
-      }
+    try {
+      logout();
+      await goto('/login');
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   }
+
+  $: role = $user.role;
+
+  function handleWorkspaceNavigation(event) {
+    if (role === 'viewer') {
+      event.preventDefault();
+      goto('/AccessDenied');
+    }
+  }
+
+  // Handle clicking outside of menus
+  function handleClickOutside(event) {
+    // User menu outside click
+    if (isUserMenuOpen && !event.target.closest('#user-menu-button') && 
+        !event.target.closest('[role="menu"]')) {
+      isUserMenuOpen = false;
+    }
+    
+    // Download menu outside click
+    if (isDownloadMenuOpen && !event.target.closest('[on\\:click="toggleDownloadMenu"]') && 
+        !event.target.closest('[role="menu"]')) {
+      isDownloadMenuOpen = false;
+    }
+    
+    // Search results outside click
+    const searchContainer = document.getElementById('search-container');
+    if (showSearchResults && searchContainer && !searchContainer.contains(event.target)) {
+      showSearchResults = false;
+    }
+  }
+  
+  // Set up and clean up click handler
+  onMount(() => {
+    if (browser) {
+      document.addEventListener('click', handleClickOutside);
+    }
+  });
+  
+  onDestroy(() => {
+    if (browser) {
+      document.removeEventListener('click', handleClickOutside);
+    }
+  });
 </script>
 
 {#if !isAuthPage}
@@ -144,19 +174,27 @@
              on:click={(e) => handleNavigation(e, '/')}
              class="rounded-md {isDashboardActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300" 
              aria-current={isDashboardActive ? 'page' : undefined}>
-            Dashboard
+            Home
           </a>
-          <a href="/logging" 
-             on:click={(e) => handleNavigation(e, '/logging')}
-             class="rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
-             aria-current={isLoggingActive ? 'page' : undefined}>
-            Log History
+          {#if role === 'admin'}
+            <a href="/logging" 
+               on:click={(e) => handleNavigation(e, '/logging')}
+               class="rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+               aria-current={isLoggingActive ? 'page' : undefined}>
+              Log History
+            </a>
+          {/if}
+          <a href="/Projects" 
+             on:click={(e) => handleNavigation(e, '/Projects')}
+             class="rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+             aria-current={isProjectsActive ? 'page' : undefined}>
+            Projects
           </a>
-          <a href="/MyAssets" 
-             on:click={(e) => handleNavigation(e, '/MyAssets')}
-             class="rounded-md {isMyAssetsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
-             aria-current={isMyAssetsActive ? 'page' : undefined}>
-            My Assets
+          <a href="/Workspace" 
+             on:click={handleWorkspaceNavigation}
+             class="rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-sm font-medium hover:scale-105 transition-all duration-300"
+             aria-current={isWorkspaceActive ? 'page' : undefined}>
+            Workspace
           </a>
         </div>
       </div>
@@ -231,7 +269,7 @@
         </div>
       </div>
 
-      <!-- Desktop right icons (Download and Profile) -->
+      <!-- Desktop right icons (User) -->
       <div class="flex items-center space-x-4 ml-auto">
         <!-- Profile dropdown -->
         <div class="relative">
@@ -246,8 +284,9 @@
           <div class={`${isUserMenuOpen ? 'block' : 'hidden'} absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md dark:bg-gray-800 dark:hover:bg-gray-900 dark:text-gray-100 bg-white text-gray-900 py-1 ring-1 shadow-lg ring-black/5 focus:outline-hidden`}
             role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
             {#if $authStore.isAuthenticated}
-              <a href="/profile" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
-              <a class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-1">Settings</a>    
+              {#if $user.role !== 'viewer'}
+                <a href="/profile" class="block px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
+              {/if}
               <button 
                 on:click={handleLogout}
                 class="block w-full text-left px-4 py-2 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700" 
@@ -272,19 +311,27 @@
          on:click={(e) => handleNavigation(e, '/')}
          class="block rounded-md {isDashboardActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium" 
          aria-current={isDashboardActive ? 'page' : undefined}>
-        Dashboard
+        Home
       </a>
-      <a href="/logging" 
-         on:click={(e) => handleNavigation(e, '/logging')}
-         class="block rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
-         aria-current={isLoggingActive ? 'page' : undefined}>
-        Log History
+      {#if role === 'admin'}
+        <a href="/logging" 
+           on:click={(e) => handleNavigation(e, '/logging')}
+           class="block rounded-md {isLoggingActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
+           aria-current={isLoggingActive ? 'page' : undefined}>
+          Log History
+        </a>
+      {/if}
+      <a href="/Projects" 
+         on:click={(e) => handleNavigation(e, '/Projects')}
+         class="block rounded-md {isProjectsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
+         aria-current={isProjectsActive ? 'page' : undefined}>
+        Projects
       </a>
-      <a href="/MyAssets" 
-         on:click={(e) => handleNavigation(e, '/MyAssets')}
-         class="block rounded-md {isMyAssetsActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
-         aria-current={isMyAssetsActive ? 'page' : undefined}>
-        My Assets
+      <a href="/Workspace" 
+         on:click={handleWorkspaceNavigation}
+         class="block rounded-md {isWorkspaceActive ? 'bg-gray-900 text-white' : 'text-black dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700'} px-3 py-2 text-base font-medium transition-colors duration-300"
+         aria-current={isWorkspaceActive ? 'page' : undefined}>
+        Workspace
       </a>
     </div>
   </div>
