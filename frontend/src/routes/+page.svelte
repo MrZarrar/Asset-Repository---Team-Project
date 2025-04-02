@@ -273,6 +273,29 @@
     showCopyPopup = false;
   }
 
+  // Pagination variables
+  let currentPage = 1;
+  let totalPages = 1;
+
+  // Function to fetch assets with pagination
+  async function fetchPaginatedAssets(page = 1) {
+    try {
+      loadingAssets = true;
+      const assetResponse = await fetchAssets(page, 6, { add_type: ['original', 'added'] });
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = page;
+      if (assets.length === 0) {
+        assetError = "No assets found. Please add assets to your collection.";
+      }
+    } catch (err) {
+      console.error("Error fetching assets:", err);
+      assetError = `Failed to load assets: ${err.message}`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
   // Update your onMount function to use proper authentication
   onMount(async () => {
     try {
@@ -320,6 +343,8 @@
       loadingAssets = false;
     }
 
+    await fetchPaginatedAssets(currentPage);
+
     // Add event listener for chatbot interaction
     const createAssetHandler = (event) => {
       // Redirect to the workspace page instead of opening the asset form
@@ -333,6 +358,12 @@
       window.removeEventListener('createMavenAsset', createAssetHandler);
     };
   });
+
+  function goToPage(page) {
+    if (page >= 1 && page <= totalPages) {
+      fetchPaginatedAssets(page);
+    }
+  }
 
 </script>
 
@@ -538,6 +569,34 @@ input[type="file"].hidden {
               {/each}
             {/if}
           </div>
+
+          <!-- Pagination controls -->
+          {#if totalPages > 1}
+            <div class="flex justify-center mt-6 space-x-2">
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              {#each Array(totalPages).fill(0) as _, i}
+                <button
+                  class="px-3 py-1 {currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => goToPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              {/each}
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          {/if}
         </div>
       </section>    
     </div>
