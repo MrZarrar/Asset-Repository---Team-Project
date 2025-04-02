@@ -6,6 +6,8 @@
   import { page } from '$app/stores';
   import { logActions } from '../../../js/logging.pb.js';
   import { user } from '$lib/user.js';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
 
   $: role = $user.role;
 
@@ -137,6 +139,15 @@ implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.v
     }
   });
 
+  let showUpdatePopup = false;
+
+  function showUpdateNotification() {
+    showUpdatePopup = true;
+    setTimeout(() => {
+      showUpdatePopup = false;
+    }, 2000);
+  }
+
   async function updateAsset() {
     try {
       const formData = new FormData();
@@ -157,6 +168,9 @@ implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.v
       updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
       editing = false; // Exit edit mode after saving
       console.log("Asset updated successfully:", updatedRecord);
+
+      // Show the update popup notification
+      showUpdateNotification();
 
       // Log updating of an asset
       logActions("updated", assetId, $user.email);
@@ -700,6 +714,23 @@ input[type="file"].hidden {
             Go to My Assets
           </button>
         </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Update Popup Notification -->
+  {#if showUpdatePopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-blue-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={() => (showUpdatePopup = false)}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <p class="text-lg font-semibold">Asset updated successfully!</p>
       </div>
     </div>
   {/if}
