@@ -973,26 +973,29 @@
             </div>
             <!-- Pagination for Added Assets -->
             {#if addedAssetsTotalPages > 1}
-              <div class="flex justify-center mt-6">
-                <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
-                  <button 
-                    class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {addedAssetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                    on:click={() => loadAddedAssetsPage(addedAssetsPage - 1)}
-                    disabled={addedAssetsPage === 1}
+              <div class="flex justify-center mt-6 space-x-2">
+                <button
+                  class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                  on:click={() => loadAddedAssetsPage(addedAssetsPage - 1)}
+                  disabled={addedAssetsPage === 1}
+                >
+                  Previous
+                </button>
+                {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                  <button
+                    class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAddedAssetsPage(i + 1)}
                   >
-                    Previous
+                    {i + 1}
                   </button>
-                  <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
-                    Page {addedAssetsPage} of {addedAssetsTotalPages}
-                  </div>
-                  <button 
-                    class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {addedAssetsPage === addedAssetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
-                    on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)}
-                    disabled={addedAssetsPage === addedAssetsTotalPages}
-                  >
-                    Next
-                  </button>
-                </nav>
+                {/each}
+                <button
+                  class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                  on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)}
+                  disabled={addedAssetsPage === addedAssetsTotalPages}
+                >
+                  Next
+                </button>
               </div>
             {/if}
           {/if}
@@ -1089,26 +1092,29 @@
             </div>
             <!-- Pagination for Copied Assets -->
             {#if copiedAssetsTotalPages > 1}
-              <div class="flex justify-center mt-6">
-                <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
-                  <button 
-                    class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {copiedAssetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                    on:click={() => loadCopiedAssetsPage(copiedAssetsPage - 1)}
-                    disabled={copiedAssetsPage === 1}
+              <div class="flex justify-center mt-6 space-x-2">
+                <button
+                  class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                  on:click={() => loadCopiedAssetsPage(copiedAssetsPage - 1)}
+                  disabled={copiedAssetsPage === 1}
+                >
+                  Previous
+                </button>
+                {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                  <button
+                    class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadCopiedAssetsPage(i + 1)}
                   >
-                    Previous
+                    {i + 1}
                   </button>
-                  <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
-                    Page {copiedAssetsPage} of {copiedAssetsTotalPages}
-                  </div>
-                  <button 
-                    class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {copiedAssetsPage === copiedAssetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
-                    on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)}
-                    disabled={copiedAssetsPage === copiedAssetsTotalPages}
-                  >
-                    Next
-                  </button>
-                </nav>
+                {/each}
+                <button
+                  class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                  on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)}
+                  disabled={copiedAssetsPage === copiedAssetsTotalPages}
+                >
+                  Next
+                </button>
               </div>
             {/if}
           {/if}
