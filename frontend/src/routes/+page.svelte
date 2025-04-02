@@ -136,6 +136,9 @@
         }
       }
       
+      // Set add_type based on user role
+      newAsset.add_type = role === 'admin' ? 'original' : 'added';
+
       // Now continue with your existing form submission
       // Create form data for the API call
       const formData = new FormData();
