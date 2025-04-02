@@ -601,6 +601,55 @@ input[type="file"].hidden {
             </div>
           {/if}
         </div>
+        <div class="container mx-auto px-4">
+          <!-- Title --> 
+         <div class="flex justify-between items-center mb-6">
+           <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
+             Discussion Board
+           </h1>
+          </div>
+         <!-- Discussion window -->
+               <div
+                 class="flex flex-col w-full h-96 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800"
+               >
+                 <!-- Messages -->
+                 <div
+                   class="flex-1 flex items-center justify-center h-full border-b border-gray-300 dark:border-gray-700"
+                 >
+                   <p class="text-center text-gray-900 dark:text-gray-100">
+                     Begin your discussion 🚀
+                   </p>
+                 </div>
+       
+                 <!-- Text field and button-->
+                 <form class="flex items-center space-x-2 p-2">
+                   <!-- Text field -->
+                   <input
+                     type="text"
+                     class="flex-1 h-12 px-4 border border-gray-300 dark:border-gray-700 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                     placeholder="Share your thoughts..."
+                   />
+       
+                   <!-- Button -->
+                   <button
+                     type="submit"
+                     class="rounded-full px-4 py-2 font-medium text-blue-900 dark:text-blue-200 bg-blue-200 dark:bg-blue-900 hover:bg-blue-300 dark:hover:bg-blue-800 transition-all duration-300"
+                     aria-label="Send message"
+                     >
+                     <svg
+                       height="24px"
+                       viewBox="0 -960 960 960"
+                       width="24px"
+                       fill="currentColor"
+                       class ="text-blue-900 dark:text-blue-200"
+                       ><path
+                         d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"
+                       /></svg
+                     >
+                   </button>
+                 </form>
+               </div>
+             </div>
       </section>    
     </div>
 
