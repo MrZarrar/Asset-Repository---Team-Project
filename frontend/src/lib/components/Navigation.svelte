@@ -40,7 +40,7 @@
   
   // Navigate to asset details page
   function navigateToAsset(assetId) {
-    goto(`/assets/${assetId}`);
+    goto(`/details_page/${assetId}`);
     showSearchResults = false;
   }
   
