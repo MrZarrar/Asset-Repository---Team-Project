@@ -1,10 +1,18 @@
 <script>
-  import { Search, User, Download, ChevronDown, Plus, Upload } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Plus, Upload, Check, X } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
-  import { fetchAssets } from '$lib/assetService';
+  import { fetchAssets, getAssetsByFilters } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
+  import { logActions } from '../js/logging.pb.js';
+  import { user } from '$lib/user.js';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
+
+
+  $: role = $user.role;
+  
   // Declare the variable needed for toggling the mobile menu state
   let isMobileMenuOpen = false;
   function toggleMobileMenu() {
@@ -12,7 +20,7 @@
   }
 
   // Declare the variable needed for toggling the user menu state
-  let isUserMenuOpen = false;
+  let isUserMenuOpen = false; 
   function toggleUserMenu() {
     // Toggle the user menu and close the download menu if it is open
     isUserMenuOpen = !isUserMenuOpen;
@@ -52,7 +60,7 @@
   // Add these variables for adding a new asset
   let addingAsset = false;
   let newAsset = {
-    asset_id: "",
+    id: "",
     logo: null,
     name: "",
     version: "",
@@ -62,54 +70,106 @@
     date_created: "",
     licence_info: "",
     usage_info: "",
+    maven_dependency: "",
+    gradle_dependency: "",
     file: null,
   };
 
-  // Add this function to authenticate with PocketBase
-  async function authenticateAdmin() {
-    try {
-      // Use your admin/superuser credentials
-      // These should be stored securely in environment variables in production
-      await pb.admins.authWithPassword('Super.user@pocketbase.com', 'SuperPassword');
-      console.log("Admin authenticated successfully");
-      return true;
-    } catch (error) {
-      console.error("Admin authentication failed:", error);
-      return false;
-    }
+  // Add state variables to track copy status for each asset
+  let mavenCopiedIndex = -1;
+  let gradleCopiedIndex = -1;
+
+  // Function to handle copying with visual feedback
+  function copyToClipboard(text, type, index) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (type === 'maven') {
+        mavenCopiedIndex = index;
+        setTimeout(() => mavenCopiedIndex = -1, 2000); // Reset after 2 seconds
+      } else if (type === 'gradle') {
+        gradleCopiedIndex = index;
+        setTimeout(() => gradleCopiedIndex = -1, 2000); // Reset after 2 seconds
+      }
+    });
   }
 
-  // Function to add a new asset
+
+
+  // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
     try {
-        const formData = new FormData();
-        formData.append("asset_id", newAsset.asset_id);
-        formData.append("name", newAsset.name);
-        formData.append("version", newAsset.version);
-        formData.append("size", newAsset.size);
-        formData.append("type", newAsset.type);
-        formData.append("date_updated", newAsset.date_updated);
-        formData.append("date_created", newAsset.date_created);
-        formData.append("licence_info", newAsset.licence_info);
-        formData.append("usage_info", newAsset.usage_info);
+      // Set id to undefined if left blank
+      if (!newAsset.id) {
+        newAsset.id = undefined;
+      }
 
-        // Append files only if they exist
-        if (newAsset.file) {
-            formData.append("file", newAsset.file);
+      // Check if we have a POM file in newAsset
+      if (!newAsset.file && newAsset.type === 'maven') {
+        console.log("No POM file found, searching for it...");
+        // Try to fetch POM file as a backup if not already present
+        try {
+          const groupId = newAsset.id.split(':')[0];
+          const artifactId = newAsset.id.split(':')[1] || newAsset.name;
+          const version = newAsset.version;
+          
+          const response = await fetch(
+            `/api/maven/pom?groupId=${encodeURIComponent(groupId)}&artifactId=${encodeURIComponent(artifactId)}&version=${encodeURIComponent(version)}`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            const pomContent = data.pomContent;
+            
+            // Create a Blob with the POM content
+            const pomBlob = new Blob([pomContent], { type: 'application/xml' });
+            
+            // Create a File object from the Blob
+            newAsset.file = new File([pomBlob], `${artifactId}-${version}.pom`, { 
+              type: 'application/xml',
+              lastModified: new Date().getTime()
+            });
+            
+            console.log('POM file created successfully as backup');
+          }
+        } catch (e) {
+          console.error('Error creating backup POM file:', e);
+          // Continue without POM file if fetch fails
         }
-        if (newAsset.logo) {
-            formData.append("logo", newAsset.logo);
-        }
+      }
+      
+      // Set add_type based on user role
+      newAsset.add_type = role === 'admin' ? 'original' : 'added';
 
-        // Create a new asset record
-        const createdRecord = await pb.collection('assets').create(formData);
-        
+      // Now continue with your existing form submission
+      // Create form data for the API call
+      const formData = new FormData();
+      
+      // Add all form fields
+      for (const [key, value] of Object.entries(newAsset)) {
+        if (value !== null && value !== undefined) {
+          if (key === 'file' || key === 'logo') {
+            if (value instanceof File) {
+              formData.append(key, value, value.name);
+            }
+          } else {
+            formData.append(key, value);
+          }
+        }
+      }
+      
+      // Your existing API call to save the asset
+      const createdRecord = await pb.collection('assets').create(formData);
+      
+      // Rest of your existing code...
+      addingAsset = false;
+      console.log("Asset added successfully:", createdRecord);
+
+        // Create a new asset record        
         // Add the new asset to the list (ensure reactivity)
         assets = [...assets, createdRecord];
 
         // Reset form fields
         newAsset = {
-            asset_id: "",
+            id: "",
             logo: null,
             name: "",
             version: "",
@@ -119,16 +179,125 @@
             date_created: "",
             licence_info: "",
             usage_info: "",
+            maven_dependency: "",
+            gradle_dependency: "",
             file: null,
         };
 
         addingAsset = false; // Exit add mode after saving
         console.log("Asset added successfully:", createdRecord);
+
+        // Log creation of new asset
+        logActions("added", assetId, $user.email);
+        
     } catch (err) {
-        console.error("Error adding asset:", err);
-        assetError = `Failed to add asset: ${err.message}`;
+      console.error("Error adding asset:", err);
+      assetError = `Failed to add asset: ${err.message}`;
     }
-}
+  }
+
+  // Add the copyAsset function
+  let showCopyPopup = false;
+
+  async function copyAsset(asset) {
+    try {
+      // Fetch the original file and logo
+      let fileBlob = null;
+      let logoBlob = null;
+
+      if (asset.file) {
+        const fileUrl = pb.files.getUrl(asset, asset.file);
+        const fileResponse = await fetch(fileUrl);
+        if (fileResponse.ok) {
+          fileBlob = await fileResponse.blob();
+        } else {
+          console.error('Failed to fetch the file for copying.');
+        }
+      }
+
+      if (asset.logo) {
+        const logoUrl = pb.files.getUrl(asset, asset.logo);
+        const logoResponse = await fetch(logoUrl);
+        if (logoResponse.ok) {
+          logoBlob = await logoResponse.blob();
+        } else {
+          console.error('Failed to fetch the logo for copying.');
+        }
+      }
+
+      // Prepare the copied asset data
+      const copiedAsset = {
+        ...asset,
+        owner_id: $user.userid,
+        add_type: 'copied',
+        id: undefined, // Remove the ID to create a new asset
+        created: undefined, // Remove timestamps
+        updated: undefined,
+      };
+
+      // Create FormData for the new asset
+      const formData = new FormData();
+      Object.entries(copiedAsset).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formData.append(key, value);
+        }
+      });
+
+      // Attach the file and logo blobs if they exist
+      if (fileBlob) {
+        formData.append('file', fileBlob, asset.file);
+      }
+      if (logoBlob) {
+        formData.append('logo', logoBlob, asset.logo);
+      }
+
+      // Create the new asset in PocketBase
+      const createdRecord = await pb.collection('assets').create(formData);
+      console.log('Asset copied successfully:', createdRecord);
+
+      // Show the popup notification
+      showCopyPopup = true;
+
+      // Automatically hide the popup after 5 seconds
+      setTimeout(() => {
+        showCopyPopup = false;
+      }, 5000);
+    } catch (err) {
+      console.error("Error copying asset:", err);
+      alert("Failed to copy asset. Please try again.");
+    }
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
+  }
+
+  function closeCopyPopup() {
+    showCopyPopup = false;
+  }
+
+  // Pagination variables
+  let currentPage = 1;
+  let totalPages = 1;
+
+  // Function to fetch assets with pagination
+  async function fetchPaginatedAssets(page = 1) {
+    try {
+      loadingAssets = true;
+      const assetResponse = await fetchAssets(page, 6, { add_type: ['original', 'added'] });
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = page;
+      if (assets.length === 0) {
+        assetError = "No assets found. Please add assets to your collection.";
+      }
+    } catch (err) {
+      console.error("Error fetching assets:", err);
+      assetError = `Failed to load assets: ${err.message}`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
 
   // Update your onMount function to use proper authentication
   onMount(async () => {
@@ -155,9 +324,10 @@
         }
       }
       
-      // Now fetch the assets with our authenticated session
       try {
-        const assetResponse = await fetchAssets(1, 6);
+        const assetResponse = await fetchAssets(1, 6, { add_type: ['original', 'added'] });
+        console.log(assetResponse.items);
+        // Filter out assets with add_type: 'copied'
         assets = assetResponse.items;
         
         if (assets.length === 0) {
@@ -175,7 +345,28 @@
       loading = false;
       loadingAssets = false;
     }
+
+    await fetchPaginatedAssets(currentPage);
+
+    // Add event listener for chatbot interaction
+    const createAssetHandler = (event) => {
+      // Redirect to the workspace page instead of opening the asset form
+      window.location.href = '/Workspace';
+    };
+    
+    window.addEventListener('createMavenAsset', createAssetHandler);
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('createMavenAsset', createAssetHandler);
+    };
   });
+
+  function goToPage(page) {
+    if (page >= 1 && page <= totalPages) {
+      fetchPaginatedAssets(page);
+    }
+  }
 
 </script>
 
@@ -207,6 +398,53 @@ input.editing, textarea.editing {
 
 input[type="file"].hidden {
   display: none;
+}
+
+/* Pulse Animation for Success */
+.success-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.success-icon {
+  color: white;
+  opacity: 0;
+  animation: fade-in 0.5s ease-in-out 0.3s forwards;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>
 
@@ -251,73 +489,13 @@ input[type="file"].hidden {
         <div class="container mx-auto px-4">
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Most Popular
+              Latest Assets
             </h1>
-            <button
-              on:click={() => addingAsset = true}
-              class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <Plus class="w-4 h-4 mr-2" />
-              Add Asset
-            </button>
+            <!-- Add Asset button has been removed -->
+            
           </div>
-          {#if addingAsset}
-            <div class="mb-6">
-              <h2 class="text-2xl font-bold mb-4">Add New Asset</h2>
-              <form on:submit|preventDefault={addAsset}>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
-                  <input type="text" bind:value={newAsset.asset_id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                  <input type="text" bind:value={newAsset.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Version</label>
-                  <input type="text" bind:value={newAsset.version} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
-                  <input type="text" bind:value={newAsset.type} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Updated</label>
-                  <input type="date" bind:value={newAsset.date_updated} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Created</label>
-                  <input type="date" bind:value={newAsset.date_created} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing" required />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">License Info</label>
-                  <textarea bind:value={newAsset.licence_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Usage Info</label>
-                  <textarea bind:value={newAsset.usage_info} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm editing"></textarea>
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Logo</label>
-                  <label class="cursor-pointer">
-                    <input type="file" accept="image/*" on:change={(e) => newAsset.logo = e.target.files[0]} class="hidden" />
-                    <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
-                  </label>
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">File</label>
-                  <label class="cursor-pointer">
-                    <input type="file" accept="*" on:change={(e) => newAsset.file = e.target.files[0]} class="hidden" />
-                    <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
-                  </label>
-                </div>
-                <div class="flex justify-end">
-                  <button type="button" on:click={() => addingAsset = false} class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Cancel</button>
-                  <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save</button>
-                </div>
-              </form>
-            </div>
-          {/if}
+          
+          <!-- Rest of your content here -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
             {#if loadingAssets}
               <div class="col-span-full text-center py-8">
@@ -327,10 +505,6 @@ input[type="file"].hidden {
             {:else if assetError}
               <div class="col-span-full text-center py-8">
                 <p class="text-red-500">{assetError}</p>
-              </div>
-            {:else if assets.length === 0}
-              <div class="col-span-full text-center py-8">
-                <p class="text-gray-600 dark:text-gray-400">No assets found.</p>
               </div>
             {:else}
               {#each assets as asset, i}
@@ -342,12 +516,102 @@ input[type="file"].hidden {
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
                     </p>
-                    <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
-                      {asset.description || "View details"}
-                    </a>
-                    {#if asset.last_updated}
+                    <div class="flex justify-between items-center">
+                      <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
+                        {asset.description || "View details"}
+                      </a>
+                      
+                      <!-- Copy button moved next to "View details" -->
+                      {#if $user.role !== 'viewer'}
+                        <button
+                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
+                          on:click={() => copyAsset(asset)}
+                        >
+                          <Plus class="w-3 h-3" />
+                          Copy
+                        </button>
+                      {/if}
+                    </div>
+                    
+                    <!-- Maven dependency info for maven/java assets -->
+                    {#if asset.type === 'maven'}
+                      <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                        <div class="flex mt-1 space-x-1">
+                          <button 
+                            class="px-2 py-1 text-xs {mavenCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const xmlDependency = `<dependency>\n    <groupId>${asset.id?.split(':')[0] || 'com.example'}</groupId>\n    <artifactId>${asset.id?.split(':')[1] || asset.name}</artifactId>\n    <version>${asset.version || '1.0.0'}</version>\n</dependency>`;
+                              copyToClipboard(xmlDependency, 'maven', i);
+                            }}
+                          >
+                            {#if mavenCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Mvn XML
+                            {/if}
+                          </button>
+                          <button 
+                            class="px-2 py-1 text-xs {gradleCopiedIndex === i ? 'bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopiedIndex === i ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                            on:click|stopPropagation={(e) => {
+                              e.preventDefault();
+                              const gradleDependency = `implementation '${asset.id || `com.example:${asset.name}`}:${asset.version || '1.0.0'}'`;
+                              copyToClipboard(gradleDependency, 'gradle', i);
+                            }}
+                          >
+                            {#if gradleCopiedIndex === i}
+                              <Check class="w-3 h-3" />
+                              Copied!
+                            {:else}
+                              Copy Gradle
+                            {/if}
+                          </button>
+                          
+                          <!-- Download button added inside the button group -->
+                          {#if asset.file}
+                            <a 
+                              href={pb.files.getUrl(asset, asset.file)} 
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
+                              on:click|stopPropagation
+                            >
+                              <Download class="w-3 h-3" />
+                            </a>
+                          {/if}
+                        </div>
+                      </div>
+                    {:else}
+                      <!-- For non-maven assets, still show download button if available -->
+                      {#if asset.file}
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                          <div class="flex mt-1 space-x-1">
+                            <a 
+                              href={pb.files.getUrl(asset, asset.file)} 
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
+                              on:click|stopPropagation
+                            >
+                              <Download class="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      {/if}
+                    {/if}
+                    
+                    {#if asset.last_updated || asset.date_updated}
                       <p class="mt-2 text-xs text-gray-400">
-                        Updated: {new Date(asset.last_updated).toLocaleDateString()}
+                        Updated: {new Date(asset.last_updated || asset.date_updated).toLocaleDateString()}
+                      </p>
+                    {/if}
+                    
+                    {#if asset.licence_info}
+                      <p class="mt-1 text-xs text-gray-400">
+                        License: {asset.licence_info.length > 20 ? asset.licence_info.substring(0, 20) + '...' : asset.licence_info}
                       </p>
                     {/if}
                   </div>
@@ -355,7 +619,84 @@ input[type="file"].hidden {
               {/each}
             {/if}
           </div>
+
+          <!-- Pagination controls -->
+          {#if totalPages > 1}
+            <div class="flex justify-center mt-6 space-x-2">
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              {#each Array(totalPages).fill(0) as _, i}
+                <button
+                  class="px-3 py-1 {currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => goToPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              {/each}
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          {/if}
         </div>
+        <div class="container mx-auto px-4">
+          <!-- Title --> 
+         <div class="flex justify-between items-center mb-6">
+           <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
+             Discussion Board
+           </h1>
+          </div>
+         <!-- Discussion window -->
+               <div
+                 class="flex flex-col w-full h-96 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800"
+               >
+                 <!-- Messages -->
+                 <div
+                   class="flex-1 flex items-center justify-center h-full border-b border-gray-300 dark:border-gray-700"
+                 >
+                   <p class="text-center text-gray-900 dark:text-gray-100">
+                     Begin your discussion 🚀
+                   </p>
+                 </div>
+       
+                 <!-- Text field and button-->
+                 <form class="flex items-center space-x-2 p-2">
+                   <!-- Text field -->
+                   <input
+                     type="text"
+                     class="flex-1 h-12 px-4 border border-gray-300 dark:border-gray-700 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                     placeholder="Share your thoughts..."
+                   />
+       
+                   <!-- Button -->
+                   <button
+                     type="submit"
+                     class="rounded-full px-4 py-2 font-medium text-blue-900 dark:text-blue-200 bg-blue-200 dark:bg-blue-900 hover:bg-blue-300 dark:hover:bg-blue-800 transition-all duration-300"
+                     aria-label="Send message"
+                     >
+                     <svg
+                       height="24px"
+                       viewBox="0 -960 960 960"
+                       width="24px"
+                       fill="currentColor"
+                       class ="text-blue-900 dark:text-blue-200"
+                       ><path
+                         d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"
+                       /></svg
+                     >
+                   </button>
+                 </form>
+               </div>
+             </div>
       </section>    
     </div>
 
@@ -403,4 +744,33 @@ input[type="file"].hidden {
       <!-- Rest of your homepage content -->
     {/if}
   </div>
+
+  <!-- Update the popup notification with smooth transitions -->
+  {#if showCopyPopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={closeCopyPopup}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <div class="success-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="success-icon">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+          </svg>
+        </div>
+        <p class="text-lg font-semibold">Asset copied successfully!</p>
+        <button
+          class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
+          on:click={goToWorkspace}
+        >
+          Go to My Assets
+        </button>
+      </div>
+    </div>
+  {/if}
 </main>

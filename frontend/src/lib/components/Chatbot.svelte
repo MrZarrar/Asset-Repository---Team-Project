@@ -3,9 +3,9 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { fly, fade } from 'svelte/transition';
-  import { page } from '$app/stores';  // Import page store
-  import { goto } from '$app/navigation';  // Import goto for navigation
-  
+  import { page } from '$app/stores'; 
+  import { goto } from '$app/navigation'; 
+
 
   // Chat state management
   const chatMessages = writable([{
@@ -19,8 +19,8 @@
 
   const specificAnswers = [
     {
-      keywords: ['User Profile', 'Profile', 'my profile', 'user account', 'account page'],
-      answer: 'To access the user profile, you should sign up or login to your account. If you already done that, you can access the user profile by clicking on the user icon in the top right corner of the screen and selecting "User Profile".'
+      keywords: ['User Profile', 'Profile', 'my profile', 'user account', 'account page', 'profile page'],
+      topicId: 'profile'
     },
     {
       keywords: ['log history', 'logs', 'loggins history', 'loggins history page'],
@@ -35,15 +35,14 @@
     },
 
     {
-      keywords: ['profile', 'my profile', 'user profile', 'user account', 'account page', 'profile page'],
-      answer: 'I will direct you to the profile page now.',
-      action: () => goto('/profile')
+      keywords: ['workspace', 'workspace page', 'workspace page', 'workspace page', 'workspace page', 'workspace page', 'my assets', 'my assets page','my projects', 'my projects page'],
+      topicId: 'workspace'
     },
 
     {
-      keywords:["user settings", "user settings page", "settings", "settings page", "settings page", "settings page", "profile settings", "profile settings page"],
-      answer: 'I will direct you to the settings page now.',
-      action: () => goto('/profile_settings')
+      keywords: ["Projects", "Projects page", "projects", "projects page", "projects page", "projects page"],
+      answer: 'I will direct you to the projects page now.',
+      action: () => goto('/Projects')
     },
 
     {
@@ -67,20 +66,42 @@
 
   function checkSpecificAnswers(message) {
     const normalizedInput = message.toLowerCase();
-    
+    const isAuthenticated = !!$page.data.user; 
+
     for (const topic of specificAnswers) {
-      // More robust matching that checks for whole words
       if (topic.keywords.some(keyword => {
         const keywordLower = keyword.toLowerCase();
-        return normalizedInput.includes(keywordLower);
+        const regex = new RegExp(`\\b${keywordLower.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i');
+        return regex.test(normalizedInput);
       })) {
-        // Execute action if it exists
-        if (topic.action) {
-          setTimeout(() => {
-            topic.action();
-          }, 1000); // Short delay to allow user to see the message
+        let responseMessage = topic.answer;
+        let action = topic.action;
+
+        if (topic.topicId === 'profile') {
+          if (isAuthenticated) {
+            responseMessage = 'I will direct you to the profile page now.';
+            action = () => goto('/profile');
+          } else {
+            responseMessage = 'To access the user profile, you should sign up or login to your account. You can do this by clicking on the user icon in the top right corner of the screen.';
+            action = null;
+          }
+        } 
+        else if (topic.topicId === 'workspace') {
+          if (isAuthenticated) {
+            responseMessage = 'I will direct you to the workspace page now.';
+            action = () => goto('/Workspace');
+          } else {
+            responseMessage = 'To access the workspace, you need to be logged in. Please sign up or log in first.';
+            action = null;
+          }
         }
-        return topic.answer;
+
+        if (action) {
+          setTimeout(() => {
+            action();
+          }, 1000);
+        }
+        return responseMessage;
       }
     }
     
@@ -193,9 +214,136 @@
     return true;
   }
 
-  // Function to send message to OpenAI API
+  // Search stuff in Maven repo
+  async function searchMavenRepository(query) {
+    try {
+      // Use Maven endpoint not chat endpoint
+      const response = await fetch(`/api/maven?q=${encodeURIComponent(query)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to search Maven repository');
+      }
+      
+      const data = await response.json();
+      return data.results;
+    } catch (error) {
+      console.error('Maven search error:', error);
+      return [];
+    }
+  }
+
+  // Make Maven results look pretty
+  function formatMavenResults(results, query) {
+    if (!results || results.length === 0) {
+      return `I couldn't find any Maven dependencies matching "${query}". Please try a different search term or check your spelling.`;
+    }
+    
+    // Show top 5 results
+    const topResults = results.slice(0, 5);
+    let message = `Here are some Maven dependencies matching "${query}":\n\n`;
+    
+    topResults.forEach(dep => {
+      message += `- **${dep.artifactId}** (${dep.groupId}:${dep.artifactId}:${dep.version})\n`;
+      if (dep.license && dep.license !== 'Unknown') {
+        message += `  License: ${dep.license}\n`;
+      }
+    });
+    
+    if (results.length > 5) {
+      message += `\nAnd ${results.length - 5} more results. You can ask for more specific information about any of these.`;
+    }
+    
+    return message;
+  }
+
+  // Track if we're in generate mode
+  let isGenerateMode = false;
+
+  // Add a constant for the prefix text
+  const GENERATE_PREFIX = "Generate asset for ";
+
+  // Modified toggleGenerateMode function to handle non-deletable prefix
+  function toggleGenerateMode() {
+    isGenerateMode = !isGenerateMode;
+    
+    if (isGenerateMode) {
+      // Pre-fill the text box
+      userInput = GENERATE_PREFIX;
+      // Focus on the input and position cursor at the end
+      setTimeout(() => {
+        const inputElement = document.querySelector('input[placeholder="Type your message..."]');
+        if (inputElement) {
+          inputElement.focus();
+          inputElement.selectionStart = inputElement.selectionEnd = userInput.length;
+        }
+      }, 50);
+    } else {
+      // Clear the input if canceling
+      userInput = "";
+    }
+  }
+
+  // Function to handle keydown events and prevent deletion of prefix
+  function handleInputKeydown(e) {
+    if (isGenerateMode) {
+      // Get current cursor position and selection
+      const input = e.target;
+      const selectionStart = input.selectionStart;
+      const selectionEnd = input.selectionEnd;
+      
+      // Prevent deleting the prefix with Backspace
+      if (e.key === 'Backspace' && (selectionStart <= GENERATE_PREFIX.length || 
+          (selectionStart === selectionEnd && selectionStart <= GENERATE_PREFIX.length))) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Prevent deleting the prefix with Delete
+      if (e.key === 'Delete' && selectionStart < GENERATE_PREFIX.length) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Prevent cutting the prefix with keyboard shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && 
+          selectionStart < GENERATE_PREFIX.length) {
+        e.preventDefault();
+        return;
+      }
+      
+      // Allow Enter key to submit
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    } else if (e.key === 'Enter') {
+      sendMessage();
+    }
+  }
+
+  // Function to monitor input changes and restore prefix if needed
+  function handleInputChange(e) {
+    if (isGenerateMode && !userInput.startsWith(GENERATE_PREFIX)) {
+      userInput = GENERATE_PREFIX + userInput.replace(GENERATE_PREFIX, "");
+      
+      // Restore cursor position after forced prefix
+      setTimeout(() => {
+        const input = document.querySelector('input[placeholder="Type your message..."]');
+        if (input) {
+          const position = Math.max(GENERATE_PREFIX.length, input.selectionStart);
+          input.selectionStart = input.selectionEnd = position;
+        }
+      }, 0);
+    }
+  }
+
+  // Enhanced sendMessage function to handle generate mode
   async function sendMessage() {
     if (!userInput.trim()) return;
+    
+    // Reset generate mode if it's active
+    if (isGenerateMode) {
+      isGenerateMode = false;
+    }
     
     // Check for specific commands first before content filtering
     const topicResponse = checkSpecificAnswers(userInput);
@@ -226,6 +374,26 @@
       
       return;
     }
+
+    // Look for Maven search patterns first
+    const searchPatterns = [
+      /find\s+(?:dependency|dependencies|library|libraries|package|packages)\s+(?:for|about|related to)?\s+([^?.,]+)/i,
+      /search\s+(?:for)?\s+([^?.,]+)\s+(?:dependency|dependencies|library|libraries|package|packages)/i,
+      /(?:how|where)\s+(?:can|do)\s+i\s+(?:get|find|use)\s+([^?.,]+)/i,
+      /(?:recommend|suggest)\s+(?:a|some)?\s+(?:dependency|dependencies|library|libraries)\s+(?:for|about)?\s+([^?.,]+)/i
+    ];
+    
+    let isSearchQuery = false;
+    let searchTerm = '';
+    
+    for (const pattern of searchPatterns) {
+      const match = userInput.match(pattern);
+      if (match && match[1]) {
+        isSearchQuery = true;
+        searchTerm = match[1].trim();
+        break;
+      }
+    }
     
     // Add user message to chat
     $chatMessages = [...$chatMessages.filter(msg => msg.role !== 'system'), { role: 'user', content: userInput }];
@@ -234,6 +402,19 @@
     $isLoading = true;
 
     try {
+      // If it's a search query, handle it directly
+      if (isSearchQuery && searchTerm) {
+        const results = await searchMavenRepository(searchTerm);
+        const formattedResults = formatMavenResults(results, searchTerm);
+        
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: formattedResults
+        }];
+        $isLoading = false;
+        return;
+      }
+      
       // Include the system message when sending to API
       const systemMessage = {
         role: 'system',
@@ -284,51 +465,458 @@
 
   $: isAuthPage = $page?.route?.id === '/login' || $page?.route?.id === '/signup';
 
-  // Add this function for asset generation
+  // Function to extractMavenDetailsFromChat that uses commonMavenLibraries
+  function extractMavenDetailsFromChat() {
+    // Get the last few user messages
+    const recentMessages = $chatMessages
+      .filter(msg => msg.role === 'user')
+      .slice(-3)
+      .map(msg => msg.content.toLowerCase());
+    
+    let groupId = null;
+    let artifactId = null;
+    let version = null;
+    let license = null;
+    
+    // extract explicit maven coordinates first (existing patterns)
+    const groupIdPattern = /group(?:Id)?[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const artifactIdPattern = /artifact(?:Id)?[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const versionPattern = /version[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const licensePattern = /licen[cs]e[:\s]+["']?([^"'\s<>]+)["']?/i;
+    const fullCoordinatePattern = /["']?([a-zA-Z0-9._-]+(?:\.[a-zA-Z0-9._-]+)+):([a-zA-Z0-9._-]+)(?::([a-zA-Z0-9._-]+))?["']?/;
+    const xmlPattern = /<dependency>\s*<groupId>([^<]+)<\/groupId>\s*<artifactId>([^<]+)<\/artifactId>\s*<version>([^<]+)<\/version>/i;
+    
+    for (const message of recentMessages) {
+      // check for explicit specifications
+      const groupMatch = message.match(groupIdPattern);
+      const artifactMatch = message.match(artifactIdPattern);
+      const versionMatch = message.match(versionPattern);
+      const licenseMatch = message.match(licensePattern);
+      
+      if (groupMatch && !groupId) groupId = groupMatch[1];
+      if (artifactMatch && !artifactId) artifactId = artifactMatch[1];
+      if (versionMatch && !version) version = versionMatch[1];
+      if (licenseMatch && !license) license = licenseMatch[1];
+      
+      // extract from full coordinate pattern
+      const fullMatch = message.match(fullCoordinatePattern);
+      if (fullMatch) {
+        if (!groupId) groupId = fullMatch[1];
+        if (!artifactId) artifactId = fullMatch[2];
+        if (!version && fullMatch[3]) version = fullMatch[3];
+      }
+      
+      // extract from xml pattern
+      const xmlMatch = message.match(xmlPattern);
+      if (xmlMatch) {
+        if (!groupId) groupId = xmlMatch[1];
+        if (!artifactId) artifactId = xmlMatch[2];
+        if (!version) version = xmlMatch[3];
+      }
+    }
+    
+    // if we still don't have details, try to search Maven Central
+    if (!groupId || !artifactId) {
+      // Extract a search term from the conversation
+      const searchTermPattern = /(?:generate|create|make|need|want)\s+(?:an?\s+)?(?:asset|dependency|library)\s+(?:for|about|using)?\s+([a-zA-Z0-9._-]+(?:\s+[a-zA-Z0-9._-]+)?)/i;
+      const searchMatch = recentMessages.join(' ').match(searchTermPattern);
+      
+      if (searchMatch && searchMatch[1]) {
+        const searchTerm = searchMatch[1].trim();
+        
+        // message indicating we're searching Maven Central
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: `I'm searching Maven Central for "${searchTerm}"...`
+        }];
+        
+        searchMavenRepository(searchTerm)
+          .then(results => {
+            if (results && results.length > 0) {
+              const bestMatch = results[0]; // use the top result
+              
+              // update the form with the search result
+              const today = new Date().toISOString().split('T')[0];
+              const dependencyXml = `<dependency>
+  <groupId>${bestMatch.groupId}</groupId>
+  <artifactId>${bestMatch.artifactId}</artifactId>
+  <version>${bestMatch.version}</version>
+</dependency>`;
+
+              const gradleDependency = `implementation '${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}'`;
+
+              // Check if we're already on the workspace page or need to navigate there
+              const currentPath = window.location.pathname;
+              const isOnWorkspace = currentPath === '/Workspace';
+              
+              if (isOnWorkspace) {
+                console.log('Already on Workspace page, directly dispatching event');
+              } else {
+                console.log('Not on Workspace page, setting localStorage for navigation handling');
+                // Store data for navigation handling
+                localStorage.setItem('autoAddAsset', 'true');
+                localStorage.setItem('pendingAssetData', JSON.stringify({
+                  id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
+                  name: bestMatch.artifactId,
+                  version: bestMatch.version,
+                  type: 'maven',
+                  date_updated: today,
+                  date_created: today,
+                  licence_info: bestMatch.license || 'Apache 2.0',
+                  usage_info: `Use this dependency in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
+                  maven_dependency: dependencyXml,
+                  gradle_dependency: gradleDependency
+                }));
+              }
+
+              const event = new CustomEvent('createMavenAsset', {
+                detail: {
+                  asset_id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
+                  id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
+                  name: bestMatch.artifactId,
+                  version: bestMatch.version,
+                  type: 'maven',
+                  date_updated: today,
+                  date_created: today,
+                  licence_info: bestMatch.license || 'Apache 2.0',
+                  usage_info: `Use this dependency in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
+                  maven_dependency: dependencyXml,
+                  gradle_dependency: gradleDependency
+                }
+              });
+              
+              window.dispatchEvent(event);
+              
+              // Add a message with the search result
+              $chatMessages = [...$chatMessages, { 
+                role: 'assistant', 
+                content: `I found a matching Maven dependency: ${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}. I've filled out the form for you.`
+              }];
+              
+              // If not already on workspace page, navigate there
+              if (!isOnWorkspace) {
+                window.location.href = '/Workspace';
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error searching Maven Central:', error);
+          });
+      }
+    }
+    
+    // Return the details if we have at least groupId and artifactId
+    if (groupId && artifactId) {
+      return {
+        groupId,
+        artifactId,
+        version: version || '1.0.0',
+        license: license || 'Apache 2.0'
+      };
+    }
+    
+    return null;
+  }
+
+  // Add this function before or after the generateAsset function
+  async function fetchPomFile(groupId, artifactId, version) {
+    try {
+      const response = await fetch(
+        `/api/maven/pom?groupId=${encodeURIComponent(groupId)}&artifactId=${encodeURIComponent(artifactId)}&version=${encodeURIComponent(version)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch POM file');
+      }
+      
+      const data = await response.json();
+      return data.pomContent;
+    } catch (error) {
+      console.error('POM fetch error:', error);
+      return null;
+    }
+  }
+
+  // Convert POM content to a File object
+  function createPomFile(pomContent, artifactId, version) {
+    // Create a new Blob with the POM content
+    const pomBlob = new Blob([pomContent], { type: 'application/xml' });
+    
+    // Create a File object from the Blob
+    const pomFile = new File([pomBlob], `${artifactId}-${version}.pom`, { 
+      type: 'application/xml',
+      lastModified: new Date().getTime()
+    });
+    
+    return pomFile;
+  }
+
+  // Updated generateAsset function with better integration
   async function generateAsset() {
     try {
       $isLoading = true;
       
-      const assetName = extractAssetNameFromChat();
+      // Get the last few user messages to extract context
+      const recentMessages = $chatMessages
+        .filter(msg => msg.role === 'user')
+        .slice(-3)
+        .map(msg => msg.content);
       
-      // Make API call to create asset
-      const response = await fetch('/api/assets/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: assetName || 'New Asset',
-          type: 'maven',
-          // Add any other properties needed for asset creation
-        })
-      });
+      // Join messages for analysis
+      const context = recentMessages.join(' ').toLowerCase();
       
-      if (!response.ok) throw new Error('Failed to create asset');
+      // Try to extract technology/library name
+      let searchQuery = '';
       
-      const data = await response.json();
+      // Common patterns to extract dependency names
+      const patterns = [
+        /(?:for|about|using|with)\s+([a-z0-9\s._-]+)(?:\s+library|\s+framework|\s+dependency)?/i,
+        /([a-z0-9\s._-]+)(?:\s+library|\s+framework|\s+dependency|\s+package)/i,
+        /generate\s+(?:an?\s+)?asset\s+(?:for|about|using)\s+([a-z0-9\s._-]+)/i
+      ];
       
-      // Add confirmation message to chat
+      // Try to extract with patterns
+      for (const pattern of patterns) {
+        for (const message of recentMessages) {
+          const match = message.match(pattern);
+          if (match && match[1]) {
+            searchQuery = match[1].trim();
+            break;
+          }
+        }
+        if (searchQuery) break;
+      }
+      
+      // If we still don't have a query, look for specific keywords
+      if (!searchQuery) {
+        const keywords = ['spring', 'apache', 'google', 'aws', 'azure', 'cloud', 'mongo', 'sql', 
+                          'hibernate', 'kafka', 'log4j', 'junit', 'mockito', 'lombok', 'jackson'];
+        
+        for (const keyword of keywords) {
+          if (context.includes(keyword)) {
+            searchQuery = keyword;
+            break;
+          }
+        }
+      }
+      
+      // If we still don't have a query, ask the user
+      if (!searchQuery) {
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: 'I need more details to generate a Maven asset. Could you specify which library or framework you need?'
+        }];
+        $isLoading = false;
+        return;
+      }
+      
+      // Let user know we're searching
       $chatMessages = [...$chatMessages, { 
         role: 'assistant', 
-        content: `I've created a new asset "${data.name}" for you. Would you like to go to your assets page to view it?`
+        content: `Searching Maven Central for "${searchQuery}" dependencies...`
       }];
       
-      // Set up a temporary handler for "yes" response
-      const yesHandler = setTimeout(() => {
-        const lastUserMessage = $chatMessages.findLast(msg => msg.role === 'user')?.content.toLowerCase();
-        if (lastUserMessage && (lastUserMessage.includes('yes') || lastUserMessage.includes('sure'))) {
-          goto('/assets');
-        }
-      }, 5000);
+      // Search Maven Central
+      const searchResults = await searchMavenRepository(searchQuery);
       
-    } catch (error) {
-      console.error('Error generating asset:', error);
+      if (!searchResults || searchResults.length === 0) {
+        $chatMessages = [...$chatMessages, { 
+          role: 'assistant', 
+          content: `I couldn't find any Maven dependencies matching "${searchQuery}". Could you try a different search term?`
+        }];
+        $isLoading = false;
+        return;
+      }
+      
+      // Use the first result
+      const bestMatch = searchResults[0];
+      
+      // Fetch the POM file for this artifact
+      let pomContent = null;
+      let pomFileName = null;
+      try {
+        pomContent = await fetchPomFile(
+          bestMatch.groupId, 
+          bestMatch.artifactId, 
+          bestMatch.version
+        );
+        
+        if (pomContent) {
+          pomFileName = `${bestMatch.artifactId}-${bestMatch.version}.pom`;
+          console.log('POM file content fetched successfully');
+        }
+      } catch (e) {
+        console.error('Error fetching POM file:', e);
+      }
+      
+      // Prepare the asset data
+      const today = new Date().toISOString().split('T')[0];
+      const dependencyXml = `<dependency>
+  <groupId>${bestMatch.groupId}</groupId>
+  <artifactId>${bestMatch.artifactId}</artifactId>
+  <version>${bestMatch.version}</version>
+</dependency>`;
+
+      const gradleDependency = `implementation '${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}'`;
+
+      const assetData = {
+        asset_id: `${bestMatch.groupId}:${bestMatch.artifactId}`,
+        name: bestMatch.artifactId,
+        version: bestMatch.version,
+        type: 'maven',
+        date_updated: today,
+        date_created: today,
+        licence_info: bestMatch.license || 'Apache 2.0',
+        usage_info: `Use this asset in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
+        maven_dependency: dependencyXml,
+        gradle_dependency: gradleDependency,
+        hasPomFile: pomContent !== null
+      };
+      
+      // Let user know we're redirecting to the Workspace page
       $chatMessages = [...$chatMessages, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error while trying to create the asset. Please try again later.'
+        content: `Found "${bestMatch.artifactId}" (${bestMatch.groupId}:${bestMatch.artifactId}:${bestMatch.version}). Opening the asset form in Workspace...`
+      }];
+      
+      // Check if we're already on the Workspace page
+      const isOnWorkspacePage = $page.route?.id === '/Workspace';
+      
+      if (isOnWorkspacePage) {
+        // If already on Workspace page, use the event approach
+        try {
+          // Create a File object from the POM content if available
+          if (pomContent) {
+            const pomBlob = new Blob([pomContent], { type: 'application/xml' });
+            assetData.pomFile = new File([pomBlob], pomFileName, { 
+              type: 'application/xml',
+              lastModified: new Date().getTime()
+            });
+          }
+          
+          // Create and dispatch the event to trigger asset creation in Workspace
+          const event = new CustomEvent('createMavenAsset', {
+            detail: assetData
+          });
+          
+          window.dispatchEvent(event);
+          
+          // Add confirmation message
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: `I've filled the asset form in Workspace with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
+          }];
+        } catch (error) {
+          console.error('Error creating asset:', error);
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: 'Sorry, I encountered an error while creating the asset. Please try again or create the asset manually.'
+          }];
+        }
+      } else {
+        // If not on Workspace page, use localStorage to pass data between pages
+        try {
+          // Store asset data in localStorage (but don't store the File object directly as it's not serializable)
+          localStorage.setItem('autoAddAsset', 'true');
+          localStorage.setItem('pendingAssetData', JSON.stringify(assetData));
+          
+          // Store POM content separately if available
+          if (pomContent) {
+            localStorage.setItem('pendingPomContent', pomContent);
+            localStorage.setItem('pendingPomFilename', pomFileName);
+          }
+          
+          // Navigate to the Workspace page
+          goto('/Workspace');
+          
+          // Add a message about the navigation
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: `Navigating to Workspace page where the form will be automatically filled with ${bestMatch.artifactId} details.`
+          }];
+        } catch (error) {
+          console.error('Error setting up asset creation:', error);
+          $chatMessages = [...$chatMessages, { 
+            role: 'assistant', 
+            content: 'Sorry, I encountered an error while setting up the asset creation. Please try navigating to the Workspace page manually.'
+          }];
+          
+          // Clean up any partial localStorage data
+          localStorage.removeItem('autoAddAsset');
+          localStorage.removeItem('pendingAssetData');
+          localStorage.removeItem('pendingPomContent');
+          localStorage.removeItem('pendingPomFilename');
+        }
+      }
+      
+      // Reset context to allow for new asset generation
+      resetChatContext();
+      
+    } catch (error) {
+      console.error('Error in generateAsset:', error);
+      $chatMessages = [...$chatMessages, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error while trying to generate the asset. Please try again later or create the asset manually in the Workspace section.'
       }];
     } finally {
       $isLoading = false;
     }
+  }
+
+  // NEW: Function to reset chat context after asset generation
+  function resetChatContext() {
+    // Keep only the most recent messages but add a system message indicating context reset
+    const lastFewMessages = $chatMessages.slice(-3);
+  
+    // Add a system message to provide a clean break for context
+    $chatMessages = [
+      ...$chatMessages.filter(msg => msg.role === 'system'),
+      ...lastFewMessages,
+      {
+        role: 'system',
+        content: "Context reset for new requests"
+      },
+      {
+        role: 'assistant',
+        content: "I'm ready to help with another request. Need another asset or something else?"
+      }
+    ];
+    
+    // This helps ensure that any "memory" of the previous asset doesn't affect new generations
+    if (isGenerateMode) {
+      toggleGenerateMode(); // Turn off generate mode if it's on
+    }
+  }
+
+  // Helper function to extract asset name from chat context
+  function extractAssetNameFromChat() {
+    // Get the last few user messages to look for asset name
+    const recentMessages = $chatMessages
+      .filter(msg => msg.role === 'user')
+      .slice(-3)
+      .map(msg => msg.content);
+    
+    // Look for patterns like "create asset called X" or "generate X asset"
+    for (const message of recentMessages) {
+      // Various patterns to extract asset name
+      const patterns = [
+        /create\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
+        /generate\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
+        /make\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
+        /(?:generate|create|make)\s+"?([^"]+)"?\s+asset/i,
+        /(?:generate|create|make)\s+(?:an?\s+)?maven\s+dependency\s+(?:called|named|for)\s+"?([^"]+)"?/i,
+        /name\s*:\s*"?([^"]+)"?/i
+      ];
+      
+      for (const pattern of patterns) {
+        const match = message.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+      }
+    }
+    
+    return null; // No specific name found
   }
 
   async function downloadAsset() {
@@ -410,35 +998,6 @@
     return null; // No specific asset info found
   }
 
-  // Helper function to extract asset name from chat context
-  function extractAssetNameFromChat() {
-    // Get the last few user messages to look for asset name
-    const recentMessages = $chatMessages
-      .filter(msg => msg.role === 'user')
-      .slice(-3)
-      .map(msg => msg.content);
-    
-    // Look for patterns like "create asset called X" or "generate X asset"
-    for (const message of recentMessages) {
-      // Various patterns to extract asset name
-      const patterns = [
-        /create\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
-        /generate\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
-        /make\s+(?:an?\s+)?asset\s+(?:called|named)\s+"?([^"]+)"?/i,
-        /(?:generate|create|make)\s+"?([^"]+)"?\s+asset/i
-      ];
-      
-      for (const pattern of patterns) {
-        const match = message.match(pattern);
-        if (match && match[1]) {
-          return match[1].trim();
-        }
-      }
-    }
-    
-    return null; // No specific name found
-  }
-
   // Add a reference to the chat container
   let chatContainer;
   let userHasScrolled = false;
@@ -477,66 +1036,105 @@
 
 <!-- Chat Interface - conditionally rendered -->
 {#if !isAuthPage}
-<div class="fixed bottom-5 right-5 z-50">
+<div class="fixed bottom-0 right-0 z-50 sm:bottom-5 sm:right-5">
   {#if $isChatOpen}
     <div class="relative group">
-      <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:blur-md transition-all duration-1000 group-hover:duration-200"></div>
-      <div class="relative w-[350px] h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col overflow-hidden">
-        <div class="p-4 bg-blue-600 text-white flex justify-between items-center">
-          <h3 class="m-0 font-medium">My Chatbot</h3>
+      <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:blur-md transition-all duration-1000 group-hover:duration-200 sm:block hidden"></div>
+      <!-- Adjusted size for mobile -->
+      <div class="relative w-screen h-[60vh] sm:w-[470px] sm:h-[500px] bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow-sm flex flex-col overflow-hidden">
+        <!-- Header - made more compact on mobile -->
+        <div class="p-2 sm:p-4 bg-blue-600 text-white flex justify-between items-center">
+          <h3 class="m-0 font-medium text-sm sm:text-base">My Chatbot</h3>
           <button 
-            class="bg-transparent border-none text-white text-2xl cursor-pointer" 
+            class="bg-transparent border-none text-white text-xl sm:text-2xl cursor-pointer" 
             on:click={toggleChat}
           >
             ×
           </button> 
         </div>
+
+        <!-- Chat Messages - adjusted padding for mobile -->
         <div 
-          class="flex-1 p-4 overflow-y-auto flex flex-col space-y-4" 
+          class="flex-1 p-2 sm:p-4 overflow-y-auto flex flex-col space-y-2 sm:space-y-4" 
           bind:this={chatContainer}
           on:scroll={handleScroll}
         >
           {#each $chatMessages.filter(msg => msg.role !== 'system') as message}
-            <div class={`p-3 rounded-2xl max-w-[90%] shadow-sm ${
+            <div class={`p-2 sm:p-3 rounded-2xl max-w-[90%] shadow-sm ${
               message.role === 'user' 
                 ? 'self-end bg-blue-600 text-white' 
                 : 'self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
             }`}
             in:fade={{ duration: 150 }}
             >
-              <p class="m-0 break-words whitespace-normal">{message.content}</p>
+              <p class="m-0 break-words whitespace-normal text-xs sm:text-sm">{message.content}</p>
             </div>
           {/each}
           {#if $isLoading}
-            <div class="self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-2xl max-w-[80%] opacity-70 shadow-sm"
+            <div class="self-start bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-2 sm:p-3 rounded-2xl max-w-[80%] opacity-70 shadow-sm"
             in:fade={{ duration: 150 }}>
-              <p class="m-0">Thinking...</p>
+              <p class="m-0 text-xs sm:text-sm">Thinking...</p>
             </div>
           {/if}
         </div>
-        <div class="flex p-4 border-t border-gray-200 dark:border-gray-700">
-          <input 
-            type="text" 
-            bind:value={userInput} 
-            placeholder="Type your message..." 
-            on:keydown={(e) => e.key === 'Enter' && sendMessage()}
-            class="flex-1 p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button 
-            on:click={sendMessage} 
-            disabled={$isLoading}
-            class="bg-blue-600 text-white border-none rounded px-4 py-2 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-          >
-            Send
-          </button>
+
+        <!-- Input Area - more compact for mobile -->
+        <div class="flex p-1 sm:p-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="p-1 flex gap-1 sm:gap-2 w-full">
+            <input
+              bind:value={userInput}
+              placeholder="Type your message..."
+              class="flex-1 p-1 sm:p-2 text-xs sm:text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              on:keydown={handleInputKeydown}
+              on:input={handleInputChange}
+            />
+            <button 
+              on:click={sendMessage} 
+              class="py-1 px-2 sm:py-2 sm:px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+            >
+              Send
+            </button>
+            <button 
+              class="bg-green-600 text-white border-none rounded-md px-2 py-1 cursor-pointer hover:bg-green-700 transition-colors text-xs sm:text-sm"
+              on:click={() => {
+                const directMenu = document.getElementById('directMenu');
+                directMenu.classList.toggle('hidden');
+              }}
+            >
+              Direct
+            </button>
+            <button 
+              on:click={toggleGenerateMode} 
+              class={`py-1 px-2 ${isGenerateMode ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-${isGenerateMode ? 'red' : 'green'}-500 text-xs sm:text-sm`}
+            >
+              {isGenerateMode ? 'Cancel' : 'Generate'}
+            </button>
+          </div>
+        </div> 
+        
+        <!-- Direct menu dropdown - adjusted for mobile -->
+        <div id="directMenu" class="hidden absolute bottom-[60px] right-2 sm:bottom-[80px] sm:right-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm z-10 w-[150px] sm:w-[200px]">
+          <div class="p-1 flex flex-col space-y-1 max-h-[250px] sm:max-h-[300px] overflow-y-auto">
+            {#each ['Home', 'Profile', 'Workspace', 'Log History', 'Projects'] as route}
+              <button 
+                class="text-left px-3 py-2 sm:px-4 sm:py-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-800 dark:text-gray-200 transition-colors whitespace-normal w-full text-xs sm:text-sm"
+                on:click={() => { 
+                  goto(route === 'Log History' ? '/logging' : route === 'Workspace' ? '/Workspace' : route === 'Profile' ? '/profile' : `/${route === 'Home' ? '' : route}`);
+                  document.getElementById('directMenu').classList.add('hidden');
+                }}
+              >
+                {route}
+              </button>
+            {/each}
+          </div>
         </div>
       </div>
     </div>
   {:else}
     <div class="relative group">
-      <div class="absolute -inset-1 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-full blur-md opacity-75 group-hover:blur-lg transition-all duration-1000 group-hover:duration-200"></div>
+      <div class="absolute -inset-1 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-full blur-md opacity-75 group-hover:blur-lg transition-all duration-1000 group-hover:duration-200 sm:block hidden"></div>
       <button 
-        class="relative bg-blue-600 text-white border-none rounded-full w-[60px] h-[60px] text-base cursor-pointer shadow-md hover:bg-blue-700 transition-colors"
+        class="relative bg-blue-600 text-white border-none rounded-full w-[40px] h-[40px] sm:w-[60px] sm:h-[60px] text-xs sm:text-base cursor-pointer shadow-md hover:bg-blue-700 transition-colors"
         on:click={toggleChat}
       >
         Chat

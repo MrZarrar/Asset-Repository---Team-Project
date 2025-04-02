@@ -10,12 +10,12 @@
     async function fetchLogs() {
         try {
             logs = await pb.collection('logs').getFullList({ sort: '-created' });
-        } catch (error) {
-            console.error('Error fetching logs:', error);
+        } catch (err) {
+            console.error("Error deleting asset:", err);
         }
     }
   
-    onMount(fetchLogs);
+    onMount(fetchLogs());
 </script>
 
 <svelte:head>
@@ -28,9 +28,11 @@
     <h1 class="text-xl font-semibold mt-6">Log History</h1>
     <ul class="mt-4 space-y-2">
         {#each logs as log}
-            <li class="p-3 bg-gray-100 rounded shadow">
-                <strong>{log.action}</strong> on <em>{log.file}</em> by <span class="text-blue-600">{log.user}</span>
-                <div class="text-sm text-gray-500">{new Date(log.time).toLocaleString()}</div>
+            <li class="p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded shadow-md">
+                <strong class="text-red-600">{log.user} </strong>
+                <span class="text-blue-600">{log.action} </span>
+                <strong class="text-red-600">assetID:{log.asset}</strong>
+                <div class="text-sm text-gray-500">{new Date(log.created).toLocaleString()}</div>
             </li>
         {/each}
     </ul>

@@ -1,9 +1,15 @@
 <script>
-  import { Search, User, Download, ChevronDown, Upload, X } from "@lucide/svelte";
+  import { Search, User, Download, ChevronDown, Upload, X, Check, Pen } from "@lucide/svelte";
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
   import { page } from '$app/stores';
+  import { logActions } from '../../../js/logging.pb.js';
+  import { user } from '$lib/user.js';
+  import { fade, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
+
+  $: role = $user.role;
 
   let editing = false;
 
@@ -21,6 +27,7 @@
     licence_info: "",
     usage_info: "",
     file: "",
+    id: "", // used to compute dependency text (e.g., "group:artifact")
     
   };
   
@@ -38,11 +45,37 @@
   let downloading = false;
   let downloadError = null;
   let availableFields = [];
+  let showDeletePopup = false;
+
+  // Add state for copy feedback
+  let mavenCopied = false;
+  let gradleCopied = false;
+
+  // New dependency text variables
+  let mavenDep = "";
+  let gradleDep = "";
+
+  // Function to compute the dependency texts
+  function computeDependencyTexts(assetData) {
+    mavenDep = `// Maven
+<dependency>
+  <groupId>${assetData.id?.split(':')[0] || 'com.example'}</groupId>
+  <artifactId>${assetData.id?.split(':')[1] || assetData.name}</artifactId>
+  <version>${assetData.version || '1.0.0'}</version>
+</dependency>`;
+  
+    gradleDep = `// Gradle
+implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.version || '1.0.0'}'`;
+  }
 
   // Function to fetch a specific asset by id
   async function fetchAssetById(id) {
     try {
       const record = await pb.collection('assets').getOne(id, { expand: 'logo' });
+
+      // Log viewing of an asset
+      logActions("viewed", assetId, $user.email);
+
       return record;
     } catch (err) {
       console.error("Error fetching asset:", err);
@@ -65,6 +98,10 @@
       if (assetId) {
         try {
           asset = await fetchAssetById(assetId);
+          // Ensure licence_info field is properly recognized
+          console.log("License info:", asset.licence_info);
+          // Compute dependency texts after the asset is loaded:
+          computeDependencyTexts(asset);
         } catch (err) {
           error = `Failed to load asset details: ${err.message}`;
         }
@@ -102,6 +139,15 @@
     }
   });
 
+  let showUpdatePopup = false;
+
+  function showUpdateNotification() {
+    showUpdatePopup = true;
+    setTimeout(() => {
+      showUpdatePopup = false;
+    }, 2000);
+  }
+
   async function updateAsset() {
     try {
       const formData = new FormData();
@@ -114,25 +160,62 @@
       if (updatedAsset.file instanceof File) {
         formData.append('file', updatedAsset.file);
       }
+      // Optionally include the dependency texts if you want to persist them:
+      formData.append('mavenDependency', mavenDep);
+      formData.append('gradleDependency', gradleDep);
       const updatedRecord = await pb.collection('assets').update(assetId, formData);
       asset = { ...updatedRecord }; // Update the asset with the new data
       updatedAsset = { ...updatedRecord }; // Ensure updatedAsset is also updated
       editing = false; // Exit edit mode after saving
       console.log("Asset updated successfully:", updatedRecord);
+
+      // Show the update popup notification
+      showUpdateNotification();
+
+      // Log updating of an asset
+      logActions("updated", assetId, $user.email);
+
     } catch (err) {
       console.error("Error updating asset:", err);
     }
   }
 
+  let showConfirmPopup = false;
+
   async function deleteAsset() {
+    if (!showConfirmPopup) {
+      showConfirmPopup = true;
+      return;
+    }
+
     try {
       await pb.collection('assets').delete(assetId);
       console.log("Asset deleted successfully");
-      window.location.href = '/'; // Redirect to home page after deletion
+
+      // Show the popup notification
+      showDeletePopup = true;
+
+      // Log deleting of an asset
+      logActions("deleted", assetId, $user.email);
     } catch (err) {
       console.error("Error deleting asset:", err);
+    } finally {
+      showConfirmPopup = false;
     }
   }
+
+  function cancelDelete() {
+    showConfirmPopup = false;
+  }
+
+  function goToDashboard() {
+    window.location.href = '/';
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
+  }
+
 
   /**
    * Function to download an asset file from meta_data
@@ -190,6 +273,46 @@
 
   let updatedAsset = { ...asset };
 
+  // Function to handle copying with visual feedback
+  function copyToClipboard(text, type) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (type === 'maven') {
+        mavenCopied = true;
+        setTimeout(() => mavenCopied = false, 2000); // Reset after 2 seconds
+      } else if (type === 'gradle') {
+        gradleCopied = true;
+        setTimeout(() => gradleCopied = false, 2000); // Reset after 2 seconds
+      }
+    });
+  }
+  // --- Remove Files Functions ---
+
+  async function removeLogo() {
+    if (!confirm("Are you sure you want to remove the logo?")) return;
+    try {
+      // Remove the logo by updating the record with null for the logo field
+      const updatedRecord = await pb.collection('assets').update(assetId, { logo: null });
+      asset = { ...updatedRecord };
+      updatedAsset = { ...updatedRecord };
+      console.log("Logo removed successfully");
+    } catch (err) {
+      console.error("Error removing logo:", err);
+    }
+  }
+
+  async function removeAssetFile() {
+    if (!confirm("Are you sure you want to remove the asset file?")) return;
+    try {
+      // Remove the asset file by updating the record with null for the file field
+      const updatedRecord = await pb.collection('assets').update(assetId, { file: null });
+      asset = { ...updatedRecord };
+      updatedAsset = { ...updatedRecord };
+      console.log("Asset file removed successfully");
+    } catch (err) {
+      console.error("Error removing asset file:", err);
+    }
+  }
+
 </script>
 
 <style>
@@ -217,6 +340,76 @@ input.editing, textarea.editing {
 
 input[type="file"].hidden {
   display: none;
+}
+
+/* Pulse Animation for Update */
+.success-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.success-icon {
+  width: 30px;
+  height: 30px;
+  color: white;
+  opacity: 0;
+  animation: fade-in 0.5s ease-in-out 0.3s forwards;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Update delete circle styles to match the image */
+.delete-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #e74c3c; /* Solid red background */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add subtle shadow */
+}
+
+.delete-icon {
+  width: 24px; /* Shorter width for the minus sign */
+  height: 4px; /* Thicker height for the minus sign */
+  background-color: white;
+  border-radius: 2px; /* Slightly rounded edges */
 }
 </style>
 
@@ -268,17 +461,29 @@ input[type="file"].hidden {
         </div>
       {:else}
         <div class="flex items-start gap-6 mb-8">
-          <div class="w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
-            {#if editing}
-              <label class="cursor-pointer">
-                <input type="file" accept="image/*" on:change={(e) => updatedAsset.logo = e.target.files[0]} class="hidden" />
-                <Upload class="w-6 h-6 text-gray-400 hover:text-gray-600" />
-              </label>
-            {:else if asset.logo}
-              <img src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} alt="Asset Logo" class="w-full h-full object-cover rounded-lg" />
+          <div class="relative w-16 h-16 bg-grey p-1 rounded-lg shadow-md">
+            {#if asset.logo}
+              <img 
+                src={`http://127.0.0.1:8090/api/files/assets/${asset.id}/${asset.logo}`} 
+                alt="Asset Logo" 
+                class="w-full h-full object-cover rounded-lg" 
+              />
             {:else}
-              <!-- Placeholder for logo if not available -->
-              <div class="w-full h-full flex items-center justify-center text-gray-400">No Logo</div>
+              <div class="w-full h-full flex items-center justify-center text-gray-400">
+                No Logo
+              </div>
+            {/if}
+            
+            {#if editing}
+              <label class="absolute inset-0 flex items-center justify-center cursor-pointer bg-black bg-opacity-30">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  on:change={(e) => updatedAsset.logo = e.target.files[0]} 
+                  class="hidden" 
+                />
+                <Upload class="w-6 h-6 text-white hover:text-gray-300" />
+              </label>
             {/if}
           </div>
           
@@ -349,6 +554,66 @@ input[type="file"].hidden {
               </div>
             </div>
 
+            <!-- License Info -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">License</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {#if editing}
+                  <textarea bind:value={updatedAsset.licence_info} class="border rounded p-2 w-full editing"></textarea>
+                {:else}
+                  {asset.licence_info || "Not specified"}
+                {/if}
+              </div>
+            </div>
+
+            <!-- Maven Dependency Info -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Dependency</div>
+              {#if asset.type === 'maven' || asset.type === 'java'}
+                {#if editing}
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm">Maven Dependency (XML):</label>
+                    <textarea bind:value={mavenDep} class="border rounded p-2 w-full editing"></textarea>
+                    <label class="text-sm">Gradle Dependency:</label>
+                    <textarea bind:value={gradleDep} class="border rounded p-2 w-full editing"></textarea>
+                  </div>
+                {:else}
+                  <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto whitespace-pre">{mavenDep}</pre>
+                  </div>
+                  <div class="bg-gray-100 dark:bg-gray-800 rounded p-3 my-2">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto whitespace-pre">{gradleDep}</pre>
+                  </div>
+                  <div class="flex flex-row gap-2 mt-2">
+                    <button 
+                      on:click={() => copyToClipboard(mavenDep, 'maven')}
+                      class="px-3 py-1 {mavenCopied ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {mavenCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                    >
+                      {#if mavenCopied}
+                        <Pen class="w-4 h-4" /> Copied!
+                      {:else}
+                        Copy Maven XML
+                      {/if}
+                    </button>
+                    <button 
+                      on:click={() => copyToClipboard(gradleDep, 'gradle')}
+                      class="px-3 py-1 {gradleCopied ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded {gradleCopied ? '' : 'hover:bg-gray-300 dark:hover:bg-gray-600'} transition-colors duration-50 flex items-center gap-1"
+                    >
+                      {#if gradleCopied}
+                        <Pen class="w-4 h-4" /> Copied!
+                      {:else}
+                        Copy Gradle
+                      {/if}
+                    </button>
+                  </div>
+                {/if}
+              {:else}
+                <div class="text-gray-600 dark:text-gray-400">
+                  Not applicable for this asset type.
+                </div>
+              {/if}
+            </div>
+
             <!-- download Link -->
             <div class="border-b border-gray-200 dark:border-gray-700 py-4">
               <div class="font-semibold mb-2">Download</div>
@@ -374,29 +639,32 @@ input[type="file"].hidden {
                   </button>
                 {/if}
 
-                <button
-                  on:click={() => editing = !editing}
-                  class="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2 mr-0"
-                >
-                  {editing ? "Cancel" : "Edit Asset"}
-                </button>
-
-                {#if editing}
+                {#if role !== 'viewer'}
                   <button
-                    on:click={updateAsset}
-                    class="bg-green-600 hover:bg-green-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2"
+                    on:click={() => editing = !editing}
+                    class="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2 mr-0"
                   >
-                    Save
+                    {editing ? "Cancel" : "Edit Asset"}
+                  </button>
+
+                  {#if editing}
+                    <button
+                      on:click={updateAsset}
+                      class="bg-green-600 hover:bg-green-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded ml-2"
+                    >
+                      Save
+                    </button>
+                  {/if}
+
+                  <button
+                    on:click={deleteAsset}
+                    class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 hover:scale-105 transition-all duration-300 rounded ml-2 flex items-center gap-2"
+                  >
+                    <X class="w-4 h-4" />
+                    Delete Asset
                   </button>
                 {/if}
-
-                <button
-                  on:click={deleteAsset}
-                  class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2 flex items-center gap-2"
-                >
-                  <X class="w-4 h-4" />
-                  Delete Asset
-                </button>
+                
               </div>
               
               {#if downloadError}
@@ -411,6 +679,28 @@ input[type="file"].hidden {
                 </div>
               {/if}
             </div>
+
+            <!-- Remove Files Section (visible only in editing mode) -->
+            {#if editing}
+              <div class="border-t border-gray-200 dark:border-gray-700 py-4">
+                <div class="font-semibold mb-2">Remove Files</div>
+                <div class="flex items-center gap-3">
+                  {#if asset.logo}
+                    <button on:click={removeLogo} class="bg-red-600 hover:bg-red-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded">
+                      Remove Logo
+                    </button>
+                  {/if}
+                  {#if asset.file}
+                    <button on:click={removeAssetFile} class="bg-red-600 hover:bg-red-700 hover:scale-105 transition-all duration-300 text-white py-2 px-4 rounded">
+                      Remove Asset File
+                    </button>
+                  {/if}
+                  {#if !asset.logo && !asset.file}
+                    <p class="text-gray-500">No files available to remove.</p>
+                  {/if}
+                </div>
+              </div>
+            {/if}
           </div>
         {:else}
           <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md mb-2">
@@ -448,4 +738,81 @@ input[type="file"].hidden {
       
     </aside>
   </div>
+
+  <!-- Add the confirmation popup -->
+  {#if showConfirmPopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to delete this asset? This action cannot be undone.
+        </p>
+        <div class="flex justify-center space-x-4">
+          <button
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+            on:click={deleteAsset}
+          >
+            Confirm
+          </button>
+          <button
+            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
+            on:click={cancelDelete}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Add the delete popup notification -->
+  {#if showDeletePopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        
+        <div class="delete-circle">
+          <div class="delete-icon"></div>
+        </div>
+        <p class="text-lg font-semibold">Asset deleted successfully!</p>
+        <div class="flex space-x-4 mt-2">
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            on:click={goToDashboard}
+          >
+            Go to Home Page
+          </button>
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            on:click={goToWorkspace}
+          >
+            Go to My Assets
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Update Popup Notification -->
+  {#if showUpdatePopup}
+    <div class="fixed inset-0 flex items-center justify-center bg-black z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={() => (showUpdatePopup = false)}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <div class="success-circle">
+          <Pen class="success-icon" />
+        </div>
+        <p class="text-lg font-semibold">Asset updated successfully!</p>
+      </div>
+    </div>
+  {/if}
 </main>
