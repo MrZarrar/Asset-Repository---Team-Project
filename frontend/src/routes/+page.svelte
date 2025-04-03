@@ -357,20 +357,29 @@
     };
   });
 
-  let selectedCategory = "Latest Assets"; // Default heading
+  let selectedCategories = []; // Use array for multiple filters
 
   async function filterByCategory(category) {
+    // Toggle category in selectedCategories
+    if (selectedCategories.includes(category)) {
+      selectedCategories = selectedCategories.filter(c => c !== category);
+    } else {
+      selectedCategories = [...selectedCategories, category];
+    }
     try {
       loadingAssets = true;
-      selectedCategory = category; // Update the heading
-      const assetResponse = await fetchAssets(1, 6, { category });
+      // If no category is selected, use default filter
+      const filters = selectedCategories.length 
+        ? { category: selectedCategories }
+        : { add_type: ['original', 'added'] };
+      const assetResponse = await fetchAssets(1, 6, filters);
       assets = assetResponse.items;
       totalPages = assetResponse.totalPages || 1;
       currentPage = 1;
-      assetError = assets.length === 0 ? `No assets found for category: ${category}` : null;
+      assetError = assets.length === 0 ? `No assets found for selected filter(s)` : null;
     } catch (err) {
-      console.error(`Error fetching assets for category ${category}:`, err);
-      assetError = `Failed to load assets for category: ${category}`;
+      console.error(`Error fetching assets for filters ${JSON.stringify(selectedCategories)}:`, err);
+      assetError = `Failed to load assets for selected categories`;
     } finally {
       loadingAssets = false;
     }
@@ -698,7 +707,7 @@ input[type="file"].hidden {
         <div class="container mx-auto px-4">
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-              {selectedCategory}
+              {selectedCategories.length > 0 ? selectedCategories.join(', ') : 'Latest Assets'}
             </h1>
             {#if selectedAssetsCount > 0}
               <div class="flex items-center gap-2">
