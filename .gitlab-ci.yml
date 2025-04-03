@@ -23,10 +23,13 @@ test:
   stage: test
   image: node:${NODE_VERSION}
   script:
+    - cd backend
+    - ./pocketbaseLinux serve
+    - cd
     - cd frontend
     - npm ci
     - export OPENAI_API_KEY="${OPENAI_API_KEY}"
-    - npm run test
+    - npm test
   variables:
     VITE_PUBLIC_OPENAI_API_KEY: ${OPENAI_API_KEY}
     PUBLIC_OPENAI_API_KEY: ${OPENAI_API_KEY}
