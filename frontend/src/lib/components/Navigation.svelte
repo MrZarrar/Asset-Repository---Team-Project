@@ -268,17 +268,26 @@
                             class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
                             on:click={() => navigateToAsset(asset.id)}
                           >
-                            <div class="font-medium">{asset.name}</div>
-                            <!-- Additional fields -->
-                            {#if asset.type}
-                              <div class="text-xs text-gray-500 dark:text-gray-400">Type: {asset.type}</div>
-                            {/if}
-                            {#if asset.date_created}
-                              <div class="text-xs text-gray-500 dark:text-gray-400">Created: {new Date(asset.date_created).toLocaleDateString()}</div>
-                            {/if}
-                            {#if asset.date_updated}
-                              <div class="text-xs text-gray-500 dark:text-gray-400">Updated: {new Date(asset.date_updated).toLocaleDateString()}</div>
-                            {/if}
+                            <div class="mb-1">
+                              <span class={searchOption === 'name' ? 'font-medium text-blue-600' : 'font-medium'}>
+                                Name: {asset.name}
+                              </span>
+                            </div>
+                            <div class="mb-1">
+                              <span class={searchOption === 'type' ? 'font-medium text-blue-600' : ''}>
+                                Type: {asset.type}
+                              </span>
+                            </div>
+                            <div class="mb-1">
+                              <span class={searchOption === 'date_created' ? 'font-medium text-blue-600' : ''}>
+                                Created: {asset.date_created ? new Date(asset.date_created).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            <div>
+                              <span class={searchOption === 'date_updated' ? 'font-medium text-blue-600' : ''}>
+                                Updated: {asset.date_updated ? new Date(asset.date_updated).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
                           </button>
                         </li>
                       {/each}
