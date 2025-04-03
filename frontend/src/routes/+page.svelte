@@ -11,7 +11,6 @@
   import { quintOut } from 'svelte/easing';
   import { get } from 'svelte/store';
 
-
   $: role = $user.role;
   
   // Declare the variable needed for toggling the mobile menu state
@@ -92,8 +91,6 @@
       }
     });
   }
-
-
 
   // Modify the addAsset function to ensure it correctly handles the POM file
   async function addAsset() {
@@ -501,9 +498,11 @@
     selectedAssetsCount = selectedAssets.size; // Update the count
     assets = assets.map(asset => ({ ...asset })); // Trigger reactivity by creating a new array
   }
+
   let messages = [];
   let newMessage = "";
   let messageContainer;
+  const currentUser = get(user);
 
   async function fetchMessages() {
     try {
@@ -511,6 +510,8 @@
         expand: "user",
         sort: "-timestamp",
       });
+
+      console.log("Fetched messages:", records);
 
       messages = records.map(record => ({
         id: record.id,
@@ -528,19 +529,20 @@
     }
   }
 
-  const currentUser = get(user);
-
   async function sendMessage() {
-    if (newMessage.trim() !== "" && currentUser.userid) {
+    console.log("Send button clicked");
+    console.log("New message:", newMessage);
+
+    if (newMessage.trim() !== "" && currentUser?.userid) {
       try {
-        // Save message to the database
         const record = await pb.collection("messages").create({
           text: newMessage,
           user: currentUser.userid,
           timestamp: new Date().toISOString(),
         });
 
-        // Update local messages array
+        console.log("Message saved to database:", record);
+
         messages = [
           {
             id: record.id,
@@ -548,6 +550,8 @@
             username: currentUser.username || "Anonymous",
             role: currentUser.role || "viewer",
             avatar: currentUser.avatar || "",
+            like: 0,
+            dislike: 0,
           },
           ...messages,
         ];
@@ -557,6 +561,8 @@
       } catch (error) {
         console.error("Error sending message:", error);
       }
+    } else {
+      console.warn("Message is empty or user is not authenticated");
     }
   }
 
@@ -568,66 +574,64 @@
     }, 10);
   }
 
-  onMount(() => {
-    fetchMessages();
+  onMount(async () => {
+    if (!pb.authStore.isValid) {
+      console.warn("User is not authenticated");
+      return;
+    }
+
+    console.log("Current user:", currentUser);
+
+    await fetchMessages();
     scrollToBottom();
   });
 
-let isShowIconsDown = null; 
-function toggleIcons(messageId) {
-  isShowIconsDown = isShowIconsDown === messageId ? null : messageId;
-}
-
-async function deleteMessage(messageId) {
-  console.log("Deleting message with ID:", messageId);
-  try {
-    // Delete the message from the database
-    await pb.collection("messages").delete(messageId);
-
-    messages = messages.filter(msg => msg.id !== messageId);
-    
-    scrollToBottom();
-  } catch (error) {
-    console.error("Error deleting message:", error);
+  let isShowIconsDown = null; 
+  function toggleIcons(messageId) {
+    isShowIconsDown = isShowIconsDown === messageId ? null : messageId;
   }
-}
 
-async function likeMessage(messageId) {
-  try {
-    const message = messages.find(msg => msg.id === messageId);
-    console.log("Message to like:", message);
-    console.log("Current like count:", message.like);
-
-    // Increment the like count in the database
-    await pb.collection("messages").update(messageId, {
-      like: message.like + 1, 
-    });
-
-    message.like += 1;
-    console.log("Updated like count locally:", message.like);
-
-
-  } catch (error) {
-    console.error("Error liking message:", error);
+  async function deleteMessage(messageId) {
+    console.log("Deleting message with ID:", messageId);
+    try {
+      await pb.collection("messages").delete(messageId);
+      messages = messages.filter(msg => msg.id !== messageId);
+      scrollToBottom();
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    }
   }
-}
 
-async function dislikeMessage(messageId) {
-  try {
-    const message = messages.find(msg => msg.id === messageId);
-    console.log("Message to dislike:", message);
-    
-    // Increment the dislike count in the database
-    await pb.collection("messages").update(messageId, {
-      dislike: message.dislike + 1, 
-    });
+  async function likeMessage(messageId) {
+    try {
+      const message = messages.find(msg => msg.id === messageId);
+      console.log("Message to like:", message);
 
-    message.dislike += 1;
+      await pb.collection("messages").update(messageId, {
+        like: message.like + 1, 
+      });
 
-  } catch (error) {
-    console.error("Error disliking message:", error);
+      message.like += 1;
+      console.log("Updated like count locally:", message.like);
+    } catch (error) {
+      console.error("Error liking message:", error);
+    }
   }
-}
+
+  async function dislikeMessage(messageId) {
+    try {
+      const message = messages.find(msg => msg.id === messageId);
+      console.log("Message to dislike:", message);
+
+      await pb.collection("messages").update(messageId, {
+        dislike: message.dislike + 1, 
+      });
+
+      message.dislike += 1;
+    } catch (error) {
+      console.error("Error disliking message:", error);
+    }
+  }
 </script>
 
 <style>
@@ -814,7 +818,6 @@ input[type="file"].hidden {
   <title>Home</title>    
 </svelte:head>   
 
-  
 <main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
   <!-- Navigation bar has been removed -->
 
@@ -1121,18 +1124,17 @@ input[type="file"].hidden {
             </div>
           {/if}
         </div>
-                <!-- Discussion Board -->
-        <div class="container mx-auto px-4">
+        <!-- Discussion Board -->
+        <div class="container mx-auto px-4 pt-8">
           <!-- Title -->
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
               Discussion Board
             </h1>
           </div>
+
           <!-- Discussion window -->
-          <div
-            class="flex flex-col w-full h-96 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800"
-          >
+          <div class="flex flex-col w-full h-96 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800">
             <!-- Messages -->
             <div bind:this={messageContainer} class="flex-1 overflow-y-auto p-4 space-y-4">
               {#each [...messages].reverse() as msg (msg.id)}
@@ -1140,45 +1142,52 @@ input[type="file"].hidden {
                   <!-- Avatar -->
                   <div class="flex flex-col items-center">
                     {#if msg.role === 'admin'}
-                      <p class="rounded-lg font-semibold px-2 dark:text-red-300 dark:bg-red-700 text-red-700 bg-red-300 mb-2">{msg.role}</p>
+                      <p class="rounded-lg font-semibold px-2 dark:text-red-300 dark:bg-red-700 text-red-700 bg-red-300 mb-2">
+                        {msg.role}
+                      </p>
                     {:else if msg.role === 'user'}
-                      <p class="rounded-lg font-semibold px-2 text-blue-900 dark:text-blue-200 bg-blue-200 dark:bg-blue-900 mb-2">{msg.role}</p>
+                      <p class="rounded-lg font-semibold px-2 text-blue-900 dark:text-blue-200 bg-blue-200 dark:bg-blue-900 mb-2">
+                        {msg.role}
+                      </p>
                     {/if}
                     <img src="{msg.avatar}" alt="User avatar" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700">
                   </div>
-          
+
                   <!-- Message box -->
                   <div class="flex justify-between items-center mt-2">
                     <div class="bg-white dark:bg-gray-700 p-3 rounded-lg shadow w-auto max-w-xs">
-                      <p class="text-sm font-semibold border-b border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100">{msg.username}</p>
+                      <p class="text-sm font-semibold border-b border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100">
+                        {msg.username}
+                      </p>
                       <p class="text-gray-800 dark:text-gray-200 pt-1">{msg.text}</p>
                     </div>
 
                     <!-- Icons -->
                     <div class="flex flex-col space-y-2 pl-2">
-                      <!-- Three dots(more) -->
-                       <div class="flex justify-start items-start -mt-8">
+                      <!-- Three dots (more) -->
+                      <div class="flex justify-start items-start -mt-8">
                         <button
                           type="button"
                           class="p-1 focus:outline-none"
                           aria-label="More options"
-                          on:click={() => toggleIcons(msg.id)} 
+                          on:click={() => toggleIcons(msg.id)}
                           aria-expanded={isShowIconsDown === msg.id}
                         >
-                          <svg 
-                            height="18px" 
-                            viewBox="0 -960 960 960" 
-                            width="18px" 
+                          <svg
+                            height="18px"
+                            viewBox="0 -960 960 960"
+                            width="18px"
                             fill="currentColor"
                             class="text-gray-900 dark:text-gray-100 hover:text-blue-500 transition-all duration-300"
                             role="button"
                           >
-                            <path 
+                            <path
                               d="M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm240 0q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm240 0q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Z"
                             />
                           </svg>
                         </button>
                       </div>
+
                       {#if isShowIconsDown === msg.id}
                         <div class="flex space-x-2">
                           <!-- Trash -->
@@ -1188,15 +1197,15 @@ input[type="file"].hidden {
                             aria-label="Delete message"
                             on:click={() => deleteMessage(msg.id)}
                           >
-                            <svg 
-                              height="18px" 
-                              viewBox="0 -960 960 960" 
-                              width="18px" 
+                            <svg
+                              height="18px"
+                              viewBox="0 -960 960 960"
+                              width="18px"
                               fill="currentColor"
                               class="text-gray-900 dark:text-gray-100 hover:text-orange-600"
                               role="button"
                             >
-                              <path 
+                              <path
                                 d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"
                               />
                             </svg>
@@ -1209,15 +1218,15 @@ input[type="file"].hidden {
                             aria-label="Like message"
                             on:click={() => likeMessage(msg.id)}
                           >
-                            <svg 
-                              height="18px" 
-                              viewBox="0 -960 960 960" 
-                              width="18px" 
+                            <svg
+                              height="18px"
+                              viewBox="0 -960 960 960"
+                              width="18px"
                               fill="currentColor"
                               class="text-gray-900 dark:text-gray-100 hover:text-green-500"
                               role="button"
                             >
-                              <path 
+                              <path
                                 d="M720-120H280v-520l280-280 50 50q7 7 11.5 19t4.5 23v14l-44 174h258q32 0 56 24t24 56v80q0 7-2 15t-4 15L794-168q-9 20-30 34t-44 14Zm-360-80h360l120-280v-80H480l54-220-174 174v406Zm0-406v406-406Zm-80-34v80H160v360h120v80H80v-520h200Z"
                               />
                             </svg>
@@ -1230,15 +1239,15 @@ input[type="file"].hidden {
                             aria-label="Dislike message"
                             on:click={() => dislikeMessage(msg.id)}
                           >
-                            <svg 
-                              height="18px" 
-                              viewBox="0 -960 960 960" 
-                              width="18px" 
+                            <svg
+                              height="18px"
+                              viewBox="0 -960 960 960"
+                              width="18px"
                               fill="currentColor"
                               class="text-gray-900 dark:text-gray-100 hover:text-red-600"
                               role="button"
                             >
-                              <path 
+                              <path
                                 d="M240-840h440v520L400-40l-50-50q-7-7-11.5-19t-4.5-23v-14l44-174H120q-32 0-56-24t-24-56v-80q0-7 2-15t4-15l120-282q9-20 30-34t44-14Zm360 80H240L120-480v80h360l-54 220 174-174v-406Zm0 406v-406 406Zm80 34v-80h120v-360H680v-80h200v520H680Z"
                               />
                             </svg>
@@ -1251,10 +1260,9 @@ input[type="file"].hidden {
               {/each}
             </div>
 
-
             <!-- Text field and button -->
-             {#if $user.role === 'admin' || $user.role === 'user'}
-                <form on:submit|preventDefault={sendMessage} class="flex items-center space-x-2 p-2">
+            {#if $user.role === 'admin' || $user.role === 'user'}
+              <form on:submit|preventDefault={sendMessage} class="flex items-center space-x-2 p-2">
                 <!-- Text field -->
                 <input
                   type="text"
@@ -1280,10 +1288,12 @@ input[type="file"].hidden {
                       d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"
                     />
                   </svg>
-              </button>
-            </form>
+                </button>
+              </form>
             {:else}
-              <p class="text-gray-500 dark:text-gray-400 text-center p-2">Sorry, only users and admins can send messages in the chat</p>
+              <p class="text-gray-500 dark:text-gray-400 text-center p-2">
+                Sorry, only users and admins can send messages in the chat
+              </p>
             {/if}
           </div>
         </div>
