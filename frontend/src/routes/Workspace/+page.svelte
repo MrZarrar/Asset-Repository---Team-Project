@@ -213,11 +213,13 @@
     // Listen for tab switching events from the chatbot
     
 
-    // Add handler for createMavenAsset event
+    // Enhanced event handler with debug logging
     const createAssetHandler = (event) => {
+      console.log('Received createMavenAsset event:', event.detail);
       if (event.detail) {
         // Switch to the assets tab
         activeTab = 'assets';
+
         
         // Set addingAsset to true to show the form
         addingAsset = true;
@@ -245,7 +247,9 @@
       }
     };
 
-    window.addEventListener('switchToMyAssetsTab', switchTabHandler);
+    // Make sure to remove existing listeners before adding new ones 
+    // to prevent duplicate handlers
+    window.removeEventListener('createMavenAsset', createAssetHandler);
     window.addEventListener('createMavenAsset', createAssetHandler);
 
     // Clean up event listener on component destruction
@@ -533,6 +537,83 @@
     showAssetCreatedPopup = false;
   }
 
+
+  let selectedAssets = new Set();
+
+  function toggleAssetSelection(assetId) {
+    if (selectedAssets.has(assetId)) {
+      selectedAssets.delete(assetId);
+    } else {
+      selectedAssets.add(assetId);
+    }
+    selectedAssetsCount = selectedAssets.size; // Update the count immediately
+  }
+
+  function selectAllAssets() {
+    const allAssetIds = [...addedAssets.map(asset => asset.id), ...copiedAssets.map(asset => asset.id)];
+    selectedAssets = new Set(allAssetIds); // Select all assets from both sections
+    selectedAssetsCount = selectedAssets.size; // Update the count
+  }
+
+  async function clearAllSelections() {
+    selectAllAssets(); // Select all assets first
+    await new Promise(resolve => setTimeout(resolve, 1)); 
+    selectedAssets = new Set(); // Clear the selected assets
+    selectedAssetsCount = selectedAssets.size; // Update the count
+    assets = assets.map(asset => ({ ...asset })); // Trigger reactivity by creating a new array
+  }
+
+  let showConfirmPopup = false;
+  let showDeletePopup = false;
+
+  async function deleteSelectedAssets() {
+    if (selectedAssets.size === 0) return;
+
+    if (!showConfirmPopup) {
+      showConfirmPopup = true;
+      return;
+    }
+
+    try {
+      for (const assetId of selectedAssets) {
+        await pb.collection('assets').delete(assetId);
+      }
+      selectedAssets.clear();
+      selectedAssetsCount = 0; // Ensure the count is reset
+      await loadAddedAssetsPage(addedAssetsPage); // Refresh added assets
+      await loadCopiedAssetsPage(copiedAssetsPage); // Refresh copied assets
+
+      // Show the delete popup notification
+      showDeletePopup = true;
+
+      // Automatically hide the popup after 2 seconds
+      setTimeout(() => {
+        showDeletePopup = false;
+      }, 2000);
+    } catch (err) {
+      console.error("Error deleting selected assets:", err);
+      alert("Failed to delete selected assets. Please try again.");
+    } finally {
+      showConfirmPopup = false; // Ensure the confirmation popup is closed
+    }
+  }
+
+  function cancelDelete() {
+    showConfirmPopup = false;
+  }
+
+  function goToDashboard() {
+    window.location.href = '/';
+  }
+
+  function goToWorkspace() {
+    window.location.href = '/Workspace';
+  }
+
+  // Reactive statement to update the count of selected assets
+  $: selectedAssetsCount = selectedAssets.size;
+
+
 </script>
 
 {#if isAuthenticated}
@@ -768,6 +849,30 @@
       <section>
         <div class="flex justify-between items-center mb-8">
           <h2 class="text-2xl font-semibold">Added Assets</h2>
+          {#if selectedAssetsCount > 0}
+            <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2"> <!-- Centered horizontally -->
+              <button
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                on:click={selectAllAssets}
+              >
+                Select All
+              </button>
+              <button
+                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                on:click={clearAllSelections}
+              >
+                Clear All
+              </button>
+              <button
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                on:click={deleteSelectedAssets}
+              >
+                <X class="w-4 h-4" />
+                Delete Selected ({selectedAssetsCount})
+              </button>
+            </div>
+          {/if}
+
           {#if role === 'user' || role === 'admin'}
             {#if !addingAsset}
               <button 
@@ -905,7 +1010,15 @@
                 <div class="relative w-64 group">
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
+                    <!-- Checkbox -->
+                    <input
+                      type="checkbox"
+                      class="checkbox asset-checkbox"
+                      checked={selectedAssets.has(asset.id)}
+                      on:change={() => toggleAssetSelection(asset.id)}
+                    />
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
+
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
@@ -1034,7 +1147,15 @@
                 <div class="relative w-64 group">
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
+                    <!-- Checkbox -->
+                    <input
+                      type="checkbox"
+                      class="checkbox asset-checkbox"
+                      checked={selectedAssets.has(asset.id)}
+                      on:change={() => toggleAssetSelection(asset.id)}
+                    />
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
+
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
@@ -1139,11 +1260,11 @@
   <!-- Asset Created Popup -->
   {#if showAssetCreatedPopup}
     <div
-      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+      class="fixed inset-0 flex items-center justify-center bg-black z-50"
       transition:fade={{ duration: 300 }}
     >
       <div
-        class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+        class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
         transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}
       >
         <button
@@ -1152,6 +1273,9 @@
         >
           <X class="w-5 h-5" />
         </button>
+        <div class="success-circle">
+          <Check class="success-icon" />
+        </div>
         <p class="text-lg font-semibold">Asset created successfully!</p>
       </div>
     </div>
@@ -1169,4 +1293,81 @@
   input[type="file"].hidden {
     display: none;
   }
+
+  .checkbox {
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #2563eb;
+    border-radius: 0.25rem;
+    background-color: #00143b;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .checkbox:checked {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
+    background-size: 1rem;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .asset-checkbox {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+
+  /* Pulse Animation for Success */
+  .success-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .success-icon {
+    width: 30px;
+    height: 30px;
+    color: white;
+    opacity: 0;
+    animation: fade-in 0.5s ease-in-out 0.3s forwards;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+    }
+    
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
+    }
+    
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+  }
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
 </style>
