@@ -63,7 +63,7 @@
   let editLogoFileName = '';
   let editLogoPreview = '';
 
-  // We store the original language and asset IDs as strings for comparison
+  // We'll store original values (as JSON strings) to compare later.
   let originalLanguageStr = '';
   let originalAssetIdsStr = '';
 
@@ -125,6 +125,9 @@
   function triggerSaveSuccess() {
     showSaveSuccess = true;
     setTimeout(() => { showSaveSuccess = false; }, 3000);
+  }
+  function closeSaveSuccess() {
+    showSaveSuccess = false;
   }
 
   // ------------------ FETCH DATA ON MOUNT ------------------
@@ -222,7 +225,7 @@
       language: parsedLangs,
       asset_id: assetIds
     };
-    // Save original values for comparison
+    // Save original values for later comparison
     originalLanguageStr = JSON.stringify(parsedLangs);
     originalAssetIdsStr = JSON.stringify(assetIds);
 
@@ -473,17 +476,22 @@
               </div>
               <!-- Launched -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Launched
+                </label>
                 <input type="date" bind:value={newProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <!-- ID -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ID (must be unique)</label>
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"> Project ID</label>
                 <input type="text" bind:value={newProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter unique ID" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to auto-generate an ID</p>
               </div>
               <!-- Upload Logo -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Logo</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Upload Logo
+                </label>
                 <div class="mt-1 flex items-center space-x-2">
                   <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
                     Select File
@@ -496,7 +504,9 @@
               </div>
               <!-- Link Assets -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Link Assets</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Link Assets
+                </label>
                 <div class="grid grid-cols-1 gap-2 mt-1">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
                     <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
@@ -580,7 +590,7 @@
               </div>
               <!-- ID (read-only in edit) -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ID</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
                 <input type="text" bind:value={updatedProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed" disabled title="ID cannot be changed once created." />
               </div>
               <!-- Upload New Logo -->
@@ -744,10 +754,12 @@
   </div>
 {/if}
 
-<!-- SUCCESS DELETION MODAL (with pulsing red circle) -->
+<!-- SUCCESS DELETION MODAL (with pulsing red circle and manual close) -->
 {#if showDeleteSuccess}
   <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
-    <div class="bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg relative" transition:scale>
+    <div class="relative bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg" transition:scale>
+      <!-- Manual close (X) at top-right -->
+      <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeDeleteSuccess}>✕</button>
       <div class="flex justify-center mb-4">
         <div class="animated-circle">
           <span class="text-xl text-white">–</span>
@@ -762,10 +774,12 @@
   </div>
 {/if}
 
-<!-- SUCCESS SAVE MODAL (with pulsing green check icon) -->
+<!-- SUCCESS SAVE MODAL (with pulsing green check icon and manual close) -->
 {#if showSaveSuccess}
   <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
-    <div class="bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg relative" transition:scale>
+    <div class="relative bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg" transition:scale>
+      <!-- Manual close (X) at top-right -->
+      <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeSaveSuccess}>✕</button>
       <div class="flex justify-center mb-4">
         <div class="animated-green">
           <span class="text-xl text-white">✔</span>
