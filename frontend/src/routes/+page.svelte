@@ -385,6 +385,43 @@
     }
   }
 
+  async function clearFilters() {
+    selectedCategories = [];
+    try {
+      loadingAssets = true;
+      const assetResponse = await fetchAssets(1, 6, { add_type: ['original', 'added'] });
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = 1;
+      assetError = assets.length === 0 ? `No assets found.` : null;
+    } catch (err) {
+      console.error("Error clearing filters:", err);
+      assetError = `Failed to load assets.`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
+  async function removeFilter(filter) {
+    selectedCategories = selectedCategories.filter(c => c !== filter);
+    try {
+      loadingAssets = true;
+      const filters = selectedCategories.length 
+        ? { category: selectedCategories }
+        : { add_type: ['original', 'added'] };
+      const assetResponse = await fetchAssets(1, 6, filters);
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = 1;
+      assetError = assets.length === 0 ? `No assets found for selected filter(s)` : null;
+    } catch (err) {
+      console.error(`Error fetching assets after removing filter:`, err);
+      assetError = `Failed to load assets for selected categories`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
   function goToPage(page) {
     if (page >= 1 && page <= totalPages) {
       fetchPaginatedAssets(page);
@@ -664,6 +701,24 @@ input[type="file"].hidden {
 
       <div>
         <h2 class="text-xl font-bold mb-4">Popular Categories</h2>
+        {#if selectedCategories.length > 0}
+          <button
+            class="mb-4 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+            on:click={clearFilters}
+          >
+            Clear Filters
+          </button>
+          <div class="mb-2">
+            {#each selectedCategories as filter}
+              <span class="inline-flex items-center bg-gray-200 dark:bg-gray-700 rounded-full px-3 py-1 text-sm text-gray-700 dark:text-gray-300 mr-2">
+                {filter}
+                <button class="ml-1 text-red-500 hover:text-red-700" on:click={() => removeFilter(filter)}>
+                  x
+                </button>
+              </span>
+            {/each}
+          </div>
+        {/if}
         <ul class="space-y-2">
           <li>
             <button
