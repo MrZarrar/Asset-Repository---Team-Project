@@ -3,7 +3,7 @@
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
-  import { fetchAssets, getAssetsByFilters } from '$lib/assetService';
+  import { fetchAssets, getAssetsByFilters, fetchAssetsByCategory } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
   import { user } from '$lib/user.js';
@@ -357,6 +357,22 @@
     };
   });
 
+  async function filterByCategory(category) {
+    try {
+      loadingAssets = true;
+      const assetResponse = await fetchAssetsByCategory(category);
+      assets = assetResponse.items;
+      if (assets.length === 0) {
+        assetError = `No assets found for category: ${category}`;
+      }
+    } catch (err) {
+      console.error(`Error fetching assets for category ${category}:`, err);
+      assetError = `Failed to load assets for category: ${category}`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
   function goToPage(page) {
     if (page >= 1 && page <= totalPages) {
       fetchPaginatedAssets(page);
@@ -637,15 +653,38 @@ input[type="file"].hidden {
       <div>
         <h2 class="text-xl font-bold mb-4">Popular Categories</h2>
         <ul class="space-y-2">
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Testing Frameworks & Tools</a></li>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Android Packages</a></li>
-            <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Logging Frameworks</a></li>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">JVM Languages</a></li>
-          <!-- Add more categories as needed -->
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('Testing Frameworks & Tools')}
+            >
+              Testing Frameworks & Tools
+            </button>
+          </li>
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('Android Packages')}
+            >
+              Android Packages
+            </button>
+          </li>
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('Logging Frameworks')}
+            >
+              Logging Frameworks
+            </button>
+          </li>
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('JVM Languages')}
+            >
+              JVM Languages
+            </button>
+          </li>
         </ul>
       </div>
     </aside>

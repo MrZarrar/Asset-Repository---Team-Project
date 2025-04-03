@@ -47,6 +47,7 @@
     maven_dependency: "",
     gradle_dependency: "",
     file: null,
+    category: "", // Add category field
   };
   
   // Add state variables to track copy status for each asset
@@ -60,6 +61,14 @@
   let addedGradleCopiedIndex = -1;
   let copiedMavenCopiedIndex = -1;
   let copiedGradleCopiedIndex = -1;
+
+  // Predefined categories for the dropdown
+  const categories = [
+    "Testing Frameworks & Tools",
+    "Android Packages",
+    "Logging Frameworks",
+    "JVM Languages"
+  ];
 
   // Function to handle copying with visual feedback
   function copyToClipboard(text, type, index, isAddedAsset = true) {
@@ -181,6 +190,7 @@
         maven_dependency: "",
         gradle_dependency: "",
         file: null,
+        category: "", // Reset category field
       };
       
       // Switch to "My Assets" tab to show the new asset
@@ -897,10 +907,22 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Version</label>
                 <input type="text" bind:value={newAsset.version} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
               </div>
+              
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+                <select bind:value={newAsset.category} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                  <option value="" disabled selected>Select a category</option>
+                  {#each categories as category}
+                    <option value={category}>{category}</option>
+                  {/each}
+                </select>
+              </div>
+              
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
                 <input type="text" bind:value={newAsset.type} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
               </div>
+              
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Updated</label>
                 <input type="date" bind:value={newAsset.date_updated} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
