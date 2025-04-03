@@ -27,26 +27,32 @@
   let showEditForm = false;
 
   // ---------------------------------------------------------------------
-  // NEW PROJECT (Add)
+  // NEW PROJECT (for Create)
   // ---------------------------------------------------------------------
   let newProject = {
     name: '',
     description: '',
-    language: [],  // array for multiple coding languages
+    language: [],  // multiple languages as an array
     launched: '',
     project_id: '',
     asset_id: []
   };
+
   let newLogoFile = null;
   let newLogoFileName = '';
   let newLogoPreview = '';
 
-  // Multi-select dropdown controls (Add form)
-  let langDropdownOpenAdd = false;   // toggles the language dropdown
-  let searchAdd = '';               // filters availableLanguages for the add form
+  // Multi-select dropdown controls for Add form
+  let langDropdownOpenAdd = false;
+  let searchAdd = '';
+
+  // Clear all selected languages in the Add form
+  function clearLanguagesAdd() {
+    newProject.language = [];
+  }
 
   // ---------------------------------------------------------------------
-  // EDITING AN EXISTING PROJECT
+  // EDITING PROJECT (for Edit)
   // ---------------------------------------------------------------------
   let editingProject = null;
   let updatedProject = {};
@@ -54,9 +60,14 @@
   let editLogoFileName = '';
   let editLogoPreview = '';
 
-  // Multi-select dropdown controls (Edit form)
+  // Multi-select dropdown controls for Edit form
   let langDropdownOpenEdit = false;
   let searchEdit = '';
+
+  // Clear all selected languages in the Edit form
+  function clearLanguagesEdit() {
+    updatedProject.language = [];
+  }
 
   // Toggle expanded details for each project card
   let expandedProjects = {};
@@ -153,7 +164,6 @@
       parsedLangs = JSON.parse(project.language) || [];
       if (!Array.isArray(parsedLangs)) parsedLangs = [];
     } catch (err) {
-      // If parse fails but it's already an array, just use it
       if (Array.isArray(project.language)) parsedLangs = project.language;
     }
 
@@ -189,7 +199,9 @@
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
+      // The Project ID is read-only once created, so we won't let the user change it
       formData.append('project_id', updatedProject.project_id);
+
       formData.append('asset_id', JSON.stringify(updatedProject.asset_id));
 
       const record = await pb.collection('projects').update(editingProject.id, formData);
@@ -229,7 +241,7 @@
     expandedProjects = { ...expandedProjects, [id]: !expandedProjects[id] };
   }
 
-  // For uploading a new logo (Add)
+  // For new logo (Add)
   function handleNewLogoChange(event) {
     const file = event.target.files[0];
     if (file) {
@@ -245,7 +257,7 @@
     }
   }
 
-  // For uploading a new logo (Edit)
+  // For new logo (Edit)
   function handleEditLogoChange(event) {
     const file = event.target.files[0];
     if (file) {
@@ -261,22 +273,7 @@
     }
   }
 
-  // ---------------------------------------------------------------------
-  // MODERN MULTI-SELECT DROPDOWN LOGIC
-  // ---------------------------------------------------------------------
-  /**
-   * The "Add" form has:
-   *   - langDropdownOpenAdd (boolean)
-   *   - searchAdd (string for filtering)
-   *   - newProject.language (array of selections)
-   *
-   * The "Edit" form has:
-   *   - langDropdownOpenEdit (boolean)
-   *   - searchEdit (string)
-   *   - updatedProject.language (array)
-   */
-
-  // Filter the languages based on searchAdd
+  // Filtering languages for the Add form
   function filteredLanguagesAdd() {
     if (!searchAdd.trim()) return availableLanguages;
     return availableLanguages.filter(lang =>
@@ -284,7 +281,7 @@
     );
   }
 
-  // Filter the languages based on searchEdit
+  // Filtering languages for the Edit form
   function filteredLanguagesEdit() {
     if (!searchEdit.trim()) return availableLanguages;
     return availableLanguages.filter(lang =>
@@ -292,7 +289,7 @@
     );
   }
 
-  // Toggle a language in newProject.language
+  // Toggle a language in the Add form
   function toggleLangOptionAdd(lang) {
     if (newProject.language.includes(lang)) {
       newProject.language = newProject.language.filter(item => item !== lang);
@@ -301,7 +298,7 @@
     }
   }
 
-  // Toggle a language in updatedProject.language
+  // Toggle a language in the Edit form
   function toggleLangOptionEdit(lang) {
     if (updatedProject.language.includes(lang)) {
       updatedProject.language = updatedProject.language.filter(item => item !== lang);
@@ -323,7 +320,7 @@
     });
   }
 
-  // HELPER: Display multiple languages as a comma-separated string
+  // Helper to display languages as a comma-separated string
   function displayLanguages(langValue) {
     if (!langValue) return 'N/A';
     if (Array.isArray(langValue)) {
@@ -382,7 +379,7 @@
     <!-- Main Body -->
     <div class="flex-1 p-6 overflow-auto">
       {#if showAddForm}
-        <!-- FULL-SCREEN Add Project -->
+        <!-- ADD PROJECT FORM -->
         <section>
           <div class="flex items-center space-x-3 mb-6">
             {#if newLogoPreview}
@@ -434,7 +431,6 @@
               <!-- Multi-select Dropdown for Languages (Add) -->
               <div class="mb-4 relative">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Languages</label>
-                <!-- Button to toggle the dropdown -->
                 <button
                   type="button"
                   class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm 
@@ -453,13 +449,12 @@
                   </svg>
                 </button>
 
-                <!-- The dropdown panel -->
                 {#if langDropdownOpenAdd}
                   <div
                     class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 
                            border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto"
                   >
-                    <!-- Search input -->
+                    <!-- Search + Clear/Done row -->
                     <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
                       <input
                         type="text"
@@ -469,6 +464,14 @@
                                border border-gray-200 dark:border-gray-600 rounded-md
                                focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300"
                       />
+                      <!-- "Clear" button to unselect all -->
+                      <button
+                        type="button"
+                        class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                        on:click={clearLanguagesAdd}
+                      >
+                        Clear
+                      </button>
                       <!-- "Done" button to close -->
                       <button
                         type="button"
@@ -498,9 +501,12 @@
                     </div>
                   </div>
                 {/if}
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Choose one or more languages
+                </p>
               </div>
 
-              <!-- Launched (only on create) -->
+              <!-- Launched (Editable on create) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
                 <input
@@ -589,7 +595,7 @@
           </div>
         </section>
       {:else if showEditForm}
-        <!-- FULL-SCREEN Edit Project -->
+        <!-- EDIT PROJECT FORM -->
         <section>
           <div class="flex items-center space-x-3 mb-6">
             {#if editingProject?.logo && !editLogoFile}
@@ -670,7 +676,7 @@
                     class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 
                            border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto"
                   >
-                    <!-- Search input -->
+                    <!-- Search + Clear/Done row -->
                     <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
                       <input
                         type="text"
@@ -680,7 +686,15 @@
                                border border-gray-200 dark:border-gray-600 rounded-md
                                focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300"
                       />
-                      <!-- "Done" button -->
+                      <!-- "Clear" button to unselect all -->
+                      <button
+                        type="button"
+                        class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                        on:click={clearLanguagesEdit}
+                      >
+                        Clear
+                      </button>
+                      <!-- "Done" button to close -->
                       <button
                         type="button"
                         class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -709,10 +723,12 @@
                     </div>
                   </div>
                 {/if}
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose one or more languages</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Choose one or more languages
+                </p>
               </div>
 
-              <!-- Launched (read-only for editing) -->
+              <!-- Launched (read-only in edit) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
                 <input
@@ -720,12 +736,13 @@
                   bind:value={updatedProject.launched}
                   class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
                          focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed"
                   disabled
+                  title="Launched date cannot be changed after creation."
                 />
               </div>
 
-              <!-- Project ID -->
+              <!-- Project ID (read-only in edit) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
                 <input
@@ -733,7 +750,10 @@
                   bind:value={updatedProject.project_id}
                   class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
                          focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
+                         cursor-not-allowed"
+                  disabled
+                  title="Project ID cannot be changed once created."
                 />
               </div>
 
@@ -747,12 +767,7 @@
                            bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none"
                   >
                     Select File
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      on:change={handleEditLogoChange} 
-                      class="hidden"
-                    />
+                    <input type="file" accept="image/*" on:change={handleEditLogoChange} class="hidden" />
                   </label>
                   {#if editLogoFileName}
                     <div class="text-sm text-gray-600 dark:text-gray-400">{editLogoFileName}</div>
@@ -760,7 +775,7 @@
                 </div>
               </div>
 
-              <!-- Linked Assets -->
+              <!-- Link Assets -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Edit Linked Assets</label>
                 <div class="grid grid-cols-1 gap-2 mt-1">
@@ -801,7 +816,7 @@
           </div>
         </section>
       {:else}
-        <!-- Show Projects Grid (NO LOGO displayed) -->
+        <!-- PROJECTS GRID (No logo displayed) -->
         {#if loading}
           <div class="flex justify-center items-center h-64">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-300"></div>
@@ -824,47 +839,21 @@
               {#each projects as project}
                 <div class="relative w-64 group">
                   <!-- Gradient border effect on hover -->
-                  <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md 
-                              opacity-75 group-hover:opacity-100 transition-all duration-500 group-hover:duration-200">
-                  </div>
-                  <!-- Card content -->
-                  <div
-                    class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md
-                           transform transition-transform group-hover:scale-105"
-                  >
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      {project.name}
-                    </h2>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                      <strong>Last Updated:</strong> {formatDate(project.updated)}
-                    </p>
-                    <!-- Action buttons: Edit, Delete -->
+                  <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-500 group-hover:duration-200"></div>
+                  <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{project.name}</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
-                        <button 
-                          class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded"
-                          on:click={() => editProject(project)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded"
-                          on:click={() => deleteProject(project.id)}
-                        >
-                          Delete
-                        </button>
+                        <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded" on:click={() => editProject(project)}>Edit</button>
+                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => deleteProject(project.id)}>Delete</button>
                       </div>
                     </div>
                     <div class="mt-3">
-                      <button
-                        class="text-blue-600 dark:text-blue-400 text-xs hover:underline"
-                        on:click={() => toggleDetails(project.id)}
-                      >
+                      <button class="text-blue-600 dark:text-blue-400 text-xs hover:underline" on:click={() => toggleDetails(project.id)}>
                         {expandedProjects[project.id] ? "Hide Details" : "View Details"}
                       </button>
                     </div>
-
-                    <!-- If expanded, show additional fields -->
                     {#if expandedProjects[project.id]}
                       <div class="mt-4 text-xs text-gray-700 dark:text-gray-200 space-y-1">
                         <p><strong>Languages:</strong> {displayLanguages(project.language)}</p>
@@ -927,7 +916,7 @@
 </main>
 
 <style>
-  /* Truncate text if needed */
+  /* For truncating text if necessary */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
