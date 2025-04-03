@@ -3,7 +3,7 @@
   import { login, isAuthenticated } from '$lib/auth';
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
-  import { fetchAssets, getAssetsByFilters } from '$lib/assetService';
+  import { fetchAssets, getAssetsByFilters, fetchAssetsByCategory } from '$lib/assetService';
   import AssetsList from '../components/AssetsList.svelte';
   import { logActions } from '../js/logging.pb.js';
   import { user } from '$lib/user.js';
@@ -357,6 +357,71 @@
     };
   });
 
+  let selectedCategories = []; // Use array for multiple filters
+
+  async function filterByCategory(category) {
+    // Toggle category in selectedCategories
+    if (selectedCategories.includes(category)) {
+      selectedCategories = selectedCategories.filter(c => c !== category);
+    } else {
+      selectedCategories = [...selectedCategories, category];
+    }
+    try {
+      loadingAssets = true;
+      // If no category is selected, use default filter
+      const filters = selectedCategories.length 
+        ? { category: selectedCategories }
+        : { add_type: ['original', 'added'] };
+      const assetResponse = await fetchAssets(1, 6, filters);
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = 1;
+      assetError = assets.length === 0 ? `No assets found for selected filter(s)` : null;
+    } catch (err) {
+      console.error(`Error fetching assets for filters ${JSON.stringify(selectedCategories)}:`, err);
+      assetError = `Failed to load assets for selected categories`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
+  async function clearFilters() {
+    selectedCategories = [];
+    try {
+      loadingAssets = true;
+      const assetResponse = await fetchAssets(1, 6, { add_type: ['original', 'added'] });
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = 1;
+      assetError = assets.length === 0 ? `No assets found.` : null;
+    } catch (err) {
+      console.error("Error clearing filters:", err);
+      assetError = `Failed to load assets.`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
+  async function removeFilter(filter) {
+    selectedCategories = selectedCategories.filter(c => c !== filter);
+    try {
+      loadingAssets = true;
+      const filters = selectedCategories.length 
+        ? { category: selectedCategories }
+        : { add_type: ['original', 'added'] };
+      const assetResponse = await fetchAssets(1, 6, filters);
+      assets = assetResponse.items;
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = 1;
+      assetError = assets.length === 0 ? `No assets found for selected filter(s)` : null;
+    } catch (err) {
+      console.error(`Error fetching assets after removing filter:`, err);
+      assetError = `Failed to load assets for selected categories`;
+    } finally {
+      loadingAssets = false;
+    }
+  }
+
   function goToPage(page) {
     if (page >= 1 && page <= totalPages) {
       fetchPaginatedAssets(page);
@@ -636,16 +701,57 @@ input[type="file"].hidden {
 
       <div>
         <h2 class="text-xl font-bold mb-4">Popular Categories</h2>
+        {#if selectedCategories.length > 0}
+          <button
+            class="mb-4 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+            on:click={clearFilters}
+          >
+            Clear Filters
+          </button>
+          <div class="mb-2">
+            {#each selectedCategories as filter}
+              <span class="inline-flex items-center bg-gray-200 dark:bg-gray-700 rounded-full px-3 py-1 text-sm text-gray-700 dark:text-gray-300 mr-2">
+                {filter}
+                <button class="ml-1 text-red-500 hover:text-red-700" on:click={() => removeFilter(filter)}>
+                  x
+                </button>
+              </span>
+            {/each}
+          </div>
+        {/if}
         <ul class="space-y-2">
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Testing Frameworks & Tools</a></li>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Android Packages</a></li>
-            <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">Logging Frameworks</a></li>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li><a class="text-blue-600 dark:text-blue-400 hover:underline">JVM Languages</a></li>
-          <!-- Add more categories as needed -->
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('Testing Frameworks & Tools')}
+            >
+              Testing Frameworks & Tools
+            </button>
+          </li>
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('Android Packages')}
+            >
+              Android Packages
+            </button>
+          </li>
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('Logging Frameworks')}
+            >
+              Logging Frameworks
+            </button>
+          </li>
+          <li>
+            <button
+              class="text-blue-600 dark:text-blue-400 hover:underline"
+              on:click={() => filterByCategory('JVM Languages')}
+            >
+              JVM Languages
+            </button>
+          </li>
         </ul>
       </div>
     </aside>
@@ -656,7 +762,7 @@ input[type="file"].hidden {
         <div class="container mx-auto px-4">
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Latest Assets
+              {selectedCategories.length > 0 ? selectedCategories.join(', ') : 'Latest Assets'}
             </h1>
             {#if selectedAssetsCount > 0}
               <div class="flex items-center gap-2">

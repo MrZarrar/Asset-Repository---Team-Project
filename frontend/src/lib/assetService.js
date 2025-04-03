@@ -123,3 +123,24 @@ export async function uploadAsset(assetData, fileData) {
     throw error;
   }
 }
+
+// Fetch assets by category
+export async function fetchAssetsByCategory(category) {
+  try {
+    const response = await pb.collection('Assets').getList(1, 20, {
+      filter: `category="${category}"`,
+      sort: '-created',
+      expand: 'category, logo, file',
+    });
+    return response;
+  } catch (error) {
+    if (error.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return fetchAssetsByCategory(category);
+      }
+    }
+    console.error(`Error fetching assets for category ${category}:`, error);
+    throw error;
+  }
+}

@@ -361,6 +361,14 @@ implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.v
     }
   }
 
+  // Predefined categories for the dropdown
+  const categories = [
+    "Testing Frameworks & Tools",
+    "Android Packages",
+    "Logging Frameworks",
+    "JVM Languages"
+  ];
+
 </script>
 
 <style>
@@ -576,6 +584,27 @@ input[type="file"].hidden {
                   />
                 {:else}
                   {asset.version || "Not specified"}
+                {/if}
+              </div>
+            </div>
+
+            <!-- Category -->
+            <div class="border-b border-gray-200 dark:border-gray-700 py-4">
+              <div class="font-semibold mb-2">Category</div>
+              <div class="text-gray-800 dark:text-gray-200">
+                {#if editing}
+                  <select
+                    bind:value={updatedAsset.category}
+                    on:input={checkForChanges}
+                    class="border border-gray-300 dark:border-gray-600 rounded p-2 w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="" disabled>Select a category</option>
+                    {#each categories as category}
+                      <option value={category}>{category}</option>
+                    {/each}
+                  </select>
+                {:else}
+                  {asset.category || "Not specified"}
                 {/if}
               </div>
             </div>
