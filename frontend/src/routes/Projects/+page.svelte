@@ -154,14 +154,14 @@
         alert("You must be logged in to create a project.");
         return;
       }
-      if (projects.find(p => p.id === newProject.id)) {
+      if (newProject.id && projects.find(p => p.id === newProject.id)) {
         alert("ID must be unique. Another project with this ID already exists.");
         return;
       }
       let formData = new FormData();
-      formData.append('id', newProject.id);
-      formData.append('name', newProject.name);
-      formData.append('description', newProject.description);
+      formData.append('id', newProject.id || '');
+      formData.append('name', newProject.name || '');
+      formData.append('description', newProject.description || '');
       formData.append('language', JSON.stringify(newProject.language));
       formData.append('launched', newProject.launched || '');
       if (newLogoFile) {
@@ -225,7 +225,6 @@
       language: parsedLangs,
       asset_id: assetIds
     };
-    // Save original values for later comparison
     originalLanguageStr = JSON.stringify(parsedLangs);
     originalAssetIdsStr = JSON.stringify(assetIds);
 
@@ -255,10 +254,10 @@
     }
     try {
       let formData = new FormData();
-      formData.append('name', updatedProject.name);
-      formData.append('description', updatedProject.description);
+      formData.append('name', updatedProject.name || '');
+      formData.append('description', updatedProject.description || '');
       formData.append('language', JSON.stringify(updatedProject.language));
-      formData.append('launched', editingProject.launched || '');
+      formData.append('launched', updatedProject.launched || '');
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
@@ -404,7 +403,7 @@
         <span>»</span>
         <span>Projects</span>
       </div>
-      <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" on:click={() => showAddForm = true}>
+      <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={() => showAddForm = true}>
         Add Project
       </button>
     </header>
@@ -445,7 +444,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Languages
                 </label>
-                <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500" on:click={() => (langDropdownOpenAdd = !langDropdownOpenAdd)}>
+                <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500 btn-fancy btn-ripple" on:click={() => (langDropdownOpenAdd = !langDropdownOpenAdd)}>
                   {#if newProject.language.length > 0}
                     {newProject.language.join(', ')}
                   {:else}
@@ -459,8 +458,8 @@
                   <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto">
                     <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
                       <input type="text" placeholder="Search..." bind:value={searchAdd} class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300" />
-                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700" on:click={clearLanguagesAdd}>Clear</button>
-                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" on:click={() => (langDropdownOpenAdd = false)}>Done</button>
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded btn-fancy" on:click={clearLanguagesAdd}>Clear</button>
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded btn-fancy" on:click={() => (langDropdownOpenAdd = false)}>Done</button>
                     </div>
                     <div class="p-2 space-y-1">
                       {#each filteredLanguagesAdd() as lang}
@@ -483,7 +482,7 @@
               </div>
               <!-- ID -->
               <div class="mb-4">
-               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"> Project ID</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
                 <input type="text" bind:value={newProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter unique ID" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to auto-generate an ID</p>
               </div>
@@ -493,7 +492,7 @@
                   Upload Logo
                 </label>
                 <div class="mt-1 flex items-center space-x-2">
-                  <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
+                  <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 btn-fancy btn-ripple">
                     Select File
                     <input type="file" accept="image/*" on:change={handleNewLogoChange} class="hidden" />
                   </label>
@@ -502,24 +501,22 @@
                   {/if}
                 </div>
               </div>
-              <!-- Link Assets -->
+              <!-- Link Assets (Simple Vertical List) -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Link Assets
-                </label>
-                <div class="grid grid-cols-1 gap-2 mt-1">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Link Assets</label>
+                <div class="space-y-2">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
-                    <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
-                      <input type="checkbox" value={asset.id} bind:group={newProject.asset_id} class="rounded border-gray-300 dark:border-gray-600" />
-                      <span>{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
+                    <label class="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                      <input type="checkbox" value={asset.id} bind:group={newProject.asset_id} class="rounded accent-blue-600" />
+                      <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
                     </label>
                   {/each}
                 </div>
               </div>
               <!-- Buttons -->
               <div class="flex justify-end">
-                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" on:click={() => (showAddForm = false)}>Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save</button>
+                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => (showAddForm = false)}>Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 btn-fancy btn-ripple">Save</button>
               </div>
             </form>
           </div>
@@ -549,12 +546,12 @@
               <!-- Description -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                <textarea rows="3" bind:value={updatedProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></textarea>
+                <textarea rows="3" bind:value={updatedProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter project description"></textarea>
               </div>
               <!-- Multi-select (Edit) -->
               <div class="mb-4 relative">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Languages</label>
-                <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500" on:click={() => (langDropdownOpenEdit = !langDropdownOpenEdit)}>
+                <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500 btn-fancy btn-ripple" on:click={() => (langDropdownOpenEdit = !langDropdownOpenEdit)}>
                   {#if updatedProject.language.length > 0}
                     {updatedProject.language.join(', ')}
                   {:else}
@@ -568,8 +565,8 @@
                   <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto">
                     <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
                       <input type="text" placeholder="Search..." bind:value={searchEdit} class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300" />
-                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700" on:click={clearLanguagesEdit}>Clear</button>
-                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" on:click={() => (langDropdownOpenEdit = false)}>Done</button>
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded btn-fancy" on:click={clearLanguagesEdit}>Clear</button>
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded btn-fancy" on:click={() => (langDropdownOpenEdit = false)}>Done</button>
                     </div>
                     <div class="p-2 space-y-1">
                       {#each filteredLanguagesEdit() as lang}
@@ -597,7 +594,7 @@
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload New Logo</label>
                 <div class="mt-1 flex items-center space-x-2">
-                  <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
+                  <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 btn-fancy btn-ripple">
                     Select File
                     <input type="file" accept="image/*" on:change={handleEditLogoChange} class="hidden" />
                   </label>
@@ -606,22 +603,23 @@
                   {/if}
                 </div>
               </div>
-              <!-- Link Assets -->
+              <!-- Edit Linked Assets (Simple Vertical List) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Edit Linked Assets</label>
-                <div class="grid grid-cols-1 gap-2 mt-1">
+                <div class="space-y-2">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
-                    <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
-                      <input type="checkbox" value={asset.id} bind:group={updatedProject.asset_id} class="rounded border-gray-300 dark:border-gray-600" />
-                      <span>{asset.name} {asset.version ? `(${asset.version})` : ''}</span>
+                    <label class="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                           on:click={() => toggleAssetEdit(asset.id)}>
+                      <input type="checkbox" value={asset.id} bind:group={updatedProject.asset_id} class="rounded accent-blue-600" />
+                      <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
                     </label>
                   {/each}
                 </div>
               </div>
               <!-- Buttons -->
               <div class="flex justify-end">
-                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Save Changes</button>
+                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 btn-fancy btn-ripple">Save Changes</button>
               </div>
             </form>
           </div>
@@ -630,7 +628,12 @@
         <!-- PROJECTS GRID -->
         {#if loading}
           <div class="flex justify-center items-center h-64">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-300"></div>
+            <!-- Upgraded loader: three pulsing dots -->
+            <div class="flex space-x-1">
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse-dot"></div>
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse-dot animation-delay-200"></div>
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse-dot animation-delay-400"></div>
+            </div>
             <p class="ml-3 text-gray-600 dark:text-gray-400">Loading projects...</p>
           </div>
         {:else if error}
@@ -646,15 +649,21 @@
           {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {#each projects as project}
-                <div class="relative w-64 group">
-                  <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-500 group-hover:duration-200"></div>
+                <div class="relative w-64 group transition-transform duration-300 ease-in-out">
+                  <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 animate-gradient"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{project.name}</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center space-x-1">
+                      {project.name}
+                      <!-- Animated Pencil SVG for Edit icon -->
+                      <svg class="w-4 h-4 fill-current text-gray-500 hover:text-gray-700 transition-transform duration-200 transform hover:rotate-12" viewBox="0 0 20 20">
+                        <path d="M17.414 2.586a2 2 0 010 2.828l-1.829 1.829-2.828-2.829 1.829-1.829a2 2 0 012.828 0zM4 13.414V16h2.586l7.07-7.07-2.586-2.586L4 13.414z"/>
+                      </svg>
+                    </h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
-                        <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded" on:click={() => editProject(project)}>Edit</button>
-                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => requestDeleteProject(project.id)}>Delete</button>
+                        <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded btn-fancy btn-ripple" on:click={() => editProject(project)}>Edit</button>
+                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded btn-fancy btn-ripple" on:click={() => requestDeleteProject(project.id)}>Delete</button>
                       </div>
                     </div>
                     <div class="mt-3">
@@ -707,7 +716,7 @@
 
 <!-- PROJECT DETAILS MODAL -->
 {#if showProjectDetails}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 md:mx-0" transition:scale>
       {#if selectedProject}
         <div class="flex justify-between items-center mb-4">
@@ -733,7 +742,7 @@
           {/if}
         </div>
         <div class="mt-6 flex justify-end">
-          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
+          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm btn-fancy btn-ripple focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
         </div>
       {/if}
     </div>
@@ -742,13 +751,13 @@
 
 <!-- CONFIRM DELETION MODAL -->
 {#if showConfirmModal}
-  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="bg-white dark:bg-gray-800 rounded p-6 w-80 shadow-lg" transition:scale>
       <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
       <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">Are you sure you want to delete this project? This action cannot be undone.</p>
       <div class="flex justify-end space-x-2">
-        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" on:click={confirmDelete}>Confirm</button>
-        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={cancelDelete}>Cancel</button>
+        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={confirmDelete}>Confirm</button>
+        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy btn-ripple" on:click={cancelDelete}>Cancel</button>
       </div>
     </div>
   </div>
@@ -756,9 +765,8 @@
 
 <!-- SUCCESS DELETION MODAL (with pulsing red circle and manual close) -->
 {#if showDeleteSuccess}
-  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="relative bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg" transition:scale>
-      <!-- Manual close (X) at top-right -->
       <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeDeleteSuccess}>✕</button>
       <div class="flex justify-center mb-4">
         <div class="animated-circle">
@@ -768,7 +776,7 @@
       <h2 class="text-md font-semibold mb-2 text-center text-red-800 dark:text-red-200">Project Deleted Successfully!</h2>
       <p class="text-sm text-center text-red-700 dark:text-red-300 mb-4">The selected project has been removed.</p>
       <div class="flex justify-center">
-        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={closeDeleteSuccess}>Close</button>
+        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy btn-ripple" on:click={closeDeleteSuccess}>Close</button>
       </div>
     </div>
   </div>
@@ -776,9 +784,8 @@
 
 <!-- SUCCESS SAVE MODAL (with pulsing green check icon and manual close) -->
 {#if showSaveSuccess}
-  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="relative bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg" transition:scale>
-      <!-- Manual close (X) at top-right -->
       <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeSaveSuccess}>✕</button>
       <div class="flex justify-center mb-4">
         <div class="animated-green">
@@ -792,14 +799,13 @@
 {/if}
 
 <style>
-  /* Truncate text if needed */
+  /* Existing Styles */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  /* Animated pulsing circle for deletion (red) */
   .animated-circle {
     width: 40px;
     height: 40px;
@@ -814,7 +820,6 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
   }
-  /* Animated pulsing circle for save success (green), slightly smaller */
   .animated-green {
     width: 30px;
     height: 30px;
@@ -828,5 +833,90 @@
   @keyframes pulseGreen {
     0%, 100% { transform: scale(0.9); }
     50% { transform: scale(1.1); }
+  }
+
+  /* Enhanced Button Styles */
+  .btn-fancy {
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+  .btn-fancy:active {
+    transform: scale(0.98);
+  }
+  .btn-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-ripple::after {
+    content: "";
+    position: absolute;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.5s, opacity 1s;
+  }
+  .btn-ripple:active::after {
+    transform: scale(1);
+    opacity: 1;
+    transition: 0s;
+  }
+  .modal-backdrop {
+    backdrop-filter: blur(4px);
+  }
+  /* Animated gradient background for project cards */
+  .animate-gradient {
+    animation: gradientShift 5s ease infinite;
+  }
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  /* Loader animation: pulsing dots */
+  .animate-pulse-dot {
+    animation: pulseDot 1s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+  }
+  .animation-delay-400 {
+    animation-delay: 0.4s;
+  }
+
+  /*************************************************************
+   * Refined Link Assets Styles (Simple & Fancy)
+   *************************************************************/
+  /* Using the original vertical layout with subtle styling */
+  .asset-checkbox-label {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+  }
+  .asset-checkbox-label:hover {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  .asset-checkbox-label input[type="checkbox"] {
+    margin-right: 8px;
+    accent-color: #3b82f6;
+    transform: scale(1.1);
+    cursor: pointer;
   }
 </style>
