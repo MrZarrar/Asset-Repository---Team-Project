@@ -404,9 +404,12 @@
     selectedAssetsCount = selectedAssets.size; // Update the count
   }
 
-  function clearAllSelections() {
-    selectedAssets = new Set(); // Create a new empty Set to ensure reactivity
+  async function clearAllSelections() {
+    selectAllAssets(); // Select all assets first
+    await new Promise(resolve => setTimeout(resolve, 1)); 
+    selectedAssets = new Set(); // Clear the selected assets
     selectedAssetsCount = selectedAssets.size; // Update the count
+    assets = assets.map(asset => ({ ...asset })); // Trigger reactivity by creating a new array
   }
 </script>
 
