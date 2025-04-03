@@ -8,7 +8,7 @@ export const isSearching = writable(false);
 export const searchError = writable(null);
 
 // Perform asset search
-export async function performSearch(term) {
+export async function performSearch(term, option) {
     // Update the search term
     searchTerm.set(term);
     
@@ -23,7 +23,7 @@ export async function performSearch(term) {
     searchError.set(null);
     
     try {
-      const results = await searchAssets(term);
+      const results = await searchAssets(term, option);
       searchResults.set(results);
     } catch (error) {
       console.error('Search failed:', error);

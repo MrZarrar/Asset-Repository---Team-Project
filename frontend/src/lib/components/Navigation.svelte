@@ -13,19 +13,20 @@
   let isMobileMenuOpen = false;
   let searchInputValue = '';
   let showSearchResults = false;
+  let searchOption = "name"; // Default search option
   
-  // Debounce the search function to avoid too many requests
-  const debouncedSearch = debounce((term) => {
-    performSearch(term);
+  // Updated debouncedSearch to accept searchOption as second parameter
+  const debouncedSearch = debounce((term, option) => {
+    performSearch(term, option);
   }, 300);
   
-  // Handle search input
+  // Updated search input handler to pass searchOption
   function handleSearchInput(event) {
     const term = event.target.value;
     searchInputValue = term;
     
     if (term.trim()) {
-      debouncedSearch(term);
+      debouncedSearch(term, searchOption);
       showSearchResults = true;
     } else {
       clearSearch();
@@ -199,15 +200,27 @@
         </div>
       </div>
 
-      <!-- Search centered but shifted slightly left -->
       <div class="flex-1 flex justify-center pl-0 pr-8 md:pl-0 md:pr-16">
         <div class="w-full max-w-[150px] xs:max-w-[120px] md:max-w-xl">
-          <div id="search-container" class="relative flex w-full">
+          <div id="search-container" class="relative flex w-full items-center">
+
+            <select
+              bind:value={searchOption}
+              on:change={() => { if (searchInputValue.trim()) debouncedSearch(searchInputValue, searchOption); }}
+              class="h-10 px-3 border border-blue-300 bg-blue-50 text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-300 rounded-l-md dark:border-blue-600 dark:bg-gray-700 dark:text-gray-100"
+            >
+              <option value="name">Search by Name</option>
+              <option value="type">Search by Type</option>
+              <option value="date_created">Search by Date Created</option>
+              <option value="date_updated">Search by Date Updated</option>
+            </select>
+
+            <!-- Search bar -->
             <div class="relative flex-1">
               <input
                 type="search"
                 id="search-dropdown"
-                class="block w-full p-2 md:p-2 text-sm md:text-sm bg-gray-200 text-black-400 dark:text-gray-200 dark:bg-gray-600 border border-gray-600 dark:border-gray-400 rounded-md hover:border-blue-600 focus:border-blue-600 focus:ring-blue-600 focus:ring-1 focus:outline-none transition-all duration-300"
+                class="block w-full p-2 md:p-2 text-sm md:text-sm bg-gray-200 text-black-400 dark:text-gray-200 dark:bg-gray-600 border border-gray-600 dark:border-gray-400 rounded-r-md hover:border-blue-600 focus:border-blue-600 focus:ring-blue-600 focus:ring-1 focus:outline-none transition-all duration-300"
                 placeholder="Search assets..."
                 bind:value={searchInputValue}
                 on:input={handleSearchInput}
@@ -256,7 +269,16 @@
                             on:click={() => navigateToAsset(asset.id)}
                           >
                             <div class="font-medium">{asset.name}</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">ID: {asset.asset_id}</div>
+                            <!-- Additional fields -->
+                            {#if asset.type}
+                              <div class="text-xs text-gray-500 dark:text-gray-400">Type: {asset.type}</div>
+                            {/if}
+                            {#if asset.date_created}
+                              <div class="text-xs text-gray-500 dark:text-gray-400">Created: {new Date(asset.date_created).toLocaleDateString()}</div>
+                            {/if}
+                            {#if asset.date_updated}
+                              <div class="text-xs text-gray-500 dark:text-gray-400">Updated: {new Date(asset.date_updated).toLocaleDateString()}</div>
+                            {/if}
                           </button>
                         </li>
                       {/each}
