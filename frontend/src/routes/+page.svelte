@@ -491,15 +491,15 @@ input[type="file"].hidden {
   appearance: none;
   width: 1.25rem;
   height: 1.25rem;
-  border: 2px solid #ccc;
+  border: 2px solid #2563eb; 
   border-radius: 0.25rem;
-  background-color: white;
+  background-color: #00143b; 
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .checkbox:checked {
-  background-color: #2563eb; /* Blue */
+  background-color: #2563eb; 
   border-color: #2563eb;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
   background-size: 1rem;
