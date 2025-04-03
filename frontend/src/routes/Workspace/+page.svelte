@@ -249,13 +249,11 @@
 
     // Make sure to remove existing listeners before adding new ones 
     // to prevent duplicate handlers
-    window.removeEventListener('createMavenAsset', createAssetHandler);
     window.addEventListener('createMavenAsset', createAssetHandler);
 
     // Clean up event listener on component destruction
     return () => {
       window.removeEventListener('createMavenAsset', createAssetHandler);
-      window.removeEventListener('switchToMyAssetsTab', switchTabHandler);
     };
   });
   
@@ -450,7 +448,7 @@
   let copiedAssetsPerPage = 6;
 
   async function loadAddedAssetsPage(page) {
-    if (!isAuthenticated || page < 1 || page > addedAssetsTotalPages) return;
+    if (!$isAuthenticated || page < 1 || page > addedAssetsTotalPages) return;
 
     addedAssetsPage = page;
     loadingAddedAssets = true;
@@ -1105,15 +1103,59 @@
                 >
                   Previous
                 </button>
-                {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                
+                <!-- Show pagination with ellipses -->
+                {#if addedAssetsTotalPages <= 4}
+                  {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                    <button
+                      class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => loadAddedAssetsPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/each}
+                {:else}
+                  <!-- First page always shown -->
                   <button
-                    class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
-                    on:click={() => loadAddedAssetsPage(i + 1)}
+                    class="px-3 py-1 {addedAssetsPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAddedAssetsPage(1)}
                   >
-                    {i + 1}
+                    1
                   </button>
-                {/each}
+                  
+                  <!-- Ellipsis at the beginning if needed -->
+                  {#if addedAssetsPage > 2}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Pages around current page -->
+                  {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                    {#if i + 1 !== 1 && i + 1 !== addedAssetsTotalPages && Math.abs(addedAssetsPage - (i + 1)) < 2}
+                      <button
+                        class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                        on:click={() => loadAddedAssetsPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    {/if}
+                  {/each}
+                  
+                  <!-- Ellipsis at the end if needed -->
+                  {#if addedAssetsPage < addedAssetsTotalPages - 1}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Last page always shown -->
+                  <button
+                    class="px-3 py-1 {addedAssetsPage === addedAssetsTotalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAddedAssetsPage(addedAssetsTotalPages)}
+                  >
+                    {addedAssetsTotalPages}
+                  </button>
+                {/if}
+                
                 <button
+
                   class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                   on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)}
                   disabled={addedAssetsPage === addedAssetsTotalPages}
@@ -1232,15 +1274,59 @@
                 >
                   Previous
                 </button>
-                {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                
+                <!-- Show pagination with ellipses -->
+                {#if copiedAssetsTotalPages <= 4}
+                  {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                    <button
+                      class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => loadCopiedAssetsPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/each}
+                {:else}
+                  <!-- First page always shown -->
                   <button
-                    class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
-                    on:click={() => loadCopiedAssetsPage(i + 1)}
+                    class="px-3 py-1 {copiedAssetsPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadCopiedAssetsPage(1)}
                   >
-                    {i + 1}
+                    1
                   </button>
-                {/each}
+                  
+                  <!-- Ellipsis at the beginning if needed -->
+                  {#if copiedAssetsPage > 2}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Pages around current page -->
+                  {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                    {#if i + 1 !== 1 && i + 1 !== copiedAssetsTotalPages && Math.abs(copiedAssetsPage - (i + 1)) < 2}
+                      <button
+                        class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                        on:click={() => loadCopiedAssetsPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    {/if}
+                  {/each}
+                  
+                  <!-- Ellipsis at the end if needed -->
+                  {#if copiedAssetsPage < copiedAssetsTotalPages - 1}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Last page always shown -->
+                  <button
+                    class="px-3 py-1 {copiedAssetsPage === copiedAssetsTotalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadCopiedAssetsPage(copiedAssetsTotalPages)}
+                  >
+                    {copiedAssetsTotalPages}
+                  </button>
+                {/if}
+                
                 <button
+
                   class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                   on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)}
                   disabled={copiedAssetsPage === copiedAssetsTotalPages}
@@ -1411,9 +1497,6 @@
   top: 0.5rem;
   right: 0.5rem;
 }
-
-
-
 
 
 
