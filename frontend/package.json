@@ -14,16 +14,20 @@
 	},
 	"devDependencies": {
 		"@babel/preset-env": "^7.26.9",
+		"@babel/preset-typescript": "^7.27.0",
 		"@fullhuman/postcss-purgecss": "^7.0.2",
+		"@jest/globals": "^29.7.0",
 		"@lucide/svelte": "^0.474.0-rc.1",
 		"@sveltejs/adapter-auto": "^4.0.0",
 		"@sveltejs/kit": "^2.16.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@types/jest": "^29.5.14",
 		"cssnano": "^7.0.6",
 		"jest": "^29.7.0",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"svelte": "^5.0.0",
+		"ts-jest": "^29.3.1",
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
