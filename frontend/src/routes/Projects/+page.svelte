@@ -4,7 +4,7 @@
   import { fade, scale } from 'svelte/transition';
 
   /*************************************************************
-   * A large list of coding languages for the multi-select
+   * Coding languages for multi-select
    *************************************************************/
   let availableLanguages = [
     "Assembly", "Ada", "ALGOL", "APL", "Awk", "Bash", "BASIC", "C", "C++", "C#", "COBOL",
@@ -20,31 +20,31 @@
   ];
 
   /*************************************************************
-   * Projects, assets, loading/error states
+   * Projects, assets, and state flags
    *************************************************************/
   let projects = [];
   let assets = [];
   let loading = true;
   let error = null;
 
-  // Toggles for the Add and Edit forms
+  // Form toggles
   let showAddForm = false;
   let showEditForm = false;
 
-  /*************************************************************
-   * NEW PROJECT (Add form)
-   *************************************************************/
+  // Save success modal flag (green animation on create/update)
+  let showSaveSuccess = false;
+
+  // ------------------ NEW PROJECT (Add form) ------------------
   /**
-   * We now let the user set the record's actual `id` field (which 
-   * must be unique in PocketBase). 
+   * Allow user to set the record's `id` (user-defined) for PocketBase.
    * "Launched" is editable on create.
    */
   let newProject = {
     name: '',
     description: '',
-    language: [], // multi-select array
+    language: [],
     launched: '',
-    id: '',       // <-- user-defined ID, must be unique
+    id: '',       // user-defined ID (must be unique)
     asset_id: []
   };
 
@@ -52,7 +52,7 @@
   let newLogoFileName = '';
   let newLogoPreview = '';
 
-  // Multi-select dropdown controls (Add form)
+  // Multi-select controls for Add form
   let langDropdownOpenAdd = false;
   let searchAdd = '';
 
@@ -60,12 +60,9 @@
     newProject.language = [];
   }
 
-  /*************************************************************
-   * EDITING PROJECT
-   *************************************************************/
+  // ------------------ EDITING PROJECT ------------------
   /**
-   * In the Edit form, "Launched" and "id" are read-only 
-   * (cannot be changed after creation).
+   * On edit, "launched" and "id" (from PB) are read-only.
    */
   let editingProject = null;
   let updatedProject = {};
@@ -73,7 +70,7 @@
   let editLogoFileName = '';
   let editLogoPreview = '';
 
-  // Multi-select dropdown controls (Edit form)
+  // Multi-select controls for Edit form
   let langDropdownOpenEdit = false;
   let searchEdit = '';
 
@@ -81,14 +78,12 @@
     updatedProject.language = [];
   }
 
-  // Expand/collapse project details
+  // Expand/collapse details
   let expandedProjects = {};
 
-  /*************************************************************
-   * DELETE MODALS (Confirm & Success)
-   *************************************************************/
+  // ------------------ DELETE MODALS ------------------
   let showConfirmModal = false;
-  let showSuccessModal = false;
+  let showDeleteSuccess = false; // deletion success modal (red)
   let projectToDeleteId = null;
 
   function requestDeleteProject(id) {
@@ -108,20 +103,26 @@
       await pb.collection('projects').delete(projectToDeleteId);
       projects = projects.filter(p => p.id !== projectToDeleteId);
       projectToDeleteId = null;
-      showSuccessModal = true; // Show success animation
+      showDeleteSuccess = true; // Show deletion success modal
+      // Auto-close deletion success modal after 3 seconds
+      setTimeout(() => { showDeleteSuccess = false; }, 3000);
     } catch (err) {
       console.error('Error deleting project:', err);
       alert('Failed to delete project.');
     }
   }
 
-  function closeSuccessModal() {
-    showSuccessModal = false;
+  function closeDeleteSuccess() {
+    showDeleteSuccess = false;
   }
 
-  /*************************************************************
-   * FETCH DATA ON MOUNT
-   *************************************************************/
+  // ------------------ SAVE SUCCESS MODAL (for create/update) ------------------
+  function triggerSaveSuccess() {
+    showSaveSuccess = true;
+    setTimeout(() => { showSaveSuccess = false; }, 3000);
+  }
+
+  // ------------------ FETCH DATA ON MOUNT ------------------
   onMount(async () => {
     try {
       projects = await pb.collection('projects').getFullList({
@@ -137,9 +138,7 @@
     }
   });
 
-  /*************************************************************
-   * CREATE PROJECT
-   *************************************************************/
+  // ------------------ CREATE PROJECT ------------------
   async function createProject() {
     try {
       const currentUser = pb.authStore?.model;
@@ -148,14 +147,14 @@
         return;
       }
 
-      // Check uniqueness of the user-defined `id`
+      // Check that the user-defined ID is unique
       if (projects.find(p => p.id === newProject.id)) {
         alert("ID must be unique. Another project with this ID already exists.");
         return;
       }
 
       let formData = new FormData();
-      formData.append('id', newProject.id); // user-defined ID
+      formData.append('id', newProject.id);
       formData.append('name', newProject.name);
       formData.append('description', newProject.description);
       formData.append('language', JSON.stringify(newProject.language));
@@ -172,6 +171,7 @@
 
       resetNewProject();
       showAddForm = false;
+      triggerSaveSuccess();
     } catch (err) {
       console.error('Error creating project:', err);
       alert('Failed to create project.');
@@ -194,13 +194,10 @@
     searchAdd = '';
   }
 
-  /*************************************************************
-   * EDIT PROJECT
-   *************************************************************/
+  // ------------------ EDIT PROJECT ------------------
   function editProject(project) {
     editingProject = project;
 
-    // Parse languages if stored as JSON
     let parsedLangs = [];
     try {
       parsedLangs = JSON.parse(project.language) || [];
@@ -209,7 +206,6 @@
       if (Array.isArray(project.language)) parsedLangs = project.language;
     }
 
-    // Convert launched date to "YYYY-MM-DD" for read-only display
     let launchedVal = project.launched;
     if (launchedVal) {
       try {
@@ -227,7 +223,7 @@
       language: parsedLangs,
       asset_id: assetIds
     };
-    // "id" remains read-only in the form
+    // "id" remains read-only
     editLogoFile = null;
     editLogoFileName = '';
     editLogoPreview = '';
@@ -236,22 +232,18 @@
     showEditForm = true;
   }
 
-  /*************************************************************
-   * UPDATE PROJECT
-   *************************************************************/
+  // ------------------ UPDATE PROJECT ------------------
   async function updateProject() {
     try {
       let formData = new FormData();
-      // "id" is read-only, so we do NOT update it
+      // "id" is read-only and not updated
       formData.append('name', updatedProject.name);
       formData.append('description', updatedProject.description);
       formData.append('language', JSON.stringify(updatedProject.language));
-      // "launched" is also read-only
       formData.append('launched', editingProject.launched || '');
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
-      // "id" remains unchanged
       formData.append('asset_id', JSON.stringify(updatedProject.asset_id));
 
       const record = await pb.collection('projects').update(editingProject.id, formData);
@@ -264,22 +256,10 @@
       editLogoFile = null;
       editLogoFileName = '';
       editLogoPreview = '';
+      triggerSaveSuccess();
     } catch (err) {
       console.error('Error updating project:', err);
       alert('Failed to update project.');
-    }
-  }
-
-  /*************************************************************
-   * OPTIONAL: DIRECT DELETE (not used if using modals)
-   *************************************************************/
-  async function deleteProject(id) {
-    try {
-      await pb.collection('projects').delete(id);
-      projects = projects.filter(p => p.id !== id);
-    } catch (err) {
-      console.error('Error deleting project:', err);
-      alert('Failed to delete project.');
     }
   }
 
@@ -590,7 +570,7 @@
                 />
               </div>
 
-              <!-- ID (must be unique, user-defined) -->
+              <!-- ID (user-defined, must be unique) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   ID (must be unique)
@@ -1150,8 +1130,8 @@
   </div>
 {/if}
 
-<!-- SUCCESS DELETION MODAL (with pulsing circle animation) -->
-{#if showSuccessModal}
+<!-- SUCCESS DELETION MODAL (with pulsing red circle) -->
+{#if showDeleteSuccess}
   <div 
     class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" 
     transition:fade
@@ -1160,21 +1140,15 @@
       class="bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg relative" 
       transition:scale
     >
-      <!-- Animated pulsing circle -->
       <div class="flex justify-center mb-4">
         <div class="animated-circle">
           <span class="text-xl text-white">–</span>
         </div>
       </div>
-      <h2 
-        class="text-md font-semibold mb-2 text-center 
-               text-red-800 dark:text-red-200"
-      >
+      <h2 class="text-md font-semibold mb-2 text-center text-red-800 dark:text-red-200">
         Project Deleted Successfully!
       </h2>
-      <p 
-        class="text-sm text-center text-red-700 dark:text-red-300 mb-4"
-      >
+      <p class="text-sm text-center text-red-700 dark:text-red-300 mb-4">
         The selected project has been removed.
       </p>
       <div class="flex justify-center">
@@ -1182,7 +1156,7 @@
           class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded 
                  text-gray-700 dark:text-gray-100 hover:bg-gray-300 
                  dark:hover:bg-gray-500"
-          on:click={closeSuccessModal}
+          on:click={closeDeleteSuccess}
         >
           Close
         </button>
@@ -1191,8 +1165,33 @@
   </div>
 {/if}
 
+<!-- SUCCESS SAVE MODAL (with pulsing green check icon) -->
+{#if showSaveSuccess}
+  <div 
+    class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" 
+    transition:fade
+  >
+    <div 
+      class="bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg relative" 
+      transition:scale
+    >
+      <div class="flex justify-center mb-4">
+        <div class="animated-green">
+          <span class="text-xl text-white">✔</span>
+        </div>
+      </div>
+      <h2 class="text-md font-semibold mb-2 text-center text-green-800 dark:text-green-200">
+        Project Saved Successfully!
+      </h2>
+      <p class="text-sm text-center text-green-700 dark:text-green-300">
+        Your changes have been saved.
+      </p>
+    </div>
+  </div>
+{/if}
+
 <style>
-  /* For truncating text if needed */
+  /* Truncate text if needed */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1200,12 +1199,12 @@
     overflow: hidden;
   }
 
-  /* Pulsing red circle behind the minus sign in the success modal */
+  /* Animated pulsing circle for deletion (red) */
   .animated-circle {
     width: 40px;
     height: 40px;
-    background-color: #ef4444; /* tailwind red-500 */
-    border-radius: 9999px;     /* fully rounded */
+    background-color: #ef4444; /* red-500 */
+    border-radius: 9999px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1213,12 +1212,24 @@
   }
 
   @keyframes pulseCircle {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.1);
-    }
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  /* Animated pulsing circle for save success (green), slightly smaller */
+  .animated-green {
+    width: 30px;
+    height: 30px;
+    background-color: #10b981; /* green-500 */
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulseGreen 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGreen {
+    0%, 100% { transform: scale(0.9); }
+    50% { transform: scale(1.1); }
   }
 </style>
-   
