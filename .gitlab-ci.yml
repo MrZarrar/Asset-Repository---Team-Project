@@ -24,7 +24,7 @@ test:
   image: node:${NODE_VERSION}
   script:
     - cd backend
-    - ./pocketbaseLinux serve
+    - ./pocketbaseLinux serve &
     - cd
     - cd frontend
     - npm ci
