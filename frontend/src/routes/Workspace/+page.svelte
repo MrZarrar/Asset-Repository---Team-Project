@@ -209,8 +209,9 @@
     // Listen for tab switching events from the chatbot
     
 
-    // Add handler for createMavenAsset event
+    // Add handler for createMavenAsset event, and make sure it runs early
     const createAssetHandler = (event) => {
+      console.log('Received createMavenAsset event:', event.detail);
       if (event.detail) {
         // Switch to the assets tab
         activeTab = 'assets';
@@ -221,7 +222,6 @@
         // Fill the form with the data from the event
         newAsset = {
           ...newAsset,
-          id: event.detail.id || "",
           name: event.detail.name || "",
           version: event.detail.version || "",
           type: event.detail.type || "maven",
@@ -241,14 +241,14 @@
         console.log('Asset form opened with Maven data from chatbot:', newAsset);
       }
     };
-
-    window.addEventListener('switchToMyAssetsTab', switchTabHandler);
+    
+    // Register the event listener
     window.addEventListener('createMavenAsset', createAssetHandler);
 
     // Clean up event listener on component destruction
     return () => {
       window.removeEventListener('createMavenAsset', createAssetHandler);
-      window.removeEventListener('switchToMyAssetsTab', switchTabHandler);
+      // Other cleanup code...
     };
   });
   
@@ -368,7 +368,6 @@
   // Add this to your existing onMount function in Workspace page
 
   onMount(async () => {
-    // Existing code...
     
     // Check if we should auto-add an asset (triggered by chatbot)
     const shouldAutoAdd = localStorage.getItem('autoAddAsset') === 'true';
@@ -426,7 +425,6 @@
       }
     }
     
-    // Existing code...
   });
 
   let addedAssets = [];
@@ -445,7 +443,7 @@
   let copiedAssetsPerPage = 6;
 
   async function loadAddedAssetsPage(page) {
-    if (!isAuthenticated || page < 1 || page > addedAssetsTotalPages) return;
+    if (!$isAuthenticated || page < 1 || page > addedAssetsTotalPages) return;
 
     addedAssetsPage = page;
     loadingAddedAssets = true;
@@ -872,11 +870,11 @@
           <div class="mb-6">
             <h2 class="text-2xl font-bold mb-4">Add New Asset</h2>
             <form on:submit|preventDefault={addAsset}>
-              <div class="mb-4">
+              <!-- <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
                 <input type="text" bind:value={newAsset.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to auto-generate an ID</p>
-              </div>
+              </div> -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                 <input type="text" bind:value={newAsset.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
@@ -1090,14 +1088,57 @@
                 >
                   Previous
                 </button>
-                {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                
+                <!-- Show pagination with ellipses -->
+                {#if addedAssetsTotalPages <= 4}
+                  {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                    <button
+                      class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => loadAddedAssetsPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/each}
+                {:else}
+                  <!-- First page always shown -->
                   <button
-                    class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
-                    on:click={() => loadAddedAssetsPage(i + 1)}
+                    class="px-3 py-1 {addedAssetsPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAddedAssetsPage(1)}
                   >
-                    {i + 1}
+                    1
                   </button>
-                {/each}
+                  
+                  <!-- Ellipsis at the beginning if needed -->
+                  {#if addedAssetsPage > 2}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Pages around current page -->
+                  {#each Array(addedAssetsTotalPages).fill(0) as _, i}
+                    {#if i + 1 !== 1 && i + 1 !== addedAssetsTotalPages && Math.abs(addedAssetsPage - (i + 1)) < 2}
+                      <button
+                        class="px-3 py-1 {addedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                        on:click={() => loadAddedAssetsPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    {/if}
+                  {/each}
+                  
+                  <!-- Ellipsis at the end if needed -->
+                  {#if addedAssetsPage < addedAssetsTotalPages - 1}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Last page always shown -->
+                  <button
+                    class="px-3 py-1 {addedAssetsPage === addedAssetsTotalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAddedAssetsPage(addedAssetsTotalPages)}
+                  >
+                    {addedAssetsTotalPages}
+                  </button>
+                {/if}
+                
                 <button
                   class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                   on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)}
@@ -1216,14 +1257,57 @@
                 >
                   Previous
                 </button>
-                {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                
+                <!-- Show pagination with ellipses -->
+                {#if copiedAssetsTotalPages <= 4}
+                  {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                    <button
+                      class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => loadCopiedAssetsPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/each}
+                {:else}
+                  <!-- First page always shown -->
                   <button
-                    class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
-                    on:click={() => loadCopiedAssetsPage(i + 1)}
+                    class="px-3 py-1 {copiedAssetsPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadCopiedAssetsPage(1)}
                   >
-                    {i + 1}
+                    1
                   </button>
-                {/each}
+                  
+                  <!-- Ellipsis at the beginning if needed -->
+                  {#if copiedAssetsPage > 2}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Pages around current page -->
+                  {#each Array(copiedAssetsTotalPages).fill(0) as _, i}
+                    {#if i + 1 !== 1 && i + 1 !== copiedAssetsTotalPages && Math.abs(copiedAssetsPage - (i + 1)) < 2}
+                      <button
+                        class="px-3 py-1 {copiedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                        on:click={() => loadCopiedAssetsPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    {/if}
+                  {/each}
+                  
+                  <!-- Ellipsis at the end if needed -->
+                  {#if copiedAssetsPage < copiedAssetsTotalPages - 1}
+                    <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                  {/if}
+                  
+                  <!-- Last page always shown -->
+                  <button
+                    class="px-3 py-1 {copiedAssetsPage === copiedAssetsTotalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadCopiedAssetsPage(copiedAssetsTotalPages)}
+                  >
+                    {copiedAssetsTotalPages}
+                  </button>
+                {/if}
+                
                 <button
                   class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                   on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)}
@@ -1309,50 +1393,89 @@
   }
 
   .checkbox {
-    appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 2px solid #2563eb;
-    border-radius: 0.25rem;
-    background-color: #00143b;
-    cursor: pointer;
-    transition: all 0.2s;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Light mode hover state */
+.checkbox:hover {
+  border-color: #2563eb;
+}
+
+/* Light mode checked state */
+.checkbox:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
+  background-size: 1rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* System dark mode preferences */
+@media (prefers-color-scheme: dark) {
+  .checkbox {
+    border: 2px solid #4b5563;
+    background-color: #1f2937;
+  }
+
+  .checkbox:hover {
+    border-color: #3b82f6;
   }
 
   .checkbox:checked {
-    background-color: #2563eb;
-    border-color: #2563eb;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
-    background-size: 1rem;
-    background-position: center;
-    background-repeat: no-repeat;
+    background-color: #3b82f6;
+    border-color: #3b82f6;
   }
+}
 
-  .asset-checkbox {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-  }
+/* Tailwind dark mode class */
+:global(.dark) .checkbox {
+  border: 2px solid #4b5563;
+  background-color: #1f2937;
+}
 
-  .delete-circle {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: #e74c3c;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    animation: pulse 1.5s ease-in-out infinite;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
+:global(.dark) .checkbox:hover {
+  border-color: #3b82f6;
+}
 
-  .delete-icon {
-    width: 24px;
-    height: 4px;
-    background-color: white;
-    border-radius: 2px;
-  }
+:global(.dark) .checkbox:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.asset-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+/* Add styles for the delete popup */
+.delete-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #e74c3c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.delete-icon {
+  width: 24px;
+  height: 4px;
+  background-color: white;
+  border-radius: 2px;
+}
 
   @keyframes pulse {
     0% {

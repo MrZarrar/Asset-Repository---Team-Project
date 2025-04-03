@@ -159,7 +159,6 @@
       // Your existing API call to save the asset
       const createdRecord = await pb.collection('assets').create(formData);
       
-      // Rest of your existing code...
       addingAsset = false;
       console.log("Asset added successfully:", createdRecord);
 
@@ -519,20 +518,58 @@ input[type="file"].hidden {
   appearance: none;
   width: 1.25rem;
   height: 1.25rem;
-  border: 2px solid #2563eb; 
+  border: 2px solid #e2e8f0;
   border-radius: 0.25rem;
-  background-color: #00143b; 
+  background-color: #ffffff;
   cursor: pointer;
   transition: all 0.2s;
 }
 
+/* Light mode hover state */
+.checkbox:hover {
+  border-color: #2563eb;
+}
+
+/* Light mode checked state */
 .checkbox:checked {
-  background-color: #2563eb; 
+  background-color: #2563eb;
   border-color: #2563eb;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
   background-size: 1rem;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+/* System dark mode preferences */
+@media (prefers-color-scheme: dark) {
+  .checkbox {
+    border: 2px solid #4b5563;
+    background-color: #1f2937;
+  }
+
+  .checkbox:hover {
+    border-color: #3b82f6;
+  }
+
+  .checkbox:checked {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+  }
+}
+
+/* Tailwind dark mode class */
+:global(.dark) .checkbox {
+  border: 2px solid #4b5563;
+  background-color: #1f2937;
+}
+
+:global(.dark) .checkbox:hover {
+  border-color: #3b82f6;
+}
+
+:global(.dark) .checkbox:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
 }
 
 .asset-checkbox {
@@ -789,14 +826,57 @@ input[type="file"].hidden {
               >
                 Previous
               </button>
-              {#each Array(totalPages).fill(0) as _, i}
+              
+              <!-- Show pagination with ellipses -->
+              {#if totalPages <= 4}
+                {#each Array(totalPages).fill(0) as _, i}
+                  <button
+                    class="px-3 py-1 {currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => goToPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                {/each}
+              {:else}
+                <!-- First page always shown -->
                 <button
-                  class="px-3 py-1 {currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
-                  on:click={() => goToPage(i + 1)}
+                  class="px-3 py-1 {currentPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => goToPage(1)}
                 >
-                  {i + 1}
+                  1
                 </button>
-              {/each}
+                
+                <!-- Ellipsis at the beginning if needed -->
+                {#if currentPage > 2}
+                  <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                {/if}
+                
+                <!-- Pages around current page -->
+                {#each Array(totalPages).fill(0) as _, i}
+                  {#if i + 1 !== 1 && i + 1 !== totalPages && Math.abs(currentPage - (i + 1)) < 2}
+                    <button
+                      class="px-3 py-1 {currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => goToPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/if}
+                {/each}
+                
+                <!-- Ellipsis at the end if needed -->
+                {#if currentPage < totalPages - 1}
+                  <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                {/if}
+                
+                <!-- Last page always shown -->
+                <button
+                  class="px-3 py-1 {currentPage === totalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => goToPage(totalPages)}
+                >
+                  {totalPages}
+                </button>
+              {/if}
+              
               <button
                 class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                 on:click={() => goToPage(currentPage + 1)}
@@ -857,9 +937,9 @@ input[type="file"].hidden {
 
   <!-- Update the popup notification with smooth transitions -->
   {#if showCopyPopup}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
          transition:fade={{ duration: 300 }}>
-      <div class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+      <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
         <button
           class="absolute top-2 right-2 text-white hover:text-gray-300"
@@ -867,9 +947,15 @@ input[type="file"].hidden {
         >
           <X class="w-5 h-5" />
         </button>
+        <div class="success-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="success-icon">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+          </svg>
+        </div>
         <p class="text-lg font-semibold">Asset copied successfully!</p>
         <button
-          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
+          class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
           on:click={goToWorkspace}
         >
           Go to My Assets
