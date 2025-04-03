@@ -9,11 +9,27 @@
   import { fetchAssets } from '$lib/assetService';
   import { fade, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
-  
+
+
   
   // Tab state
-  let activeTab = 'assets'; // Default to projects tab
+  let activeTab = 'projects'; // Default to projects tab
+
+   // ------------------ VIEW DETAILS MODAL ------------------
+   let showProjectDetails = false;
+  let selectedProject = null;
+  function openProjectDetails(project) {
+    selectedProject = project;
+    showProjectDetails = true;
+  }
+  function closeProjectDetails() {
+    showProjectDetails = false;
+    selectedProject = null;
+  }
   
+
+
+
   // State variables
   let projects = [];
   let assets = [];
@@ -621,11 +637,18 @@
   // Reactive statement to update the count of selected assets
   $: selectedAssetsCount = selectedAssets.size;
 
+  
+
 
 </script>
 
+
+
+
 {#if isAuthenticated}
 <main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-8">
+
+  
   <div class="container mx-auto">
     
     <!-- Tabs -->
@@ -670,35 +693,29 @@
             <p>You don't have any projects yet. <a href="/Projects" class="underline">Create a project</a> to get started.</p>
           </div>
         {:else}
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {#each projects as project}
-              <div class="bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-                <div class="p-4">
-                  <div class="flex items-center mb-3">
-                    {#if project.logo}
-                      <img 
-                        src={pb.getFileUrl(project, 'logo')} 
-                        alt="{project.name} logo" 
-                        class="w-10 h-10 object-cover rounded-md mr-3"
-                      />
-                    {/if}
-                    <h3 class="text-lg font-semibold">{project.name}</h3>
-                  </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{project.description}</p>
-                  <div class="text-xs text-gray-500 dark:text-gray-500">
-                    <p><span class="font-medium">Language:</span> {project.language || 'N/A'}</p>
-                    <p><span class="font-medium">Launch Date:</span> {formatDate(project.launched)}</p>
-                    <p><span class="font-medium">Updated:</span> {formatDate(project.updated)}</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+          {#each projects as project}
+            <div class="relative w-64 group transition-transform duration-300 ease-in-out">
+              <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 animate-gradient"></div>
+              <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center space-x-1">
+                  {project.name}
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
+                <div class="mt-3 flex items-center justify-between">
+                  <div class="flex space-x-2">
+                    
                   </div>
                 </div>
-                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 flex justify-end">
-                  <a href={`/Projects?edit=${project.id}`} class="text-blue-600 dark:text-blue-400 text-sm hover:underline">
+                <div class="mt-3">
+                  <button class="text-blue-600 dark:text-blue-400 text-xs hover:underline" on:click={() => openProjectDetails(project)}>
                     View Details
-                  </a>
+                  </button>
                 </div>
               </div>
-            {/each}
-          </div>
+            </div>
+          {/each}
+        </div>
         {/if}
       </section>
       
@@ -1445,6 +1462,40 @@
 </main>
 {/if}
 
+{#if showProjectDetails}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal-backdrop" transition:fade>
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 md:mx-0" transition:scale>
+      {#if selectedProject}
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{selectedProject.name}</h2>
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" on:click={closeProjectDetails}>✕</button>
+        </div>
+        <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <p><span class="font-medium">ID:</span> {selectedProject.id}</p>
+          <p><span class="font-medium">Launched:</span> {selectedProject.launched || 'N/A'}</p>
+          <p><span class="font-medium">Languages:</span> {displayLanguages(selectedProject.language)}</p>
+          {#if selectedProject.expand?.asset_id && selectedProject.expand.asset_id.length > 0}
+            <div>
+              <span class="font-medium">Linked Assets:</span>
+              <ul class="list-disc list-inside ml-4 mt-1">
+                {#each selectedProject.expand.asset_id as asset}
+                  <li>{asset.name}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+          {#if selectedProject.description}
+            <p class="mt-2"><span class="font-medium">Description:</span> {selectedProject.description}</p>
+          {/if}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm btn-fancy btn-ripple focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
 <style>
   input[type="search"]::-webkit-search-cancel-button {
     -webkit-appearance: none;
@@ -1590,5 +1641,7 @@
     background-color: white;
     border-radius: 2px;
   }
+
+  
 
 </style>
