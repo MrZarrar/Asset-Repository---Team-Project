@@ -2,20 +2,20 @@
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
 
-  // JSON placeholder example for "tag"
+  // For JSON placeholder in the "tag" field
   let examplePlaceholder = JSON.stringify({ framework: "Svelte" });
 
-  // State
+  // Projects and Assets
   let projects = [];
   let assets = [];
   let loading = true;
   let error = null;
 
-  // Add/Edit modals
+  // Add/Edit controls
   let showAddForm = false;
   let showEditForm = false;
 
-  // New project form data
+  // New project data
   let newProject = {
     name: '',
     description: '',
@@ -26,7 +26,7 @@
     project_id: '',
     asset_id: []
   };
-  // New project logo
+  // New project logo & preview
   let newLogoFile = null;
   let newLogoFileName = '';
   let newLogoPreview = '';
@@ -38,10 +38,10 @@
   let editLogoFileName = '';
   let editLogoPreview = '';
 
-  // Expand/hide extra details for each project
+  // Toggle expanded details for each project
   let expandedProjects = {};
 
-  // Fetch projects & assets
+  // Fetch data on mount
   onMount(async () => {
     try {
       projects = await pb.collection('projects').getFullList({
@@ -57,17 +57,18 @@
     }
   });
 
-  // ---------------------
-  // CREATE A NEW PROJECT
-  // ---------------------
+  // ------------------
+  // CREATE PROJECT
+  // ------------------
   async function createProject() {
     try {
-      // check for duplicate project_id
+      // Check for duplicate project_id
       if (projects.find(p => p.project_id === newProject.project_id)) {
         alert("Project ID must be unique. A project with this ID already exists.");
         return;
       }
-      // parse tag JSON
+
+      // Parse 'tag' field if provided
       let tagParsed = {};
       if (newProject.tag.trim() !== '') {
         try {
@@ -78,7 +79,7 @@
         }
       }
 
-      // build FormData
+      // Build form data
       let formData = new FormData();
       formData.append('name', newProject.name);
       formData.append('description', newProject.description);
@@ -92,9 +93,8 @@
       formData.append('project_id', newProject.project_id);
       formData.append('asset_id', JSON.stringify(newProject.asset_id));
 
-      // create via PocketBase
       const record = await pb.collection('projects').create(formData);
-      // re-fetch the record with expanded assets
+      // Fetch with expanded assets
       const fetchedRecord = await pb.collection('projects').getOne(record.id, { expand: 'asset_id' });
       projects = [fetchedRecord, ...projects];
 
@@ -122,9 +122,9 @@
     newLogoPreview = '';
   }
 
-  // ---------------------
-  // EDIT A PROJECT
-  // ---------------------
+  // ------------------
+  // EDIT PROJECT
+  // ------------------
   function editProject(project) {
     editingProject = project;
     const assetIds = project.expand?.asset_id ? project.expand.asset_id.map(a => a.id) : [];
@@ -139,9 +139,9 @@
     showEditForm = true;
   }
 
-  // ---------------------
+  // ------------------
   // UPDATE PROJECT
-  // ---------------------
+  // ------------------
   async function updateProject() {
     try {
       let tagParsed = {};
@@ -183,9 +183,9 @@
     }
   }
 
-  // ---------------------
+  // ------------------
   // DELETE PROJECT
-  // ---------------------
+  // ------------------
   async function deleteProject(id) {
     if (!confirm("Are you sure you want to delete this project?")) return;
     try {
@@ -197,12 +197,14 @@
     }
   }
 
-  // Toggle details
+  // Toggle expanded details
   function toggleDetails(id) {
     expandedProjects = { ...expandedProjects, [id]: !expandedProjects[id] };
   }
 
-  // DOWNLOAD
+  // ------------------
+  // DOWNLOAD PROJECT FILE
+  // ------------------
   async function downloadProject(project) {
     if (!project || !project.id || !project.file) {
       alert("No project file available for download.");
@@ -227,14 +229,16 @@
     }
   }
 
-  // FILE INPUTS
-  function handleNewLogoChange(e) {
-    const file = e.target.files[0];
+  // ------------------
+  // FILE INPUT HANDLERS
+  // ------------------
+  function handleNewLogoChange(event) {
+    const file = event.target.files[0];
     if (file) {
       newLogoFile = file;
       newLogoFileName = file.name;
       const reader = new FileReader();
-      reader.onload = (ev) => { newLogoPreview = ev.target.result; };
+      reader.onload = (e) => { newLogoPreview = e.target.result; };
       reader.readAsDataURL(file);
     } else {
       newLogoFile = null;
@@ -243,13 +247,13 @@
     }
   }
 
-  function handleEditLogoChange(e) {
-    const file = e.target.files[0];
+  function handleEditLogoChange(event) {
+    const file = event.target.files[0];
     if (file) {
       editLogoFile = file;
       editLogoFileName = file.name;
       const reader = new FileReader();
-      reader.onload = (ev) => { editLogoPreview = ev.target.result; };
+      reader.onload = (e) => { editLogoPreview = e.target.result; };
       reader.readAsDataURL(file);
     } else {
       editLogoFile = null;
@@ -285,7 +289,7 @@
 
   <!-- MAIN CONTENT -->
   <div class="flex-1 flex flex-col">
-    <!-- Top Bar (Breadcrumb & Add Button) -->
+    <!-- Header / Breadcrumb + Add Button -->
     <header class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
       <div class="flex items-center space-x-2 text-sm">
         <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">Home</a>
@@ -300,11 +304,10 @@
       </button>
     </header>
 
-    <!-- Body Content -->
+    <!-- Main Body -->
     <div class="flex-1 p-6 overflow-auto">
-      <!-- If the user is adding or editing, show that form (like your Assets page) -->
       {#if showAddForm}
-        <!-- Add New Project Form (same styling as Add Asset) -->
+        <!-- FULL-SCREEN Add Project -->
         <section>
           <div class="max-w-2xl mx-auto">
             <h2 class="text-2xl font-semibold mb-6">Add New Project</h2>
@@ -315,8 +318,9 @@
                 <input
                   type="text"
                   bind:value={newProject.name}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                         focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Enter project name"
                   required
                 />
@@ -327,64 +331,68 @@
                 <textarea
                   rows="3"
                   bind:value={newProject.description}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                         focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Enter project description"
                 ></textarea>
               </div>
-              <!-- Language / Owner -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
-                  <input
-                    type="text"
-                    bind:value={newProject.language}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter language"
-                  />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Owner</label>
-                  <input
-                    type="text"
-                    bind:value={newProject.owner}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter owner"
-                  />
-                </div>
+              <!-- Language -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
+                <input
+                  type="text"
+                  bind:value={newProject.language}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Enter language"
+                />
               </div>
-              <!-- Launched / Project ID -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
-                  <input
-                    type="date"
-                    bind:value={newProject.launched}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
-                  <input
-                    type="text"
-                    bind:value={newProject.project_id}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter unique project ID"
-                  />
-                </div>
+              <!-- Owner -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Owner</label>
+                <input
+                  type="text"
+                  bind:value={newProject.owner}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Enter owner"
+                />
               </div>
-              <!-- Tag -->
+              <!-- Launched -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
+                <input
+                  type="date"
+                  bind:value={newProject.launched}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <!-- Project ID -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
+                <input
+                  type="text"
+                  bind:value={newProject.project_id}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Enter unique project ID"
+                />
+              </div>
+              <!-- Tag (JSON) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tag (JSON format)</label>
                 <textarea
                   rows="2"
                   bind:value={newProject.tag}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                         focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder={examplePlaceholder}
                 ></textarea>
               </div>
@@ -393,7 +401,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Logo</label>
                 <div class="mt-1 flex items-center space-x-2">
                   <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 
-                                 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-300 
+                                 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 
                                  bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
                     Select File
                     <input 
@@ -413,14 +421,15 @@
                   <img
                     src={newLogoPreview}
                     alt="New Logo Preview"
-                    class="mt-2 h-16 w-16 object-cover rounded-md border border-gray-300 dark:border-gray-600"
+                    class="mt-2 h-16 w-16 object-cover rounded-md 
+                           border border-gray-300 dark:border-gray-600"
                   />
                 {/if}
               </div>
               <!-- Link Assets -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Link Assets</label>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-1">
+                <div class="grid grid-cols-1 gap-2 mt-1">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
                     <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
                       <input
@@ -429,7 +438,7 @@
                         bind:group={newProject.asset_id}
                         class="rounded border-gray-300 dark:border-gray-600"
                       />
-                      <span>{asset.name} {asset.version ? `(${asset.version})` : ''}</span>
+                      <span>{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
                     </label>
                   {/each}
                 </div>
@@ -457,7 +466,7 @@
           </div>
         </section>
       {:else if showEditForm}
-        <!-- Edit Project Form -->
+        <!-- FULL-SCREEN Edit Project -->
         <section>
           <div class="max-w-2xl mx-auto">
             <h2 class="text-2xl font-semibold mb-6">Edit Project</h2>
@@ -468,8 +477,9 @@
                 <input
                   type="text"
                   bind:value={updatedProject.name}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                         focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
@@ -479,60 +489,64 @@
                 <textarea
                   rows="3"
                   bind:value={updatedProject.description}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                         focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 ></textarea>
               </div>
-              <!-- Language / Owner -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
-                  <input
-                    type="text"
-                    bind:value={updatedProject.language}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Owner</label>
-                  <input
-                    type="text"
-                    bind:value={updatedProject.owner}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
+              <!-- Language -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
+                <input
+                  type="text"
+                  bind:value={updatedProject.language}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
               </div>
-              <!-- Launched / Project ID -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
-                  <input
-                    type="date"
-                    bind:value={updatedProject.launched}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div class="mb-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
-                  <input
-                    type="text"
-                    bind:value={updatedProject.project_id}
-                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                           focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
+              <!-- Owner -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Owner</label>
+                <input
+                  type="text"
+                  bind:value={updatedProject.owner}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
               </div>
-              <!-- Tag -->
+              <!-- Launched -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
+                <input
+                  type="date"
+                  bind:value={updatedProject.launched}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <!-- Project ID -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
+                <input
+                  type="text"
+                  bind:value={updatedProject.project_id}
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <!-- Tag (JSON) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tag (JSON format)</label>
                 <textarea
                   rows="2"
                   bind:value={updatedProject.tag}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 
-                         focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder={examplePlaceholder}
                 ></textarea>
               </div>
@@ -541,7 +555,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload New Logo</label>
                 <div class="mt-1 flex items-center space-x-2">
                   <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 
-                                 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-300 
+                                 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 
                                  bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
                     Select File
                     <input 
@@ -561,14 +575,15 @@
                   <img
                     src={editLogoPreview}
                     alt="Edit Logo Preview"
-                    class="mt-2 h-16 w-16 object-cover rounded-md border border-gray-300 dark:border-gray-600"
+                    class="mt-2 h-16 w-16 object-cover rounded-md 
+                           border border-gray-300 dark:border-gray-600"
                   />
                 {/if}
               </div>
               <!-- Linked Assets -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Edit Linked Assets</label>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-1">
+                <div class="grid grid-cols-1 gap-2 mt-1">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
                     <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
                       <input
@@ -605,7 +620,7 @@
           </div>
         </section>
       {:else}
-        <!-- Show the Projects Grid -->
+        <!-- Show Projects Grid -->
         {#if loading}
           <div class="flex justify-center items-center h-64">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-300"></div>
@@ -627,48 +642,20 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {#each projects as project}
                 <div class="relative w-64 group">
+                  <!-- Gradient border effect on hover -->
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md 
                               opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200">
                   </div>
+                  <!-- Card content -->
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
-                    <div class="flex items-center mb-3">
-                      {#if project.logo}
-                        <img 
-                          src={pb.getFileUrl(project, 'logo')} 
-                          alt="{project.name} logo" 
-                          class="w-10 h-10 object-cover rounded-md mr-3"
-                        />
-                      {/if}
-                      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {project.name}
-                      </h2>
-                    </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">
-                      {project.description}
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      {project.name}
+                    </h2>
+                    <!-- Only show last updated in the collapsed card -->
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      <strong>Last Updated:</strong> {project.date_updated || 'N/A'}
                     </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      <strong>Language:</strong> {project.language || 'N/A'}
-                    </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      <strong>Owner:</strong> {project.owner || 'N/A'}
-                    </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      <strong>Launched:</strong> {project.launched || 'N/A'}
-                    </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      <strong>Project ID:</strong> {project.project_id}
-                    </p>
-                    {#if project.expand?.asset_id && project.expand.asset_id.length > 0}
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        <strong>Linked Assets:</strong>
-                        <ul class="list-disc list-inside">
-                          {#each project.expand.asset_id as asset}
-                            <li>{asset.name}</li>
-                          {/each}
-                        </ul>
-                      </div>
-                    {/if}
-                    <!-- Action buttons + Download + Details -->
+                    <!-- Action buttons: Edit, Delete, Download, plus "View Details" -->
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
                         <button 
@@ -691,22 +678,27 @@
                         Download
                       </button>
                     </div>
-                    <div class="mt-2">
-                      <button 
+                    <div class="mt-3">
+                      <button
                         class="text-blue-600 dark:text-blue-400 text-xs hover:underline"
                         on:click={() => toggleDetails(project.id)}
                       >
                         {expandedProjects[project.id] ? "Hide Details" : "View Details"}
                       </button>
                     </div>
-                    <!-- Extended details -->
+
+                    <!-- If expanded, show all other fields -->
                     {#if expandedProjects[project.id]}
-                      <div class="mt-4 text-xs text-gray-700 dark:text-gray-200">
+                      <div class="mt-4 text-xs text-gray-700 dark:text-gray-200 space-y-1">
+                        <p><strong>Language:</strong> {project.language || 'N/A'}</p>
+                        <p><strong>Owner:</strong> {project.owner || 'N/A'}</p>
+                        <p><strong>Launched:</strong> {project.launched || 'N/A'}</p>
+                        <p><strong>Project ID:</strong> {project.project_id}</p>
                         {#if project.tag}
                           <p><strong>Tag:</strong> {JSON.stringify(project.tag)}</p>
                         {/if}
                         {#if project.expand?.asset_id && project.expand.asset_id.length > 0}
-                          <div class="mt-2">
+                          <div class="mt-1">
                             <strong>Linked Assets:</strong>
                             <ul class="list-disc list-inside">
                               {#each project.expand.asset_id as asset}
@@ -738,11 +730,11 @@
         </li>
         {#if projects.length > 0}
           <li class="flex justify-between">
-            <span>Last Updated:</span> 
+            <span>Last Updated:</span>
             <span>{projects[0].date_updated || "N/A"}</span>
           </li>
           <li class="flex justify-between">
-            <span>Created:</span> 
+            <span>Created:</span>
             <span>{projects[0].date_created || "N/A"}</span>
           </li>
         {/if}
@@ -761,7 +753,7 @@
 </main>
 
 <style>
-/* Matches the same line-clamp & gradient style from your Assets page */
+/* Keep line clamp for short description if needed */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
