@@ -1,4 +1,4 @@
-const getAssetsByFiltering = require("./assetService");
+import { getAssetsByFilters } from './assetService.js';
 
 describe("getAssetsByFiltering", () => {
     test('Test 1', () => {
