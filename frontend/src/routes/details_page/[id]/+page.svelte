@@ -55,6 +55,27 @@
   let mavenDep = "";
   let gradleDep = "";
 
+  // Store original dependency texts
+  let originalMavenDep = "";
+  let originalGradleDep = "";
+
+  // Breadcrumb state
+  let referrerPath = '/';
+  let referrerName = 'Home';
+
+  // Reactive statement to read query parameter and set breadcrumb
+  $: {
+    const fromParam = $page.url.searchParams.get('from');
+    if (fromParam === 'workspace') {
+      referrerPath = '/Workspace';
+      referrerName = 'Workspace';
+    } else {
+      // Default to Home if 'from' is not 'workspace' or is missing
+      referrerPath = '/';
+      referrerName = 'Home';
+    }
+  }
+
   // Function to compute the dependency texts
   function computeDependencyTexts(assetData) {
     mavenDep = `// Maven
@@ -293,10 +314,6 @@ implementation '${assetData.id || `com.example:${assetData.name}`}:${assetData.v
     hasChanges = false;
   }
   
-  // Store original dependency texts
-  let originalMavenDep = "";
-  let originalGradleDep = "";
-  
   // Add a reactive statement to check for changes whenever updatedAsset, mavenDep, or gradleDep changes
   $: {
     if (asset && updatedAsset) {
@@ -477,7 +494,7 @@ input[type="file"].hidden {
 
     <div class="flex-1 p-8">
       <div class="mb-6 flex items-center space-x-2 text-sm">
-        <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">Home</a>
+        <a href={referrerPath} class="text-blue-600 dark:text-blue-400 hover:underline">{referrerName}</a>
         <span>»</span>
         <span>Asset Details</span>
       </div>
@@ -810,7 +827,7 @@ input[type="file"].hidden {
 
   <!-- Add the confirmation popup -->
   {#if showConfirmPopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white bg-opacity-50 z-50"
+    <div class="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
@@ -838,7 +855,7 @@ input[type="file"].hidden {
 
   <!-- Add the delete popup notification -->
   {#if showDeletePopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+    <div class="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
@@ -867,7 +884,7 @@ input[type="file"].hidden {
 
   <!-- Update Popup Notification -->
   {#if showUpdatePopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+    <div class="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>

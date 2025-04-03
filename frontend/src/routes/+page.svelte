@@ -713,7 +713,7 @@ input[type="file"].hidden {
                       {#if asset.type} · {asset.type}{/if}
                     </p>
                     <div class="flex justify-between items-center">
-                      <a href={`/details_page/${asset.id}`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
+                      <a href={`/details_page/${asset.id}?from=home`} class="text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-all duration-300">
                         {asset.description || "View details"}
                       </a>
                       
@@ -937,7 +937,7 @@ input[type="file"].hidden {
 
   <!-- Update the popup notification with smooth transitions -->
   {#if showCopyPopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+    <div class="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
@@ -966,7 +966,7 @@ input[type="file"].hidden {
 
   <!-- Add the confirmation popup -->
   {#if showConfirmPopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white bg-opacity-50 z-50"
+    <div class="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
@@ -994,7 +994,7 @@ input[type="file"].hidden {
 
   <!-- Add the delete popup notification -->
   {#if showDeletePopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+    <div class="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50"
          transition:fade={{ duration: 300 }}>
       <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
