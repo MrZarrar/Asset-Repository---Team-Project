@@ -2,13 +2,14 @@
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
   import { fade, scale } from 'svelte/transition';
+  import { user } from '$lib/user.js';
 
   /*************************************************************
    * Retrieve current user and role (default to viewer if not set)
    *************************************************************/
-  let currentUser = pb.authStore?.model;
-  // Assume the role is stored in the "role" field; possible values: 'admin', 'general', 'viewer'
-  let userRole = currentUser ? currentUser.role : 'viewer';
+  $: userId = $user?.userid;
+  $: role = $user?.role;
+  
 
   /*************************************************************
    * Coding languages for multi-select
@@ -162,7 +163,7 @@
         return;
       }
       // Only allow admins and general users to create projects
-      if (userRole === 'viewer') {
+      if (role === 'viewer') {
         alert("Viewers do not have permission to create projects.");
         return;
       }
@@ -261,7 +262,7 @@
   // ------------------ UPDATE PROJECT ------------------
   async function updateProject() {
     // Only allow admins and general users to update projects
-    if (userRole === 'viewer') {
+    if (role === 'viewer') {
       alert("Viewers do not have permission to update projects.");
       return;
     }
@@ -420,7 +421,7 @@
         <span>»</span>
         <span>Projects</span>
       </div>
-      {#if userRole !== 'viewer'}
+      {#if role !== 'viewer'}
         <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={() => showAddForm = true}>
           Add Project
         </button>
@@ -533,7 +534,7 @@
                 </div>
               </div>
               <!-- Buttons (Only for non-viewers) -->
-              {#if userRole !== 'viewer'}
+              {#if role !== 'viewer'}
                 <div class="flex justify-end">
                   <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => (showAddForm = false)}>Cancel</button>
                   <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 btn-fancy btn-ripple">Save</button>
@@ -638,7 +639,7 @@
                 </div>
               </div>
               <!-- Buttons (Only for non-viewers) -->
-              {#if userRole !== 'viewer'}
+              {#if role !== 'viewer'}
                 <div class="flex justify-end">
                   <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
                   <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 btn-fancy btn-ripple">Save Changes</button>
@@ -677,15 +678,11 @@
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center space-x-1">
                       {project.name}
-                      <!-- Animated Pencil SVG for Edit icon -->
-                      <svg class="w-4 h-4 fill-current text-gray-500 hover:text-gray-700 transition-transform duration-200 transform hover:rotate-12" viewBox="0 0 20 20">
-                        <path d="M17.414 2.586a2 2 0 010 2.828l-1.829 1.829-2.828-2.829 1.829-1.829a2 2 0 012.828 0zM4 13.414V16h2.586l7.07-7.07-2.586-2.586L4 13.414z"/>
-                      </svg>
                     </h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
-                        {#if userRole !== 'viewer'}
+                        {#if role !== 'viewer'}
                           <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded btn-fancy btn-ripple" on:click={() => editProject(project)}>Edit</button>
                           <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded btn-fancy btn-ripple" on:click={() => requestDeleteProject(project.id)}>Delete</button>
                         {/if}
@@ -781,7 +778,7 @@
       <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
       <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">Are you sure you want to delete this project? This action cannot be undone.</p>
       <div class="flex justify-end space-x-2">
-        {#if userRole !== 'viewer'}
+        {#if role !== 'viewer'}
           <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={confirmDelete}>Confirm</button>
           <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy btn-ripple" on:click={cancelDelete}>Cancel</button>
         {/if}
