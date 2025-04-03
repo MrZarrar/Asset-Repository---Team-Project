@@ -1,4 +1,5 @@
-function stringBuilder(filters = {}) {
+module.exports = {}
+module.exports.stringBuilder = function stringBuilder(filters = {}) {
 
 let filterString = ''; // initalises an empty string to hold all the filters
   filterString += '(' // forces ALL filters to be put into brackets, allowing for multiple filters and single filters to all work without special code
@@ -14,4 +15,19 @@ let filterString = ''; // initalises an empty string to hold all the filters
 return(filterString);
 }
 
-module.exports = stringBuilder;
+module.exports.pocketbaseAPICall = async function pocketbaseAPICall(urlInput){
+    try {
+
+        const response = await fetch(urlInput, {method: "GET"});
+
+        if (!response.ok) {
+            throw new Error(`Network response error: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        throw error;
+    }
+}
+
