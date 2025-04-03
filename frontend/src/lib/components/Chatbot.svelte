@@ -794,18 +794,39 @@
             });
           }
           
-          // Create and dispatch the event to trigger asset creation in Workspace
-          const event = new CustomEvent('createMavenAsset', {
-            detail: assetData
-          });
-          
-          window.dispatchEvent(event);
-          
-          // Add confirmation message
-          $chatMessages = [...$chatMessages, { 
-            role: 'assistant', 
-            content: `I've filled the asset form in Workspace with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
-          }];
+          // Add a short delay to ensure the Workspace page is ready
+          setTimeout(() => {
+            // Create and dispatch the event to trigger asset creation in Workspace
+            const event = new CustomEvent('createMavenAsset', {
+              detail: assetData,
+              bubbles: true,
+              composed: true
+            });
+            
+            window.dispatchEvent(event);
+            
+            // As a fallback, also set the data in localStorage with a special flag
+            try {
+              localStorage.setItem('wsPageAssetData', JSON.stringify(assetData));
+              localStorage.setItem('wsPageHasPendingAsset', 'true');
+              
+              // Store POM content separately if available
+              if (pomContent) {
+                localStorage.setItem('wsPagePomContent', pomContent);
+                localStorage.setItem('wsPagePomFilename', pomFileName);
+              }
+              
+              console.log('Asset data stored as backup in localStorage');
+            } catch (e) {
+              console.error('Error setting localStorage backup:', e);
+            }
+            
+            // Add confirmation message
+            $chatMessages = [...$chatMessages, { 
+              role: 'assistant', 
+              content: `I've filled the asset form in Workspace with details for ${bestMatch.artifactId}. Please review and click 'Save' to complete the process.`
+            }];
+          }, 500); // Short delay to ensure event handlers are set up
         } catch (error) {
           console.error('Error creating asset:', error);
           $chatMessages = [...$chatMessages, { 
