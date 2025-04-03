@@ -1,7 +1,7 @@
 <script>
     import PocketBase from 'pocketbase';
     import { onMount } from 'svelte';
-    // import logging.css
+    import { getAssetById } from '$lib/assetService';
 
     const pb = new PocketBase('http://127.0.0.1:8090');
   
@@ -9,9 +9,26 @@
 
     async function fetchLogs() {
         try {
-            logs = await pb.collection('logs').getFullList({ sort: '-created' });
+            const rawLogs = await pb.collection('logs').getFullList({ sort: '-created' });
+            logs = await Promise.all(
+                rawLogs.map(async (log) => {
+                    let assetName = 'Unknown Asset';
+                    let assetAddType = 'Unknown Type';
+                    if (log.asset) {
+                        try {
+                            const asset = await getAssetById(log.asset);
+                            assetName = asset.name || assetName;
+                            assetAddType = asset.add_type || assetAddType;
+                        } catch (err) {
+                            console.error(`Error fetching asset ${log.asset}:`, err);
+                        }
+                    }
+                    
+                    return { ...log, assetName, assetAddType };
+                })
+            );
         } catch (err) {
-            console.error("Error deleting asset:", err);
+            console.error("Error fetching logs:", err);
         }
     }
   
@@ -31,7 +48,9 @@
             <li class="p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded shadow-md">
                 <strong class="text-red-600">{log.user} </strong>
                 <span class="text-blue-600">{log.action} </span>
-                <strong class="text-red-600">assetID:{log.asset}</strong>
+                <strong class="text-red-600">
+                    {log.assetName} (Add Type: {log.assetAddType}) (ID: {log.asset})
+                </strong>
                 <div class="text-sm text-gray-500">{new Date(log.created).toLocaleString()}</div>
             </li>
         {/each}
