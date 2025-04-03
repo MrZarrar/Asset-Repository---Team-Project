@@ -1150,7 +1150,11 @@ input[type="file"].hidden {
                         {msg.role}
                       </p>
                     {/if}
-                    <img src="{msg.avatar}" alt="User avatar" class="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700">
+                    {#if msg.avatar}
+                      <img src="{msg.avatar}" alt="User avatar" class="w-10 h-10 rounded-full border border-gray-700 dark:border-gray-100">
+                    {:else}
+                      <User class="w-10 h-10 text-gray-900 dark:text-gray-100 border rounded-full border-gray-700 dark:border-gray-100" />
+                    {/if}
                   </div>
 
                   <!-- Message box -->
