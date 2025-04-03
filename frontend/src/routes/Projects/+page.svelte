@@ -4,6 +4,13 @@
   import { fade, scale } from 'svelte/transition';
 
   /*************************************************************
+   * Retrieve current user and role (default to viewer if not set)
+   *************************************************************/
+  let currentUser = pb.authStore?.model;
+  // Assume the role is stored in the "role" field; possible values: 'admin', 'general', 'viewer'
+  let userRole = currentUser ? currentUser.role : 'viewer';
+
+  /*************************************************************
    * Coding languages for multi-select
    *************************************************************/
   let availableLanguages = [
@@ -154,6 +161,11 @@
         alert("You must be logged in to create a project.");
         return;
       }
+      // Only allow admins and general users to create projects
+      if (userRole === 'viewer') {
+        alert("Viewers do not have permission to create projects.");
+        return;
+      }
       if (newProject.id && projects.find(p => p.id === newProject.id)) {
         alert("ID must be unique. Another project with this ID already exists.");
         return;
@@ -248,6 +260,11 @@
 
   // ------------------ UPDATE PROJECT ------------------
   async function updateProject() {
+    // Only allow admins and general users to update projects
+    if (userRole === 'viewer') {
+      alert("Viewers do not have permission to update projects.");
+      return;
+    }
     if (!hasProjectChanged()) {
       alert("No changes have been made.");
       return;
@@ -396,16 +413,18 @@
 
   <!-- CENTER CONTENT -->
   <div class="flex-1 flex flex-col">
-    <!-- Header / Breadcrumb + Add Button -->
+    <!-- Header / Breadcrumb + Add Button (Only show if user is not a viewer) -->
     <header class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
       <div class="flex items-center space-x-2 text-sm">
         <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">Home</a>
         <span>»</span>
         <span>Projects</span>
       </div>
-      <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={() => showAddForm = true}>
-        Add Project
-      </button>
+      {#if userRole !== 'viewer'}
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={() => showAddForm = true}>
+          Add Project
+        </button>
+      {/if}
     </header>
 
     <!-- Main Body Area -->
@@ -506,18 +525,20 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Link Assets</label>
                 <div class="space-y-2">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
-                    <label class="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                    <label class="asset-checkbox-label">
                       <input type="checkbox" value={asset.id} bind:group={newProject.asset_id} class="rounded accent-blue-600" />
                       <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
                     </label>
                   {/each}
                 </div>
               </div>
-              <!-- Buttons -->
-              <div class="flex justify-end">
-                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => (showAddForm = false)}>Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 btn-fancy btn-ripple">Save</button>
-              </div>
+              <!-- Buttons (Only for non-viewers) -->
+              {#if userRole !== 'viewer'}
+                <div class="flex justify-end">
+                  <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => (showAddForm = false)}>Cancel</button>
+                  <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 btn-fancy btn-ripple">Save</button>
+                </div>
+              {/if}
             </form>
           </div>
         </section>
@@ -616,11 +637,13 @@
                   {/each}
                 </div>
               </div>
-              <!-- Buttons -->
-              <div class="flex justify-end">
-                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 btn-fancy btn-ripple">Save Changes</button>
-              </div>
+              <!-- Buttons (Only for non-viewers) -->
+              {#if userRole !== 'viewer'}
+                <div class="flex justify-end">
+                  <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy btn-ripple" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
+                  <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 btn-fancy btn-ripple">Save Changes</button>
+                </div>
+              {/if}
             </form>
           </div>
         </section>
@@ -662,8 +685,10 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
-                        <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded btn-fancy btn-ripple" on:click={() => editProject(project)}>Edit</button>
-                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded btn-fancy btn-ripple" on:click={() => requestDeleteProject(project.id)}>Delete</button>
+                        {#if userRole !== 'viewer'}
+                          <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded btn-fancy btn-ripple" on:click={() => editProject(project)}>Edit</button>
+                          <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded btn-fancy btn-ripple" on:click={() => requestDeleteProject(project.id)}>Delete</button>
+                        {/if}
                       </div>
                     </div>
                     <div class="mt-3">
@@ -738,7 +763,7 @@
             </div>
           {/if}
           {#if selectedProject.description}
-            <p class="mt-2">{selectedProject.description}</p>
+            <p class="mt-2"><span class="font-medium">Description:</span> {selectedProject.description}</p>
           {/if}
         </div>
         <div class="mt-6 flex justify-end">
@@ -756,8 +781,10 @@
       <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
       <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">Are you sure you want to delete this project? This action cannot be undone.</p>
       <div class="flex justify-end space-x-2">
-        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={confirmDelete}>Confirm</button>
-        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy btn-ripple" on:click={cancelDelete}>Cancel</button>
+        {#if userRole !== 'viewer'}
+          <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm btn-fancy btn-ripple" on:click={confirmDelete}>Confirm</button>
+          <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy btn-ripple" on:click={cancelDelete}>Cancel</button>
+        {/if}
       </div>
     </div>
   </div>
@@ -897,9 +924,8 @@
   }
 
   /*************************************************************
-   * Refined Link Assets Styles (Simple & Fancy)
+   * Refined Link Assets Styles (Simple Vertical List)
    *************************************************************/
-  /* Using the original vertical layout with subtle styling */
   .asset-checkbox-label {
     display: flex;
     align-items: center;
