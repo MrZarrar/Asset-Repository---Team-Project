@@ -271,7 +271,7 @@
     try {
       // Fetch projects with pagination
       loadingProjects = true;
-      const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner: userId });
+      const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
       projects = projectsResponse.items;
       
       // Calculate total pages for projects pagination
@@ -349,7 +349,7 @@
     loadingProjects = true;
     
     try {
-      const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner: userId });
+      const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
       projects = projectsResponse.items;
       loadingProjects = false;
     } catch (err) {
