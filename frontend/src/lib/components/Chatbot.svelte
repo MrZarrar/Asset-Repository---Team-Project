@@ -651,6 +651,94 @@
     return pomFile;
   }
 
+  // Add this function before or after the generateAsset function
+  function determineCategory(groupId, artifactId, description = '') {
+    // Convert inputs to lowercase for case-insensitive matching
+    const groupLower = groupId.toLowerCase();
+    const artifactLower = artifactId.toLowerCase();
+    const descLower = description.toLowerCase();
+    
+    // Create a scoring system for each category
+    const scores = {
+      "Testing Frameworks & Tools": 0,
+      "Android Packages": 0,
+      "Logging Frameworks": 0,
+      "JVM Languages": 0
+    };
+    
+    const testingKeywords = ['test', 'junit', 'mockito', 'assertj', 'testng', 'spec', 'selenium', 'cucumber', 'spock', 'hamcrest'];
+    
+    // Keords for android packages
+    const androidKeywords = ['android', 'androidx', 'google.android', 'app', 'mobile', 'fragment', 'activity', 'view', 'lifecycle'];
+    
+    // Keywords for logging frameworks
+    const loggingKeywords = ['log', 'logger', 'logging', 'slf4j', 'logback', 'log4j', 'commons-logging', 'jul', 'timber'];
+    
+    // Keywords for JVM languages
+    const jvmKeywords = ['kotlin', 'scala', 'groovy', 'clojure', 'java', 'jvm', 'language', 'jruby', 'jython'];
+    
+    // Score based on groupId and artifactId
+    const fullText = `${groupLower} ${artifactLower} ${descLower}`;
+    
+    // Check for testing frameworks
+    for (const keyword of testingKeywords) {
+      if (fullText.includes(keyword)) {
+        scores["Testing Frameworks & Tools"] += 10;
+      }
+    }
+    
+    // Check for android packages
+    for (const keyword of androidKeywords) {
+      if (fullText.includes(keyword)) {
+        scores["Android Packages"] += 10;
+      }
+    }
+    
+    // Check for logging frameworks
+    for (const keyword of loggingKeywords) {
+      if (fullText.includes(keyword)) {
+        scores["Logging Frameworks"] += 10;
+      }
+    }
+    
+    // Check for JVM languages
+    for (const keyword of jvmKeywords) {
+      if (fullText.includes(keyword)) {
+        scores["JVM Languages"] += 10;
+      }
+    }
+    
+    // Additional group-specific checks
+    if (groupLower.includes('test') || groupLower.includes('junit') || groupLower.includes('mock')) {
+      scores["Testing Frameworks & Tools"] += 5;
+    }
+    
+    if (groupLower.includes('android') || groupLower.includes('androidx') || groupLower.includes('com.google.android')) {
+      scores["Android Packages"] += 5;
+    }
+    
+    if (groupLower.includes('log') || groupLower.includes('slf4j')) {
+      scores["Logging Frameworks"] += 5;
+    }
+    
+    if (groupLower.includes('kotlin') || groupLower.includes('scala') || groupLower.includes('groovy')) {
+      scores["JVM Languages"] += 5;
+    }
+    
+    // Find the category with the highest score
+    let highestScore = 0;
+    let bestCategory = "Testing Frameworks & Tools"; // Default category if nothing matches
+    
+    for (const [category, score] of Object.entries(scores)) {
+      if (score > highestScore) {
+        highestScore = score;
+        bestCategory = category;
+      }
+    }
+    
+    return bestCategory;
+  }
+
   // Updated generateAsset function with better integration
   async function generateAsset() {
     try {
@@ -749,6 +837,13 @@
         console.error('Error fetching POM file:', e);
       }
       
+      // Determine the appropriate category based on the Maven coordinates
+      const category = determineCategory(
+        bestMatch.groupId, 
+        bestMatch.artifactId,
+        bestMatch.description || ''
+      );
+      
       // Prepare the asset data
       const today = new Date().toISOString().split('T')[0];
       const dependencyXml = `<dependency>
@@ -770,7 +865,8 @@
         usage_info: `Use this asset in your Maven or Gradle project. Copy the appropriate dependency configuration from the section below.`,
         maven_dependency: dependencyXml,
         gradle_dependency: gradleDependency,
-        hasPomFile: pomContent !== null
+        hasPomFile: pomContent !== null,
+        category: category  // Add the determined category
       };
       
       // Let user know we're redirecting to the Workspace page
@@ -839,7 +935,10 @@
         try {
           // Store asset data in localStorage (but don't store the File object directly as it's not serializable)
           localStorage.setItem('autoAddAsset', 'true');
-          localStorage.setItem('pendingAssetData', JSON.stringify(assetData));
+          localStorage.setItem('pendingAssetData', JSON.stringify({
+            ...assetData,
+            category: category  // Make sure the category is included
+          }));
           
           // Store POM content separately if available
           if (pomContent) {
