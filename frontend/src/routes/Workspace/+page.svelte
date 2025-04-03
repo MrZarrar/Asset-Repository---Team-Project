@@ -1280,6 +1280,60 @@
       </div>
     </div>
   {/if}
+
+  {#if showConfirmPopup}
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to delete the selected assets? This action cannot be undone.
+        </p>
+        <div class="flex justify-center space-x-4">
+          <button
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+            on:click={deleteSelectedAssets}
+          >
+            Confirm
+          </button>
+          <button
+            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
+            on:click={cancelDelete}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showDeletePopup}
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <div class="delete-circle">
+          <div class="delete-icon"></div>
+        </div>
+        <p class="text-lg font-semibold">Selected assets deleted successfully!</p>
+        <div class="flex space-x-4 mt-2">
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            on:click={goToDashboard}
+          >
+            Go to Home Page
+          </button>
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            on:click={goToWorkspace}
+          >
+            Go to My Assets
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </main>
 {/if}
 
@@ -1368,6 +1422,26 @@
       opacity: 1;
       transform: scale(1);
     }
+  }
+
+  .delete-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #e74c3c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .delete-icon {
+    width: 24px;
+    height: 4px;
+    background-color: white;
+    border-radius: 2px;
   }
 
 </style>
