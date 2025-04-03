@@ -403,7 +403,7 @@
         <span>»</span>
         <span>Projects</span>
       </div>
-      <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" on:click={() => showAddForm = true}>
+      <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm btn-fancy" on:click={() => showAddForm = true}>
         Add Project
       </button>
     </header>
@@ -517,8 +517,8 @@
               </div>
               <!-- Buttons -->
               <div class="flex justify-end">
-                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" on:click={() => (showAddForm = false)}>Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save</button>
+                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy" on:click={() => (showAddForm = false)}>Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 btn-fancy">Save</button>
               </div>
             </form>
           </div>
@@ -548,7 +548,7 @@
               <!-- Description -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                <textarea rows="3" bind:value={updatedProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></textarea>
+                <textarea rows="3" bind:value={updatedProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter project description"></textarea>
               </div>
               <!-- Multi-select (Edit) -->
               <div class="mb-4 relative">
@@ -619,8 +619,8 @@
               </div>
               <!-- Buttons -->
               <div class="flex justify-end">
-                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Save Changes</button>
+                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 btn-fancy" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 btn-fancy">Save Changes</button>
               </div>
             </form>
           </div>
@@ -645,15 +645,15 @@
           {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {#each projects as project}
-                <div class="relative w-64 group">
+                <div class="relative w-64 group transition-transform duration-300 ease-in-out">
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-500 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{project.name}</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
-                        <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded" on:click={() => editProject(project)}>Edit</button>
-                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => requestDeleteProject(project.id)}>Delete</button>
+                        <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded btn-fancy" on:click={() => editProject(project)}>Edit</button>
+                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded btn-fancy" on:click={() => requestDeleteProject(project.id)}>Delete</button>
                       </div>
                     </div>
                     <div class="mt-3">
@@ -706,7 +706,7 @@
 
 <!-- PROJECT DETAILS MODAL -->
 {#if showProjectDetails}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 md:mx-0" transition:scale>
       {#if selectedProject}
         <div class="flex justify-between items-center mb-4">
@@ -732,7 +732,7 @@
           {/if}
         </div>
         <div class="mt-6 flex justify-end">
-          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
+          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm btn-fancy focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
         </div>
       {/if}
     </div>
@@ -741,13 +741,13 @@
 
 <!-- CONFIRM DELETION MODAL -->
 {#if showConfirmModal}
-  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="bg-white dark:bg-gray-800 rounded p-6 w-80 shadow-lg" transition:scale>
       <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
       <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">Are you sure you want to delete this project? This action cannot be undone.</p>
       <div class="flex justify-end space-x-2">
-        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" on:click={confirmDelete}>Confirm</button>
-        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={cancelDelete}>Cancel</button>
+        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm btn-fancy" on:click={confirmDelete}>Confirm</button>
+        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy" on:click={cancelDelete}>Cancel</button>
       </div>
     </div>
   </div>
@@ -755,7 +755,7 @@
 
 <!-- SUCCESS DELETION MODAL (with pulsing red circle and manual close) -->
 {#if showDeleteSuccess}
-  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="relative bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg" transition:scale>
       <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeDeleteSuccess}>✕</button>
       <div class="flex justify-center mb-4">
@@ -766,7 +766,7 @@
       <h2 class="text-md font-semibold mb-2 text-center text-red-800 dark:text-red-200">Project Deleted Successfully!</h2>
       <p class="text-sm text-center text-red-700 dark:text-red-300 mb-4">The selected project has been removed.</p>
       <div class="flex justify-center">
-        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={closeDeleteSuccess}>Close</button>
+        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500 btn-fancy" on:click={closeDeleteSuccess}>Close</button>
       </div>
     </div>
   </div>
@@ -774,7 +774,7 @@
 
 <!-- SUCCESS SAVE MODAL (with pulsing green check icon and manual close) -->
 {#if showSaveSuccess}
-  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
     <div class="relative bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg" transition:scale>
       <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeSaveSuccess}>✕</button>
       <div class="flex justify-center mb-4">
@@ -789,14 +789,13 @@
 {/if}
 
 <style>
-  /* Truncate text if needed */
+  /* Existing styles */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  /* Animated pulsing circle for deletion (red) */
   .animated-circle {
     width: 40px;
     height: 40px;
@@ -811,7 +810,6 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
   }
-  /* Animated pulsing circle for save success (green), slightly smaller */
   .animated-green {
     width: 30px;
     height: 30px;
@@ -825,5 +823,16 @@
   @keyframes pulseGreen {
     0%, 100% { transform: scale(0.9); }
     50% { transform: scale(1.1); }
+  }
+
+  /* Enhanced Styles */
+  .btn-fancy {
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+  .btn-fancy:active {
+    transform: scale(0.98);
+  }
+  .modal-backdrop {
+    backdrop-filter: blur(4px);
   }
 </style>
