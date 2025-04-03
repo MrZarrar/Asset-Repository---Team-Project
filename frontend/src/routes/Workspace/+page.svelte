@@ -1349,30 +1349,72 @@
   }
 
   .checkbox {
-    appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 2px solid #2563eb;
-    border-radius: 0.25rem;
-    background-color: #00143b;
-    cursor: pointer;
-    transition: all 0.2s;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Light mode hover state */
+.checkbox:hover {
+  border-color: #2563eb;
+}
+
+/* Light mode checked state */
+.checkbox:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
+  background-size: 1rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* System dark mode preferences */
+@media (prefers-color-scheme: dark) {
+  .checkbox {
+    border: 2px solid #4b5563;
+    background-color: #1f2937;
+  }
+
+  .checkbox:hover {
+    border-color: #3b82f6;
   }
 
   .checkbox:checked {
-    background-color: #2563eb;
-    border-color: #2563eb;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
-    background-size: 1rem;
-    background-position: center;
-    background-repeat: no-repeat;
+    background-color: #3b82f6;
+    border-color: #3b82f6;
   }
+}
 
-  .asset-checkbox {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-  }
+/* Tailwind dark mode class */
+:global(.dark) .checkbox {
+  border: 2px solid #4b5563;
+  background-color: #1f2937;
+}
+
+:global(.dark) .checkbox:hover {
+  border-color: #3b82f6;
+}
+
+:global(.dark) .checkbox:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.asset-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+
+
+
 
 
   /* Pulse Animation for Success */
