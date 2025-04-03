@@ -10,6 +10,7 @@
   import { fade, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   
+  
   // Tab state
   let activeTab = 'assets'; // Default to projects tab
   
@@ -132,8 +133,8 @@
         }
       }
       
-      // Add additional fields
-      newAsset.add_type = 'added';
+      // Set add_type based on user role
+      newAsset.add_type = role === 'admin' ? 'original' : 'added';
       newAsset.owner_id = userId;
 
       // Create form data for the API call
@@ -158,6 +159,9 @@
       // Reset form state
       addingAsset = false;
       console.log("Asset added successfully:", createdRecord);
+
+      // Show the asset created popup
+      showAssetCreatedNotification();
 
       // Add the new asset to the addedAssets list (ensure reactivity)
       addedAssets = [...addedAssets, createdRecord];
@@ -209,12 +213,13 @@
     // Listen for tab switching events from the chatbot
     
 
-    // Add handler for createMavenAsset event, and make sure it runs early
+    // Enhanced event handler with debug logging
     const createAssetHandler = (event) => {
       console.log('Received createMavenAsset event:', event.detail);
       if (event.detail) {
         // Switch to the assets tab
         activeTab = 'assets';
+
         
         // Set addingAsset to true to show the form
         addingAsset = true;
@@ -241,14 +246,14 @@
         console.log('Asset form opened with Maven data from chatbot:', newAsset);
       }
     };
-    
-    // Register the event listener
+
+    // Make sure to remove existing listeners before adding new ones 
+    // to prevent duplicate handlers
     window.addEventListener('createMavenAsset', createAssetHandler);
 
     // Clean up event listener on component destruction
     return () => {
       window.removeEventListener('createMavenAsset', createAssetHandler);
-      // Other cleanup code...
     };
   });
   
@@ -449,7 +454,7 @@
     loadingAddedAssets = true;
 
     try {
-      const response = await fetchAssets(addedAssetsPage, addedAssetsPerPage, { add_type: 'added', owner_id: userId });
+      const response = await fetchAssets(page, 6, { add_type: ['original', 'added'], owner_id: userId });
       addedAssets = response.items;
       addedAssetsTotalPages = Math.ceil(response.totalItems / addedAssetsPerPage);
       loadingAddedAssets = false;
@@ -516,6 +521,20 @@
       console.error("Download failed:", err);
     }
   }
+
+  let showAssetCreatedPopup = false;
+
+  function showAssetCreatedNotification() {
+    showAssetCreatedPopup = true;
+    setTimeout(() => {
+      showAssetCreatedPopup = false;
+    }, 2000);
+  }
+
+  function closeAssetCreatedPopup() {
+    showAssetCreatedPopup = false;
+  }
+
 
   let selectedAssets = new Set();
 
@@ -591,6 +610,7 @@
 
   // Reactive statement to update the count of selected assets
   $: selectedAssetsCount = selectedAssets.size;
+
 
 </script>
 
@@ -850,6 +870,7 @@
               </button>
             </div>
           {/if}
+
           {#if role === 'user' || role === 'admin'}
             {#if !addingAsset}
               <button 
@@ -862,19 +883,12 @@
             {/if}
           {/if}
         </div>
-
-        
         
         <!-- Display the asset adding form using the same design as the home page -->
         {#if addingAsset}
           <div class="mb-6">
             <h2 class="text-2xl font-bold mb-4">Add New Asset</h2>
             <form on:submit|preventDefault={addAsset}>
-              <!-- <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset ID</label>
-                <input type="text" bind:value={newAsset.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to auto-generate an ID</p>
-              </div> -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                 <input type="text" bind:value={newAsset.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
@@ -1002,6 +1016,7 @@
                       on:change={() => toggleAssetSelection(asset.id)}
                     />
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
+
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
@@ -1140,6 +1155,7 @@
                 {/if}
                 
                 <button
+
                   class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                   on:click={() => loadAddedAssetsPage(addedAssetsPage + 1)}
                   disabled={addedAssetsPage === addedAssetsTotalPages}
@@ -1181,6 +1197,7 @@
                       on:change={() => toggleAssetSelection(asset.id)}
                     />
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
+
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       {#if asset.version}v{asset.version}{/if}
                       {#if asset.type} · {asset.type}{/if}
@@ -1309,6 +1326,7 @@
                 {/if}
                 
                 <button
+
                   class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
                   on:click={() => loadCopiedAssetsPage(copiedAssetsPage + 1)}
                   disabled={copiedAssetsPage === copiedAssetsTotalPages}
@@ -1324,61 +1342,85 @@
     
     <!-- Quick Actions Panel for both tabs -->
   </div>
+
+  <!-- Asset Created Popup -->
+  {#if showAssetCreatedPopup}
+    <div
+      class="fixed inset-0 flex items-center justify-center bg-black z-50"
+      transition:fade={{ duration: 300 }}
+    >
+      <div
+        class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+        transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}
+      >
+        <button
+          class="absolute top-2 right-2 text-white hover:text-gray-300"
+          on:click={closeAssetCreatedPopup}
+        >
+          <X class="w-5 h-5" />
+        </button>
+        <div class="success-circle">
+          <Check class="success-icon" />
+        </div>
+        <p class="text-lg font-semibold">Asset created successfully!</p>
+      </div>
+    </div>
+  {/if}
+
+  {#if showConfirmPopup}
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white bg-opacity-50 z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to delete the selected assets? This action cannot be undone.
+        </p>
+        <div class="flex justify-center space-x-4">
+          <button
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+            on:click={deleteSelectedAssets}
+          >
+            Confirm
+          </button>
+          <button
+            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
+            on:click={cancelDelete}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showDeletePopup}
+    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+         transition:fade={{ duration: 300 }}>
+      <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+           transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
+        <div class="delete-circle">
+          <div class="delete-icon"></div>
+        </div>
+        <p class="text-lg font-semibold">Selected assets deleted successfully!</p>
+        <div class="flex space-x-4 mt-2">
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            on:click={goToDashboard}
+          >
+            Go to Home Page
+          </button>
+          <button
+            class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            on:click={goToWorkspace}
+          >
+            Go to My Assets
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </main>
-{/if}
-
-{#if showConfirmPopup}
-  <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white bg-opacity-50 z-50"
-       transition:fade={{ duration: 300 }}>
-    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center space-y-4"
-         transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        Are you sure you want to delete the selected assets? This action cannot be undone.
-      </p>
-      <div class="flex justify-center space-x-4">
-        <button
-          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
-          on:click={deleteSelectedAssets}
-        >
-          Confirm
-        </button>
-        <button
-          class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
-          on:click={cancelDelete}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-{#if showDeletePopup}
-  <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
-       transition:fade={{ duration: 300 }}>
-    <div class="relative bg-gradient-to-r from-red-600/50 to-red-800/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
-         transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
-      <div class="delete-circle">
-        <div class="delete-icon"></div>
-      </div>
-      <p class="text-lg font-semibold">Selected assets deleted successfully!</p>
-      <div class="flex space-x-4 mt-2">
-        <button
-          class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
-          on:click={goToDashboard}
-        >
-          Go to Home Page
-        </button>
-        <button
-          class="bg-white text-red-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors"
-          on:click={goToWorkspace}
-        >
-          Go to My Assets
-        </button>
-      </div>
-    </div>
-  </div>
 {/if}
 
 <style>
@@ -1456,39 +1498,75 @@
   right: 0.5rem;
 }
 
-/* Add styles for the delete popup */
-.delete-circle {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: #e74c3c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  animation: pulse 1.5s ease-in-out infinite;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
 
-.delete-icon {
-  width: 24px;
-  height: 4px;
-  background-color: white;
-  border-radius: 2px;
-}
+
+  /* Pulse Animation for Success */
+  .success-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .success-icon {
+    width: 30px;
+    height: 30px;
+    color: white;
+    opacity: 0;
+    animation: fade-in 0.5s ease-in-out 0.3s forwards;
+  }
 
   @keyframes pulse {
     0% {
       transform: scale(0.95);
       box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
     }
+    
     70% {
       transform: scale(1);
       box-shadow: 0 0 0 15px rgba(255, 255, 255, 0);
     }
+    
     100% {
       transform: scale(0.95);
       box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
     }
   }
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .delete-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #e74c3c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .delete-icon {
+    width: 24px;
+    height: 4px;
+    background-color: white;
+    border-radius: 2px;
+  }
+
 </style>
