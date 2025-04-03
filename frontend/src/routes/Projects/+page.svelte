@@ -15,12 +15,11 @@
   let showAddForm = false;
   let showEditForm = false;
 
-  // New project data
+  // New project data (note: owner field removed)
   let newProject = {
     name: '',
     description: '',
     language: '',
-    owner: '',
     launched: '',
     tag: '',
     project_id: '',
@@ -31,7 +30,7 @@
   let newLogoFileName = '';
   let newLogoPreview = '';
 
-  // Editing an existing project
+  // Editing an existing project (owner_id will not be edited)
   let editingProject = null;
   let updatedProject = {};
   let editLogoFile = null;
@@ -41,7 +40,7 @@
   // Toggle expanded details for each project
   let expandedProjects = {};
 
-  // Fetch data on mount
+  // Fetch data on mount – note: we continue to expand assets only
   onMount(async () => {
     try {
       projects = await pb.collection('projects').getFullList({
@@ -79,12 +78,18 @@
         }
       }
 
-      // Build form data
+      // Get the current authenticated user
+      const currentUser = pb.authStore?.model;
+      if (!currentUser) {
+        alert("You must be logged in to create a project.");
+        return;
+      }
+
+      // Build form data (note: we now send owner_id automatically)
       let formData = new FormData();
       formData.append('name', newProject.name);
       formData.append('description', newProject.description);
       formData.append('language', newProject.language);
-      formData.append('owner', newProject.owner);
       formData.append('launched', newProject.launched || '');
       if (newLogoFile) {
         formData.append('logo', newLogoFile);
@@ -92,6 +97,7 @@
       formData.append('tag', JSON.stringify(tagParsed));
       formData.append('project_id', newProject.project_id);
       formData.append('asset_id', JSON.stringify(newProject.asset_id));
+      formData.append('owner_id', currentUser.id);
 
       const record = await pb.collection('projects').create(formData);
       // Fetch with expanded assets
@@ -111,7 +117,6 @@
       name: '',
       description: '',
       language: '',
-      owner: '',
       launched: '',
       tag: '',
       project_id: '',
@@ -127,12 +132,15 @@
   // ------------------
   function editProject(project) {
     editingProject = project;
+    // We only need the IDs for the assets relation
     const assetIds = project.expand?.asset_id ? project.expand.asset_id.map(a => a.id) : [];
     updatedProject = {
       ...project,
       tag: project.tag ? JSON.stringify(project.tag) : '',
       asset_id: assetIds
     };
+    // We do not allow editing the owner_id so we remove it from the updatedProject form
+    delete updatedProject.owner_id;
     editLogoFile = null;
     editLogoFileName = '';
     editLogoPreview = '';
@@ -158,7 +166,6 @@
       formData.append('name', updatedProject.name);
       formData.append('description', updatedProject.description);
       formData.append('language', updatedProject.language);
-      formData.append('owner', updatedProject.owner);
       formData.append('launched', updatedProject.launched || '');
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
@@ -166,6 +173,7 @@
       formData.append('tag', JSON.stringify(tagParsed));
       formData.append('project_id', updatedProject.project_id);
       formData.append('asset_id', JSON.stringify(updatedProject.asset_id));
+      // Do NOT update owner_id – it remains unchanged
 
       const record = await pb.collection('projects').update(editingProject.id, formData);
       const fetchedRecord = await pb.collection('projects').getOne(record.id, { expand: 'asset_id' });
@@ -349,18 +357,6 @@
                   placeholder="Enter language"
                 />
               </div>
-              <!-- Owner -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Owner</label>
-                <input
-                  type="text"
-                  bind:value={newProject.owner}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Enter owner"
-                />
-              </div>
               <!-- Launched -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
@@ -500,17 +496,6 @@
                 <input
                   type="text"
                   bind:value={updatedProject.language}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <!-- Owner -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Owner</label>
-                <input
-                  type="text"
-                  bind:value={updatedProject.owner}
                   class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
                          focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -687,11 +672,10 @@
                       </button>
                     </div>
 
-                    <!-- If expanded, show all other fields -->
+                    <!-- If expanded, show all other fields (note: owner is omitted) -->
                     {#if expandedProjects[project.id]}
                       <div class="mt-4 text-xs text-gray-700 dark:text-gray-200 space-y-1">
                         <p><strong>Language:</strong> {project.language || 'N/A'}</p>
-                        <p><strong>Owner:</strong> {project.owner || 'N/A'}</p>
                         <p><strong>Launched:</strong> {project.launched || 'N/A'}</p>
                         <p><strong>Project ID:</strong> {project.project_id}</p>
                         {#if project.tag}
@@ -753,11 +737,11 @@
 </main>
 
 <style>
-/* Keep line clamp for short description if needed */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+  /* Keep line clamp for short description if needed */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 </style>
