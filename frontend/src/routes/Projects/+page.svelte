@@ -154,14 +154,14 @@
         alert("You must be logged in to create a project.");
         return;
       }
-      if (projects.find(p => p.id === newProject.id)) {
+      if (newProject.id && projects.find(p => p.id === newProject.id)) {
         alert("ID must be unique. Another project with this ID already exists.");
         return;
       }
       let formData = new FormData();
-      formData.append('id', newProject.id);
-      formData.append('name', newProject.name);
-      formData.append('description', newProject.description);
+      formData.append('id', newProject.id || '');
+      formData.append('name', newProject.name || '');
+      formData.append('description', newProject.description || '');
       formData.append('language', JSON.stringify(newProject.language));
       formData.append('launched', newProject.launched || '');
       if (newLogoFile) {
@@ -225,7 +225,6 @@
       language: parsedLangs,
       asset_id: assetIds
     };
-    // Save original values for later comparison
     originalLanguageStr = JSON.stringify(parsedLangs);
     originalAssetIdsStr = JSON.stringify(assetIds);
 
@@ -255,10 +254,10 @@
     }
     try {
       let formData = new FormData();
-      formData.append('name', updatedProject.name);
-      formData.append('description', updatedProject.description);
+      formData.append('name', updatedProject.name || '');
+      formData.append('description', updatedProject.description || '');
       formData.append('language', JSON.stringify(updatedProject.language));
-      formData.append('launched', editingProject.launched || '');
+      formData.append('launched', updatedProject.launched || '');
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
@@ -483,7 +482,7 @@
               </div>
               <!-- ID -->
               <div class="mb-4">
-               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"> Project ID</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
                 <input type="text" bind:value={newProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter unique ID" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to auto-generate an ID</p>
               </div>
@@ -758,7 +757,6 @@
 {#if showDeleteSuccess}
   <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
     <div class="relative bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg" transition:scale>
-      <!-- Manual close (X) at top-right -->
       <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeDeleteSuccess}>✕</button>
       <div class="flex justify-center mb-4">
         <div class="animated-circle">
@@ -778,7 +776,6 @@
 {#if showSaveSuccess}
   <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
     <div class="relative bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg" transition:scale>
-      <!-- Manual close (X) at top-right -->
       <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeSaveSuccess}>✕</button>
       <div class="flex justify-center mb-4">
         <div class="animated-green">
