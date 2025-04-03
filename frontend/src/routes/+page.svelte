@@ -357,14 +357,17 @@
     };
   });
 
+  let selectedCategory = "Latest Assets"; // Default heading
+
   async function filterByCategory(category) {
     try {
       loadingAssets = true;
-      const assetResponse = await fetchAssetsByCategory(category);
+      selectedCategory = category; // Update the heading
+      const assetResponse = await fetchAssets(1, 6, { category });
       assets = assetResponse.items;
-      if (assets.length === 0) {
-        assetError = `No assets found for category: ${category}`;
-      }
+      totalPages = assetResponse.totalPages || 1;
+      currentPage = 1;
+      assetError = assets.length === 0 ? `No assets found for category: ${category}` : null;
     } catch (err) {
       console.error(`Error fetching assets for category ${category}:`, err);
       assetError = `Failed to load assets for category: ${category}`;
@@ -695,7 +698,7 @@ input[type="file"].hidden {
         <div class="container mx-auto px-4">
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Latest Assets
+              {selectedCategory}
             </h1>
             {#if selectedAssetsCount > 0}
               <div class="flex items-center gap-2">
