@@ -368,6 +368,46 @@
     }
   }
 
+  let selectedAssets = new Set();
+
+  function toggleAssetSelection(assetId) {
+    if (selectedAssets.has(assetId)) {
+      selectedAssets.delete(assetId);
+    } else {
+      selectedAssets.add(assetId);
+    }
+    selectedAssetsCount = selectedAssets.size; // Update the count immediately
+  }
+
+  async function deleteSelectedAssets() {
+    if (selectedAssets.size === 0) return;
+
+    if (!confirm("Are you sure you want to delete the selected assets?")) return;
+
+    try {
+      for (const assetId of selectedAssets) {
+        await pb.collection('assets').delete(assetId);
+      }
+      selectedAssets.clear();
+      await fetchPaginatedAssets(currentPage); // Refresh the asset list
+    } catch (err) {
+      console.error("Error deleting selected assets:", err);
+      alert("Failed to delete selected assets. Please try again.");
+    }
+  }
+
+  // Reactive statement to update the count of selected assets
+  $: selectedAssetsCount = selectedAssets.size;
+
+  function selectAllAssets() {
+    selectedAssets = new Set(assets.map(asset => asset.id)); // Create a new Set to ensure reactivity
+    selectedAssetsCount = selectedAssets.size; // Update the count
+  }
+
+  function clearAllSelections() {
+    selectedAssets = new Set(); // Create a new empty Set to ensure reactivity
+    selectedAssetsCount = selectedAssets.size; // Update the count
+  }
 </script>
 
 <style>
@@ -446,6 +486,32 @@ input[type="file"].hidden {
     transform: scale(1);
   }
 }
+
+.checkbox {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #ccc;
+  border-radius: 0.25rem;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.checkbox:checked {
+  background-color: #2563eb; /* Blue */
+  border-color: #2563eb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20.285 6.707l-11.285 11.285-5.285-5.285 1.414-1.414 3.871 3.871 9.871-9.871z'/%3E%3C/svg%3E");
+  background-size: 1rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.asset-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
 </style>
 
 <svelte:head>
@@ -491,8 +557,29 @@ input[type="file"].hidden {
             <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
               Latest Assets
             </h1>
-            <!-- Add Asset button has been removed -->
-            
+            {#if selectedAssetsCount > 0}
+              <div class="flex items-center gap-2">
+                <button
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                  on:click={selectAllAssets}
+                >
+                  Select All
+                </button>
+                <button
+                  class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                  on:click={clearAllSelections}
+                >
+                  Clear All
+                </button>
+                <button
+                  class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm flex items-center gap-2"
+                  on:click={deleteSelectedAssets}
+                >
+                  <X class="w-4 h-4" />
+                  Delete Selected ({selectedAssetsCount})
+                </button>
+              </div>
+            {/if}
           </div>
           
           <!-- Rest of your content here -->
@@ -511,6 +598,14 @@ input[type="file"].hidden {
                 <div class="relative w-64 group">
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
+                    <!-- Checkbox -->
+                    <input
+                      type="checkbox"
+                      class="checkbox asset-checkbox"
+                      checked={selectedAssets.has(asset.id)}
+                      on:change={() => toggleAssetSelection(asset.id)}
+                    />
+
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       {#if asset.version}v{asset.version}{/if}
@@ -648,55 +743,6 @@ input[type="file"].hidden {
             </div>
           {/if}
         </div>
-        <div class="container mx-auto px-4">
-          <!-- Title --> 
-         <div class="flex justify-between items-center mb-6">
-           <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
-             Discussion Board
-           </h1>
-          </div>
-         <!-- Discussion window -->
-               <div
-                 class="flex flex-col w-full h-96 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800"
-               >
-                 <!-- Messages -->
-                 <div
-                   class="flex-1 flex items-center justify-center h-full border-b border-gray-300 dark:border-gray-700"
-                 >
-                   <p class="text-center text-gray-900 dark:text-gray-100">
-                     Begin your discussion 🚀
-                   </p>
-                 </div>
-       
-                 <!-- Text field and button-->
-                 <form class="flex items-center space-x-2 p-2">
-                   <!-- Text field -->
-                   <input
-                     type="text"
-                     class="flex-1 h-12 px-4 border border-gray-300 dark:border-gray-700 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                     placeholder="Share your thoughts..."
-                   />
-       
-                   <!-- Button -->
-                   <button
-                     type="submit"
-                     class="rounded-full px-4 py-2 font-medium text-blue-900 dark:text-blue-200 bg-blue-200 dark:bg-blue-900 hover:bg-blue-300 dark:hover:bg-blue-800 transition-all duration-300"
-                     aria-label="Send message"
-                     >
-                     <svg
-                       height="24px"
-                       viewBox="0 -960 960 960"
-                       width="24px"
-                       fill="currentColor"
-                       class ="text-blue-900 dark:text-blue-200"
-                       ><path
-                         d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"
-                       /></svg
-                     >
-                   </button>
-                 </form>
-               </div>
-             </div>
       </section>    
     </div>
 
@@ -747,9 +793,9 @@ input[type="file"].hidden {
 
   <!-- Update the popup notification with smooth transitions -->
   {#if showCopyPopup}
-    <div class="fixed inset-0 flex items-center justify-center dark:bg-black bg-white z-50"
+    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
          transition:fade={{ duration: 300 }}>
-      <div class="relative bg-gradient-to-r from-blue-600/50 to-pink-600/50 text-white p-8 rounded-lg shadow-lg flex flex-col items-center space-y-4"
+      <div class="relative bg-green-600 text-white p-6 rounded-lg shadow-lg flex flex-col items-center space-y-4"
            transition:scale={{ start: 0.7, duration: 400, opacity: 0, easing: quintOut }}>
         <button
           class="absolute top-2 right-2 text-white hover:text-gray-300"
@@ -757,15 +803,9 @@ input[type="file"].hidden {
         >
           <X class="w-5 h-5" />
         </button>
-        <div class="success-circle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="success-icon">
-            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-          </svg>
-        </div>
         <p class="text-lg font-semibold">Asset copied successfully!</p>
         <button
-          class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
+          class="bg-white text-green-600 px-4 py-2 rounded hover:bg-gray-100 transition-colors duration-200"
           on:click={goToWorkspace}
         >
           Go to My Assets
