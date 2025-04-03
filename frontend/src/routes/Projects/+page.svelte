@@ -1,8 +1,11 @@
 <script>
   import { onMount } from 'svelte';
   import pb from '$lib/pocketbase';
+  import { fade, scale } from 'svelte/transition';
 
-  // A large list of coding languages
+  /*************************************************************
+   * Coding languages for multi-select
+   *************************************************************/
   let availableLanguages = [
     "Assembly", "Ada", "ALGOL", "APL", "Awk", "Bash", "BASIC", "C", "C++", "C#", "COBOL",
     "CoffeeScript", "Crystal", "D", "Dart", "Delphi/Object Pascal", "Eiffel", "Elixir",
@@ -16,25 +19,28 @@
     "Zig"
   ];
 
-  // Projects, assets, loading/error states
+  /*************************************************************
+   * Projects, assets, and state flags
+   *************************************************************/
   let projects = [];
   let assets = [];
   let loading = true;
   let error = null;
 
-  // Show/hide Add and Edit forms
+  // Form toggles
   let showAddForm = false;
   let showEditForm = false;
 
-  // ---------------------------------------------------------------------
-  // NEW PROJECT (for Create)
-  // ---------------------------------------------------------------------
+  // Save success modal flag (green animation on create/update)
+  let showSaveSuccess = false;
+
+  // ------------------ NEW PROJECT (Add form) ------------------
   let newProject = {
     name: '',
     description: '',
-    language: [],  // multiple languages as an array
+    language: [],
     launched: '',
-    project_id: '',
+    id: '',       // user-defined ID (must be unique)
     asset_id: []
   };
 
@@ -42,39 +48,89 @@
   let newLogoFileName = '';
   let newLogoPreview = '';
 
-  // Multi-select dropdown controls for Add form
+  // Multi-select controls for Add form
   let langDropdownOpenAdd = false;
   let searchAdd = '';
 
-  // Clear all selected languages in the Add form
   function clearLanguagesAdd() {
     newProject.language = [];
   }
 
-  // ---------------------------------------------------------------------
-  // EDITING PROJECT (for Edit)
-  // ---------------------------------------------------------------------
+  // ------------------ EDITING PROJECT ------------------
   let editingProject = null;
   let updatedProject = {};
   let editLogoFile = null;
   let editLogoFileName = '';
   let editLogoPreview = '';
 
-  // Multi-select dropdown controls for Edit form
+  // We'll store original values (as JSON strings) to compare later.
+  let originalLanguageStr = '';
+  let originalAssetIdsStr = '';
+
+  // Multi-select controls for Edit form
   let langDropdownOpenEdit = false;
   let searchEdit = '';
 
-  // Clear all selected languages in the Edit form
   function clearLanguagesEdit() {
     updatedProject.language = [];
   }
 
-  // Toggle expanded details for each project card
-  let expandedProjects = {};
+  // ------------------ VIEW DETAILS MODAL ------------------
+  let showProjectDetails = false;
+  let selectedProject = null;
+  function openProjectDetails(project) {
+    selectedProject = project;
+    showProjectDetails = true;
+  }
+  function closeProjectDetails() {
+    showProjectDetails = false;
+    selectedProject = null;
+  }
 
-  // ---------------------------------------------------------------------
-  // FETCH DATA ON MOUNT
-  // ---------------------------------------------------------------------
+  // ------------------ DELETE MODALS ------------------
+  let showConfirmModal = false;
+  let showDeleteSuccess = false;
+  let projectToDeleteId = null;
+
+  function requestDeleteProject(id) {
+    projectToDeleteId = id;
+    showConfirmModal = true;
+  }
+
+  function cancelDelete() {
+    showConfirmModal = false;
+    projectToDeleteId = null;
+  }
+
+  async function confirmDelete() {
+    if (!projectToDeleteId) return;
+    showConfirmModal = false;
+    try {
+      await pb.collection('projects').delete(projectToDeleteId);
+      projects = projects.filter(p => p.id !== projectToDeleteId);
+      projectToDeleteId = null;
+      showDeleteSuccess = true;
+      setTimeout(() => { showDeleteSuccess = false; }, 3000);
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      alert('Failed to delete project.');
+    }
+  }
+
+  function closeDeleteSuccess() {
+    showDeleteSuccess = false;
+  }
+
+  // ------------------ SAVE SUCCESS MODAL ------------------
+  function triggerSaveSuccess() {
+    showSaveSuccess = true;
+    setTimeout(() => { showSaveSuccess = false; }, 3000);
+  }
+  function closeSaveSuccess() {
+    showSaveSuccess = false;
+  }
+
+  // ------------------ FETCH DATA ON MOUNT ------------------
   onMount(async () => {
     try {
       projects = await pb.collection('projects').getFullList({
@@ -90,26 +146,20 @@
     }
   });
 
-  // ---------------------------------------------------------------------
-  // CREATE PROJECT
-  // ---------------------------------------------------------------------
+  // ------------------ CREATE PROJECT ------------------
   async function createProject() {
     try {
-      // Ensure unique project_id
-      if (projects.find(p => p.project_id === newProject.project_id)) {
-        alert("Project ID must be unique. Another project with this ID exists.");
-        return;
-      }
-
-      // Ensure user is logged in
       const currentUser = pb.authStore?.model;
       if (!currentUser) {
         alert("You must be logged in to create a project.");
         return;
       }
-
-      // Build form data
+      if (projects.find(p => p.id === newProject.id)) {
+        alert("ID must be unique. Another project with this ID already exists.");
+        return;
+      }
       let formData = new FormData();
+      formData.append('id', newProject.id);
       formData.append('name', newProject.name);
       formData.append('description', newProject.description);
       formData.append('language', JSON.stringify(newProject.language));
@@ -117,19 +167,16 @@
       if (newLogoFile) {
         formData.append('logo', newLogoFile);
       }
-      formData.append('project_id', newProject.project_id);
       formData.append('asset_id', JSON.stringify(newProject.asset_id));
       formData.append('owner_id', currentUser.id);
 
-      // Create in PocketBase
       const record = await pb.collection('projects').create(formData);
-
-      // Fetch the newly created project (with expanded assets)
       const fetchedRecord = await pb.collection('projects').getOne(record.id, { expand: 'asset_id' });
       projects = [fetchedRecord, ...projects];
 
       resetNewProject();
       showAddForm = false;
+      triggerSaveSuccess();
     } catch (err) {
       console.error('Error creating project:', err);
       alert('Failed to create project.');
@@ -142,7 +189,7 @@
       description: '',
       language: [],
       launched: '',
-      project_id: '',
+      id: '',
       asset_id: []
     };
     newLogoFile = null;
@@ -152,13 +199,9 @@
     searchAdd = '';
   }
 
-  // ---------------------------------------------------------------------
-  // EDIT PROJECT
-  // ---------------------------------------------------------------------
+  // ------------------ EDIT PROJECT ------------------
   function editProject(project) {
     editingProject = project;
-
-    // If languages are stored as JSON, parse them
     let parsedLangs = [];
     try {
       parsedLangs = JSON.parse(project.language) || [];
@@ -166,42 +209,59 @@
     } catch (err) {
       if (Array.isArray(project.language)) parsedLangs = project.language;
     }
-
+    let launchedVal = project.launched;
+    if (launchedVal) {
+      try {
+        const dateObj = new Date(launchedVal);
+        if (!isNaN(dateObj.getTime())) {
+          launchedVal = dateObj.toISOString().slice(0, 10);
+        }
+      } catch {}
+    }
     const assetIds = project.expand?.asset_id ? project.expand.asset_id.map(a => a.id) : [];
     updatedProject = {
       ...project,
+      launched: launchedVal,
       language: parsedLangs,
       asset_id: assetIds
     };
-    delete updatedProject.owner_id;
+    // Save original values for later comparison
+    originalLanguageStr = JSON.stringify(parsedLangs);
+    originalAssetIdsStr = JSON.stringify(assetIds);
 
     editLogoFile = null;
     editLogoFileName = '';
     editLogoPreview = '';
     langDropdownOpenEdit = false;
     searchEdit = '';
-
     showEditForm = true;
   }
 
-  // ---------------------------------------------------------------------
-  // UPDATE PROJECT
-  // ---------------------------------------------------------------------
+  // ------------------ Helper: Check if changes have been made ------------------
+  function hasProjectChanged() {
+    if (updatedProject.name !== editingProject.name) return true;
+    if (updatedProject.description !== editingProject.description) return true;
+    if (JSON.stringify(updatedProject.language) !== originalLanguageStr) return true;
+    if (JSON.stringify(updatedProject.asset_id) !== originalAssetIdsStr) return true;
+    if (editLogoFile) return true;
+    return false;
+  }
+
+  // ------------------ UPDATE PROJECT ------------------
   async function updateProject() {
+    if (!hasProjectChanged()) {
+      alert("No changes have been made.");
+      return;
+    }
     try {
       let formData = new FormData();
       formData.append('name', updatedProject.name);
       formData.append('description', updatedProject.description);
       formData.append('language', JSON.stringify(updatedProject.language));
-      // Do not update launched or owner_id
       formData.append('launched', editingProject.launched || '');
-
       if (editLogoFile) {
         formData.append('logo', editLogoFile);
       }
-      // The Project ID is read-only once created, so we won't let the user change it
-      formData.append('project_id', updatedProject.project_id);
-
       formData.append('asset_id', JSON.stringify(updatedProject.asset_id));
 
       const record = await pb.collection('projects').update(editingProject.id, formData);
@@ -214,41 +274,23 @@
       editLogoFile = null;
       editLogoFileName = '';
       editLogoPreview = '';
+      triggerSaveSuccess();
     } catch (err) {
       console.error('Error updating project:', err);
       alert('Failed to update project.');
     }
   }
 
-  // ---------------------------------------------------------------------
-  // DELETE PROJECT
-  // ---------------------------------------------------------------------
-  async function deleteProject(id) {
-    if (!confirm("Are you sure you want to delete this project?")) return;
-    try {
-      await pb.collection('projects').delete(id);
-      projects = projects.filter(p => p.id !== id);
-    } catch (err) {
-      console.error('Error deleting project:', err);
-      alert('Failed to delete project.');
-    }
-  }
-
-  // ---------------------------------------------------------------------
-  // UI HANDLERS
-  // ---------------------------------------------------------------------
-  function toggleDetails(id) {
-    expandedProjects = { ...expandedProjects, [id]: !expandedProjects[id] };
-  }
-
-  // For new logo (Add)
+  /*************************************************************
+   * FILE INPUT HANDLERS
+   *************************************************************/
   function handleNewLogoChange(event) {
     const file = event.target.files[0];
     if (file) {
       newLogoFile = file;
       newLogoFileName = file.name;
       const reader = new FileReader();
-      reader.onload = e => { newLogoPreview = e.target.result; };
+      reader.onload = (e) => { newLogoPreview = e.target.result; };
       reader.readAsDataURL(file);
     } else {
       newLogoFile = null;
@@ -257,14 +299,13 @@
     }
   }
 
-  // For new logo (Edit)
   function handleEditLogoChange(event) {
     const file = event.target.files[0];
     if (file) {
       editLogoFile = file;
       editLogoFileName = file.name;
       const reader = new FileReader();
-      reader.onload = e => { editLogoPreview = e.target.result; };
+      reader.onload = (e) => { editLogoPreview = e.target.result; };
       reader.readAsDataURL(file);
     } else {
       editLogoFile = null;
@@ -273,7 +314,9 @@
     }
   }
 
-  // Filtering languages for the Add form
+  /*************************************************************
+   * MULTI-SELECT FILTERS
+   *************************************************************/
   function filteredLanguagesAdd() {
     if (!searchAdd.trim()) return availableLanguages;
     return availableLanguages.filter(lang =>
@@ -281,7 +324,6 @@
     );
   }
 
-  // Filtering languages for the Edit form
   function filteredLanguagesEdit() {
     if (!searchEdit.trim()) return availableLanguages;
     return availableLanguages.filter(lang =>
@@ -289,7 +331,6 @@
     );
   }
 
-  // Toggle a language in the Add form
   function toggleLangOptionAdd(lang) {
     if (newProject.language.includes(lang)) {
       newProject.language = newProject.language.filter(item => item !== lang);
@@ -298,7 +339,6 @@
     }
   }
 
-  // Toggle a language in the Edit form
   function toggleLangOptionEdit(lang) {
     if (updatedProject.language.includes(lang)) {
       updatedProject.language = updatedProject.language.filter(item => item !== lang);
@@ -307,20 +347,15 @@
     }
   }
 
-  // ---------------------------------------------------------------------
-  // HELPER: DATE FORMATTING
-  // ---------------------------------------------------------------------
+  /*************************************************************
+   * HELPER: DATE FORMATTING
+   *************************************************************/
   function formatDate(dateStr) {
     if (!dateStr) return 'N/A';
     const dateObj = new Date(dateStr);
-    return dateObj.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  // Helper to display languages as a comma-separated string
   function displayLanguages(langValue) {
     if (!langValue) return 'N/A';
     if (Array.isArray(langValue)) {
@@ -341,6 +376,7 @@
   <title>Projects</title>
 </svelte:head>
 
+<!-- MAIN LAYOUT -->
 <main class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex">
   <!-- LEFT SIDEBAR -->
   <aside class="hidden lg:block w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 p-4">
@@ -359,7 +395,7 @@
     </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
+  <!-- CENTER CONTENT -->
   <div class="flex-1 flex flex-col">
     <!-- Header / Breadcrumb + Add Button -->
     <header class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
@@ -368,228 +404,122 @@
         <span>»</span>
         <span>Projects</span>
       </div>
-      <button 
-        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-        on:click={() => showAddForm = true}
-      >
+      <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" on:click={() => showAddForm = true}>
         Add Project
       </button>
     </header>
 
-    <!-- Main Body -->
+    <!-- Main Body Area -->
     <div class="flex-1 p-6 overflow-auto">
       {#if showAddForm}
         <!-- ADD PROJECT FORM -->
         <section>
           <div class="flex items-center space-x-3 mb-6">
             {#if newLogoPreview}
-              <img
-                src={newLogoPreview}
-                alt="New Logo Preview"
-                class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600"
-              />
+              <img src={newLogoPreview} alt="New Logo Preview" class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" />
             {:else}
-              <div
-                class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md 
-                       flex items-center justify-center text-gray-500 text-xs"
-              >
+              <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 text-xs">
                 No Logo
               </div>
             {/if}
             <h2 class="text-2xl font-semibold">Add New Project</h2>
           </div>
-
           <div class="max-w-2xl">
             <form on:submit|preventDefault={createProject}>
               <!-- Project Name -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
-                <input
-                  type="text"
-                  bind:value={newProject.name}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Enter project name"
-                  required
-                />
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Project Name
+                </label>
+                <input type="text" bind:value={newProject.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter project name" required />
               </div>
-
               <!-- Description -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                <textarea
-                  rows="3"
-                  bind:value={newProject.description}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Enter project description"
-                ></textarea>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Description
+                </label>
+                <textarea rows="3" bind:value={newProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter project description"></textarea>
               </div>
-
-              <!-- Multi-select Dropdown for Languages (Add) -->
+              <!-- Multi-select (Add) -->
               <div class="mb-4 relative">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Languages</label>
-                <button
-                  type="button"
-                  class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between 
-                         focus:ring-blue-500 focus:border-blue-500"
-                  on:click={() => (langDropdownOpenAdd = !langDropdownOpenAdd)}
-                >
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Languages
+                </label>
+                <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500" on:click={() => (langDropdownOpenAdd = !langDropdownOpenAdd)}>
                   {#if newProject.language.length > 0}
                     {newProject.language.join(', ')}
                   {:else}
                     Select Programming Languages...
                   {/if}
-                  <!-- caret -->
                   <svg class="ml-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
-
                 {#if langDropdownOpenAdd}
-                  <div
-                    class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 
-                           border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto"
-                  >
-                    <!-- Search + Clear/Done row -->
+                  <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto">
                     <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
-                      <input
-                        type="text"
-                        placeholder="Search..."
-                        bind:value={searchAdd}
-                        class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 
-                               border border-gray-200 dark:border-gray-600 rounded-md
-                               focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300"
-                      />
-                      <!-- "Clear" button to unselect all -->
-                      <button
-                        type="button"
-                        class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                        on:click={clearLanguagesAdd}
-                      >
-                        Clear
-                      </button>
-                      <!-- "Done" button to close -->
-                      <button
-                        type="button"
-                        class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                        on:click={() => (langDropdownOpenAdd = false)}
-                      >
-                        Done
-                      </button>
+                      <input type="text" placeholder="Search..." bind:value={searchAdd} class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300" />
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700" on:click={clearLanguagesAdd}>Clear</button>
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" on:click={() => (langDropdownOpenAdd = false)}>Done</button>
                     </div>
-
-                    <!-- Checkboxes list -->
                     <div class="p-2 space-y-1">
                       {#each filteredLanguagesAdd() as lang}
-                        <label
-                          class="flex items-center space-x-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 
-                                 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            class="rounded"
-                            checked={newProject.language.includes(lang)}
-                            on:change={() => toggleLangOptionAdd(lang)}
-                          />
+                        <label class="flex items-center space-x-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                          <input type="checkbox" class="rounded" checked={newProject.language.includes(lang)} on:change={() => toggleLangOptionAdd(lang)} />
                           <span>{lang}</span>
                         </label>
                       {/each}
                     </div>
                   </div>
                 {/if}
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Choose one or more languages
-                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose one or more languages</p>
               </div>
-
-              <!-- Launched (Editable on create) -->
+              <!-- Launched -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
-                <input
-                  type="date"
-                  bind:value={newProject.launched}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Launched
+                </label>
+                <input type="date" bind:value={newProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
-
-              <!-- Project ID -->
+              <!-- ID -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
-                <input
-                  type="text"
-                  bind:value={newProject.project_id}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Enter unique project ID"
-                />
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"> Project ID</label>
+                <input type="text" bind:value={newProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter unique ID" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to auto-generate an ID</p>
               </div>
-
               <!-- Upload Logo -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Logo</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Upload Logo
+                </label>
                 <div class="mt-1 flex items-center space-x-2">
-                  <label
-                    class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 
-                           rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 
-                           bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none"
-                  >
+                  <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
                     Select File
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      on:change={handleNewLogoChange} 
-                      class="hidden"
-                    />
+                    <input type="file" accept="image/*" on:change={handleNewLogoChange} class="hidden" />
                   </label>
                   {#if newLogoFileName}
                     <div class="text-sm text-gray-600 dark:text-gray-400">{newLogoFileName}</div>
                   {/if}
                 </div>
               </div>
-
               <!-- Link Assets -->
               <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Link Assets</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Link Assets
+                </label>
                 <div class="grid grid-cols-1 gap-2 mt-1">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
                     <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
-                      <input
-                        type="checkbox"
-                        value={asset.id}
-                        bind:group={newProject.asset_id}
-                        class="rounded border-gray-300 dark:border-gray-600"
-                      />
+                      <input type="checkbox" value={asset.id} bind:group={newProject.asset_id} class="rounded border-gray-300 dark:border-gray-600" />
                       <span>{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
                     </label>
                   {/each}
                 </div>
               </div>
-
               <!-- Buttons -->
               <div class="flex justify-end">
-                <button
-                  type="button"
-                  class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 
-                         dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 
-                         focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                  on:click={() => (showAddForm = false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  Save
-                </button>
+                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" on:click={() => (showAddForm = false)}>Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save</button>
               </div>
             </form>
           </div>
@@ -599,69 +529,32 @@
         <section>
           <div class="flex items-center space-x-3 mb-6">
             {#if editingProject?.logo && !editLogoFile}
-              <img
-                src={pb.getFileUrl(editingProject, 'logo')}
-                alt="Project Logo"
-                class="w-16 h-16 object-cover rounded-md 
-                       border border-gray-300 dark:border-gray-600"
-              />
+              <img src={pb.getFileUrl(editingProject, 'logo')} alt="Project Logo" class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" />
             {:else if editLogoPreview}
-              <img
-                src={editLogoPreview}
-                alt="New Logo Preview"
-                class="w-16 h-16 object-cover rounded-md 
-                       border border-gray-300 dark:border-gray-600"
-              />
+              <img src={editLogoPreview} alt="New Logo Preview" class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" />
             {:else}
-              <div
-                class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md 
-                       flex items-center justify-center text-gray-500 text-xs"
-              >
+              <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 text-xs">
                 No Logo
               </div>
             {/if}
-            <h2 class="text-2xl font-semibold">
-              {editingProject.name || "Edit Project"}
-            </h2>
+            <h2 class="text-2xl font-semibold">{editingProject.name || "Edit Project"}</h2>
           </div>
-
           <div class="max-w-2xl">
             <form on:submit|preventDefault={updateProject}>
               <!-- Project Name -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
-                <input
-                  type="text"
-                  bind:value={updatedProject.name}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
+                <input type="text" bind:value={updatedProject.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
               </div>
-
               <!-- Description -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                <textarea
-                  rows="3"
-                  bind:value={updatedProject.description}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                ></textarea>
+                <textarea rows="3" bind:value={updatedProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></textarea>
               </div>
-
-              <!-- Multi-select Dropdown for Languages (Edit) -->
+              <!-- Multi-select (Edit) -->
               <div class="mb-4 relative">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Languages</label>
-                <button
-                  type="button"
-                  class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between 
-                         focus:ring-blue-500 focus:border-blue-500"
-                  on:click={() => (langDropdownOpenEdit = !langDropdownOpenEdit)}
-                >
+                <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500" on:click={() => (langDropdownOpenEdit = !langDropdownOpenEdit)}>
                   {#if updatedProject.language.length > 0}
                     {updatedProject.language.join(', ')}
                   {:else}
@@ -672,100 +565,39 @@
                   </svg>
                 </button>
                 {#if langDropdownOpenEdit}
-                  <div
-                    class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 
-                           border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto"
-                  >
-                    <!-- Search + Clear/Done row -->
+                  <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto">
                     <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
-                      <input
-                        type="text"
-                        placeholder="Search..."
-                        bind:value={searchEdit}
-                        class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 
-                               border border-gray-200 dark:border-gray-600 rounded-md
-                               focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300"
-                      />
-                      <!-- "Clear" button to unselect all -->
-                      <button
-                        type="button"
-                        class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                        on:click={clearLanguagesEdit}
-                      >
-                        Clear
-                      </button>
-                      <!-- "Done" button to close -->
-                      <button
-                        type="button"
-                        class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                        on:click={() => (langDropdownOpenEdit = false)}
-                      >
-                        Done
-                      </button>
+                      <input type="text" placeholder="Search..." bind:value={searchEdit} class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300" />
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700" on:click={clearLanguagesEdit}>Clear</button>
+                      <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700" on:click={() => (langDropdownOpenEdit = false)}>Done</button>
                     </div>
-
-                    <!-- Checkboxes list -->
                     <div class="p-2 space-y-1">
                       {#each filteredLanguagesEdit() as lang}
-                        <label
-                          class="flex items-center space-x-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 
-                                 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            class="rounded"
-                            checked={updatedProject.language.includes(lang)}
-                            on:change={() => toggleLangOptionEdit(lang)}
-                          />
+                        <label class="flex items-center space-x-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                          <input type="checkbox" class="rounded" checked={updatedProject.language.includes(lang)} on:change={() => toggleLangOptionEdit(lang)} />
                           <span>{lang}</span>
                         </label>
                       {/each}
                     </div>
                   </div>
                 {/if}
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Choose one or more languages
-                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose one or more languages</p>
               </div>
-
               <!-- Launched (read-only in edit) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
-                <input
-                  type="date"
-                  bind:value={updatedProject.launched}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed"
-                  disabled
-                  title="Launched date cannot be changed after creation."
-                />
+                <input type="date" bind:value={updatedProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed" disabled title="Launched date cannot be changed after creation." />
               </div>
-
-              <!-- Project ID (read-only in edit) -->
+              <!-- ID (read-only in edit) -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
-                <input
-                  type="text"
-                  bind:value={updatedProject.project_id}
-                  class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm 
-                         focus:ring-blue-500 focus:border-blue-500 sm:text-sm 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
-                         cursor-not-allowed"
-                  disabled
-                  title="Project ID cannot be changed once created."
-                />
+                <input type="text" bind:value={updatedProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed" disabled title="ID cannot be changed once created." />
               </div>
-
               <!-- Upload New Logo -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload New Logo</label>
                 <div class="mt-1 flex items-center space-x-2">
-                  <label
-                    class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 
-                           rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 
-                           bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none"
-                  >
+                  <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none">
                     Select File
                     <input type="file" accept="image/*" on:change={handleEditLogoChange} class="hidden" />
                   </label>
@@ -774,49 +606,28 @@
                   {/if}
                 </div>
               </div>
-
               <!-- Link Assets -->
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Edit Linked Assets</label>
                 <div class="grid grid-cols-1 gap-2 mt-1">
                   {#each assets.slice().sort((a, b) => a.name.localeCompare(b.name)) as asset}
                     <label class="inline-flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
-                      <input
-                        type="checkbox"
-                        value={asset.id}
-                        bind:group={updatedProject.asset_id}
-                        class="rounded border-gray-300 dark:border-gray-600"
-                      />
+                      <input type="checkbox" value={asset.id} bind:group={updatedProject.asset_id} class="rounded border-gray-300 dark:border-gray-600" />
                       <span>{asset.name} {asset.version ? `(${asset.version})` : ''}</span>
                     </label>
                   {/each}
                 </div>
               </div>
-
               <!-- Buttons -->
               <div class="flex justify-end">
-                <button
-                  type="button"
-                  class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 
-                         dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 
-                         focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                  on:click={() => { showEditForm = false; editingProject = null; }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 
-                         focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                >
-                  Save Changes
-                </button>
+                <button type="button" class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" on:click={() => { showEditForm = false; editingProject = null; }}>Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Save Changes</button>
               </div>
             </form>
           </div>
         </section>
       {:else}
-        <!-- PROJECTS GRID (No logo displayed) -->
+        <!-- PROJECTS GRID -->
         {#if loading}
           <div class="flex justify-center items-center h-64">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-300"></div>
@@ -827,9 +638,7 @@
             <p>{error}</p>
           </div>
         {:else}
-          <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-            Latest Projects
-          </h1>
+          <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">Latest Projects</h1>
           {#if projects.length === 0}
             <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
               <p>No projects found. Try adding a new one!</p>
@@ -838,7 +647,6 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {#each projects as project}
                 <div class="relative w-64 group">
-                  <!-- Gradient border effect on hover -->
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-500 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{project.name}</h2>
@@ -846,32 +654,14 @@
                     <div class="mt-3 flex items-center justify-between">
                       <div class="flex space-x-2">
                         <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded" on:click={() => editProject(project)}>Edit</button>
-                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => deleteProject(project.id)}>Delete</button>
+                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => requestDeleteProject(project.id)}>Delete</button>
                       </div>
                     </div>
                     <div class="mt-3">
-                      <button class="text-blue-600 dark:text-blue-400 text-xs hover:underline" on:click={() => toggleDetails(project.id)}>
-                        {expandedProjects[project.id] ? "Hide Details" : "View Details"}
+                      <button class="text-blue-600 dark:text-blue-400 text-xs hover:underline" on:click={() => openProjectDetails(project)}>
+                        View Details
                       </button>
                     </div>
-                    {#if expandedProjects[project.id]}
-                      <div class="mt-4 text-xs text-gray-700 dark:text-gray-200 space-y-1">
-                        <p><strong>Languages:</strong> {displayLanguages(project.language)}</p>
-                        <p><strong>Launched:</strong> {project.launched || 'N/A'}</p>
-                        <p><strong>Project ID:</strong> {project.project_id}</p>
-                        {#if project.expand?.asset_id && project.expand.asset_id.length > 0}
-                          <div class="mt-1">
-                            <strong>Linked Assets:</strong>
-                            <ul class="list-disc list-inside">
-                              {#each project.expand.asset_id as asset}
-                                <li>{asset.name}</li>
-                              {/each}
-                            </ul>
-                          </div>
-                        {/if}
-                        <p class="mt-2">{project.description}</p>
-                      </div>
-                    {/if}
                   </div>
                 </div>
               {/each}
@@ -888,7 +678,7 @@
       <h2 class="text-xl font-bold mb-4">Project Statistics</h2>
       <ul class="space-y-2">
         <li class="flex justify-between">
-          <span>Total Projects:</span> 
+          <span>Total Projects:</span>
           <span>{projects.length}</span>
         </li>
         {#if projects.length > 0}
@@ -915,12 +705,128 @@
   </aside>
 </main>
 
+<!-- PROJECT DETAILS MODAL -->
+{#if showProjectDetails}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" transition:fade>
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 md:mx-0" transition:scale>
+      {#if selectedProject}
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{selectedProject.name}</h2>
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" on:click={closeProjectDetails}>✕</button>
+        </div>
+        <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <p><span class="font-medium">ID:</span> {selectedProject.id}</p>
+          <p><span class="font-medium">Launched:</span> {selectedProject.launched || 'N/A'}</p>
+          <p><span class="font-medium">Languages:</span> {displayLanguages(selectedProject.language)}</p>
+          {#if selectedProject.expand?.asset_id && selectedProject.expand.asset_id.length > 0}
+            <div>
+              <span class="font-medium">Linked Assets:</span>
+              <ul class="list-disc list-inside ml-4 mt-1">
+                {#each selectedProject.expand.asset_id as asset}
+                  <li>{asset.name}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+          {#if selectedProject.description}
+            <p class="mt-2">{selectedProject.description}</p>
+          {/if}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- CONFIRM DELETION MODAL -->
+{#if showConfirmModal}
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+    <div class="bg-white dark:bg-gray-800 rounded p-6 w-80 shadow-lg" transition:scale>
+      <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
+      <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">Are you sure you want to delete this project? This action cannot be undone.</p>
+      <div class="flex justify-end space-x-2">
+        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" on:click={confirmDelete}>Confirm</button>
+        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={cancelDelete}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- SUCCESS DELETION MODAL (with pulsing red circle and manual close) -->
+{#if showDeleteSuccess}
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+    <div class="relative bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg" transition:scale>
+      <!-- Manual close (X) at top-right -->
+      <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeDeleteSuccess}>✕</button>
+      <div class="flex justify-center mb-4">
+        <div class="animated-circle">
+          <span class="text-xl text-white">–</span>
+        </div>
+      </div>
+      <h2 class="text-md font-semibold mb-2 text-center text-red-800 dark:text-red-200">Project Deleted Successfully!</h2>
+      <p class="text-sm text-center text-red-700 dark:text-red-300 mb-4">The selected project has been removed.</p>
+      <div class="flex justify-center">
+        <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={closeDeleteSuccess}>Close</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- SUCCESS SAVE MODAL (with pulsing green check icon and manual close) -->
+{#if showSaveSuccess}
+  <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50" transition:fade>
+    <div class="relative bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg" transition:scale>
+      <!-- Manual close (X) at top-right -->
+      <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeSaveSuccess}>✕</button>
+      <div class="flex justify-center mb-4">
+        <div class="animated-green">
+          <span class="text-xl text-white">✔</span>
+        </div>
+      </div>
+      <h2 class="text-md font-semibold mb-2 text-center text-green-800 dark:text-green-200">Project Saved Successfully!</h2>
+      <p class="text-sm text-center text-green-700 dark:text-green-300">Your changes have been saved.</p>
+    </div>
+  </div>
+{/if}
+
 <style>
-  /* For truncating text if necessary */
+  /* Truncate text if needed */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  /* Animated pulsing circle for deletion (red) */
+  .animated-circle {
+    width: 40px;
+    height: 40px;
+    background-color: #ef4444;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulseCircle 1.2s ease-in-out infinite;
+  }
+  @keyframes pulseCircle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+  /* Animated pulsing circle for save success (green), slightly smaller */
+  .animated-green {
+    width: 30px;
+    height: 30px;
+    background-color: #10b981;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulseGreen 1.2s ease-in-out infinite;
+  }
+  @keyframes pulseGreen {
+    0%, 100% { transform: scale(0.9); }
+    50% { transform: scale(1.1); }
   }
 </style>
