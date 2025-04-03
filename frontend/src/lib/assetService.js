@@ -1,4 +1,4 @@
-import pb from 'frontend/src/lib/pocketbase.js';
+import pb from '$lib/pocketbase';
 import { refreshToken } from './authManager';
 import { user } from '$lib/user.js';
 import { UsersRoundIcon } from '@lucide/svelte';
@@ -76,8 +76,6 @@ export async function getAssetsByFilters(filters = {}) {
     throw error;
   }
 }
-
-module.exports = getAssetsByFilters;
 
 // Get a single asset by ID
 export async function getAssetById(id) {
