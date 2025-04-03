@@ -704,7 +704,21 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
                 <div class="mt-3 flex items-center justify-between">
                   <div class="flex space-x-2">
-                    
+                    <!-- Edit Button -->
+                    <button
+                      class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded"
+                      on:click={() => goto(`/Projects?edit=${project.id}`)}
+                    >
+                      Edit
+                    </button>
+                
+                    <!-- Delete Button -->
+                    <button
+                      class="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+                      on:click={() => deleteProject(project.id)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
                 <div class="mt-3">
@@ -712,6 +726,7 @@
                     View Details
                   </button>
                 </div>
+                
               </div>
             </div>
           {/each}
