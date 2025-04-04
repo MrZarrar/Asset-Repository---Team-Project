@@ -14,6 +14,8 @@
   let searchInputValue = '';
   let showSearchResults = false;
   let searchOption = "name"; // Default search option
+  let showDropdown = false; // new variable for dropdown visibility
+  const searchOptions = ["name", "type", "date_created", "date_updated"]; // available options
   
   // Updated debouncedSearch to accept searchOption as second parameter
   const debouncedSearch = debounce((term, option) => {
@@ -201,26 +203,41 @@
       </div>
 
       <div class="flex-1 flex justify-center pl-0 pr-8 md:pl-0 md:pr-16">
-        <div class="w-full max-w-[150px] xs:max-w-[120px] md:max-w-xl">
-          <div id="search-container" class="relative flex w-full items-center">
+        <div class="w-full max-w-[150px] xs:max-w-[120px] md:max-w-lg">
+          <div id="search-container" class="relative flex w-full items-center ml-4">
+            <div class="relative flex items-center space-x-2 -ml-2">
+              <span class="text-gray-700 dark:text-gray-300 text-sm">Search by:</span>
+              <div class="relative">
+                <button
+                  class="flex items-center px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-sm border border-gray-300 dark:border-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+                  on:click={() => showDropdown = !showDropdown}
+                >
+                  {searchOption}
+                  <svg class="ml-2 w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                {#if showDropdown}
+                <ul class="absolute left-0 mt-2 w-40 bg-white dark:bg-gray-800 border border-gray-300 dark:border-black rounded-lg shadow-md overflow-hidden transition-all duration-200 z-[1000]">
+                    {#each searchOptions as option}
+                      <li
+                        class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                        on:click={() => { searchOption = option; showDropdown = false; }}
+                      >
+                        {option}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </div>
+            </div>
 
-            <select
-              bind:value={searchOption}
-              on:change={() => { if (searchInputValue.trim()) debouncedSearch(searchInputValue, searchOption); }}
-              class="h-10 px-3 border border-blue-300 bg-blue-50 text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-300 rounded-l-md dark:border-blue-600 dark:bg-gray-700 dark:text-gray-100"
-            >
-              <option value="name">Search by Name</option>
-              <option value="type">Search by Type</option>
-              <option value="date_created">Search by Date Created</option>
-              <option value="date_updated">Search by Date Updated</option>
-            </select>
-
-            <!-- Search bar -->
+            <!-- Search bar remains unchanged -->
             <div class="relative flex-1">
               <input
                 type="search"
                 id="search-dropdown"
-                class="block w-full p-2 md:p-2 text-sm md:text-sm bg-gray-200 text-black-400 dark:text-gray-200 dark:bg-gray-600 border border-gray-600 dark:border-gray-400 rounded-r-md hover:border-blue-600 focus:border-blue-600 focus:ring-blue-600 focus:ring-1 focus:outline-none transition-all duration-300"
+                class="block w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-l-0 border-gray-300 dark:border-gray-700 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-200"
                 placeholder="Search assets..."
                 bind:value={searchInputValue}
                 on:input={handleSearchInput}
@@ -246,7 +263,7 @@
               
               <!-- Search Results Dropdown -->
               {#if showSearchResults && searchInputValue.trim()}
-                <div class="absolute left-0 right-0 top-full mt-1 max-h-96 overflow-y-auto bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-50">
+                <div class="absolute left-0 right-0 top-full mt-2 max-h-96 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl shadow-xl z-50 p-3 space-y-4 transition-all duration-300">
                   {#if $isSearching}
                     <div class="p-4 text-center text-gray-500 dark:text-gray-300">
                       <div class="inline-block animate-spin h-5 w-5 border-t-2 border-blue-500 rounded-full mr-2"></div>
@@ -261,32 +278,24 @@
                       No assets found matching "{searchInputValue}"
                     </div>
                   {:else}
-                    <ul class="py-1">
+                    <ul class="space-y-3">
                       {#each $searchResults as asset}
-                        <li>
-                          <button 
-                            class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
+                        <li class="rounded-xl bg-gray-50 dark:bg-gray-800 p-5 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer border border-gray-200 dark:border-gray-700 list-none">
+                          <button
+                            class="w-full text-left space-y-1 text-sm text-gray-700 dark:text-gray-300"
                             on:click={() => navigateToAsset(asset.id)}
                           >
-                            <div class="mb-1">
-                              <span class={searchOption === 'name' ? 'font-medium text-blue-600' : 'font-medium'}>
-                                Name: {asset.name}
-                              </span>
+                            <div class={searchOption === 'name' ? 'font-semibold text-blue-600' : 'text-gray-700 dark:text-gray-300'}>
+                              Name: {asset.name}
                             </div>
-                            <div class="mb-1">
-                              <span class={searchOption === 'type' ? 'font-medium text-blue-600' : ''}>
-                                Type: {asset.type}
-                              </span>
+                            <div class={searchOption === 'type' ? 'font-semibold text-blue-600' : 'text-gray-700 dark:text-gray-300'}>
+                              Type: {asset.type}
                             </div>
-                            <div class="mb-1">
-                              <span class={searchOption === 'date_created' ? 'font-medium text-blue-600' : ''}>
-                                Created: {asset.date_created ? new Date(asset.date_created).toLocaleDateString() : 'N/A'}
-                              </span>
+                            <div class={searchOption === 'date_created' ? 'font-semibold text-blue-600' : 'text-gray-700 dark:text-gray-300'}>
+                              Created: {asset.date_created ? new Date(asset.date_created).toLocaleDateString() : 'N/A'}
                             </div>
-                            <div>
-                              <span class={searchOption === 'date_updated' ? 'font-medium text-blue-600' : ''}>
-                                Updated: {asset.date_updated ? new Date(asset.date_updated).toLocaleDateString() : 'N/A'}
-                              </span>
+                            <div class={searchOption === 'date_updated' ? 'font-semibold text-blue-600' : 'text-gray-700 dark:text-gray-300'}>
+                              Updated: {asset.date_updated ? new Date(asset.date_updated).toLocaleDateString() : 'N/A'}
                             </div>
                           </button>
                         </li>
