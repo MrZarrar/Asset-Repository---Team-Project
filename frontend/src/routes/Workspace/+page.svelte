@@ -1807,8 +1807,6 @@
                              checked={selectedAssets.has(asset.id)}
                              on:change={() => toggleAssetSelection(asset.id)} />
                     {/if}
-                      on:change={() => toggleAssetSelection(asset.id)}
-                    />
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
 
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
