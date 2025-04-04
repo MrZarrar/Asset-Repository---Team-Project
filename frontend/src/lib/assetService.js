@@ -1,9 +1,25 @@
+/**
+ * @fileoverview Service for managing assets in the application.
+ * @module lib/assetService
+ */
+
 import pb from '$lib/pocketbase';
 import { refreshToken } from './authManager';
 import { user } from '$lib/user.js';
 import { UsersRoundIcon } from '@lucide/svelte';
 
-// Fetch all assets with pagination support
+/**
+ * Fetches assets with pagination and filtering support.
+ * Auto-refreshes token if expired and retries the request.
+ * 
+ * @async
+ * @function fetchAssets
+ * @param {number} [page=1] - The page number for pagination
+ * @param {number} [perPage=20] - The number of assets per page
+ * @param {Object} [filters={}] - Filtering criteria for assets
+ * @returns {Promise<Object>} The response containing assets list and pagination info
+ * @throws {Error} If fetching assets fails after token refresh attempt
+ */
 export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
   try {
     // Disable auto-cancellation globally for the PocketBase client
@@ -48,7 +64,16 @@ export async function fetchAssets(page = 1, perPage = 20, filters = {}) {
   }
 }
 
-// Get a single asset by Filtering
+/**
+ * Gets assets that match the provided filtering criteria.
+ * Excludes assets with add_type of "copied".
+ * 
+ * @async
+ * @function getAssetsByFilters
+ * @param {Object} [filters={}] - Filtering criteria for assets
+ * @returns {Promise<Array>} Array of assets matching the filters
+ * @throws {Error} If fetching assets fails after token refresh attempt
+ */
 export async function getAssetsByFilters(filters = {}) {
   let filterString = ''; // initalises an empty string to hold all the filters
   filterString += '(' // forces ALL filters to be put into brackets, allowing for multiple filters and single filters to all work without special code
@@ -77,7 +102,15 @@ export async function getAssetsByFilters(filters = {}) {
   }
 }
 
-// Get a single asset by ID
+/**
+ * Gets a single asset by its ID.
+ * 
+ * @async
+ * @function getAssetById
+ * @param {string} id - The ID of the asset to fetch
+ * @returns {Promise<Object>} The asset object
+ * @throws {Error} If fetching the asset fails after token refresh attempt
+ */
 export async function getAssetById(id) {
   try {
     const asset = await pb.collection('Assets').getOne(id);
@@ -95,7 +128,16 @@ export async function getAssetById(id) {
   }
 }
 
-// Upload a new asset
+/**
+ * Uploads a new asset with associated file data.
+ * 
+ * @async
+ * @function uploadAsset
+ * @param {Object} assetData - Metadata for the asset
+ * @param {File} [fileData] - The file to upload (optional)
+ * @returns {Promise<Object>} The created asset object
+ * @throws {Error} If uploading the asset fails after token refresh attempt
+ */
 export async function uploadAsset(assetData, fileData) {
   try {
     const formData = new FormData();
@@ -124,7 +166,15 @@ export async function uploadAsset(assetData, fileData) {
   }
 }
 
-// Fetch assets by category
+/**
+ * Fetches assets that belong to a specific category.
+ * 
+ * @async
+ * @function fetchAssetsByCategory
+ * @param {string} category - The ID or name of the category to filter by
+ * @returns {Promise<Object>} The response containing assets list and pagination info
+ * @throws {Error} If fetching assets fails after token refresh attempt
+ */
 export async function fetchAssetsByCategory(category) {
   try {
     const response = await pb.collection('Assets').getList(1, 20, {

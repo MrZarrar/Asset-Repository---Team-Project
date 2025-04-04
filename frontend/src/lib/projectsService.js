@@ -1,9 +1,22 @@
+/**
+ * @fileoverview Service for managing projects in the application.
+ * @module lib/projectsService
+ */
+
 import pb from '$lib/pocketbase'; 
 // If you have a refreshToken helper or similar, import it here
 // import { refreshToken } from './authManager';
 
 /**
- * Fetch all projects with optional pagination and filters.
+ * Fetches all projects with optional pagination and filters.
+ * 
+ * @async
+ * @function fetchProjects
+ * @param {number} [page=1] - The page number for pagination
+ * @param {number} [perPage=20] - The number of projects per page
+ * @param {Object} [filters={}] - Filtering criteria for projects
+ * @returns {Promise<Object>} The response containing projects list and pagination info
+ * @throws {Error} If fetching projects fails
  */
 export async function fetchProjects(page = 1, perPage = 20, filters = {}) {
   try {
@@ -38,7 +51,13 @@ export async function fetchProjects(page = 1, perPage = 20, filters = {}) {
 }
 
 /**
- * Get a single project by ID (optional).
+ * Gets a single project by its ID.
+ * 
+ * @async
+ * @function getProjectById
+ * @param {string} id - The ID of the project to fetch
+ * @returns {Promise<Object>} The project object
+ * @throws {Error} If fetching the project fails
  */
 export async function getProjectById(id) {
   try {
@@ -51,7 +70,13 @@ export async function getProjectById(id) {
 }
 
 /**
- * Create a new project (optional if you want separate function).
+ * Creates a new project in the database.
+ * 
+ * @async
+ * @function createProject
+ * @param {Object} projectData - The data for the new project
+ * @returns {Promise<Object>} The created project object
+ * @throws {Error} If project creation fails
  */
 export async function createProject(projectData) {
   try {
