@@ -1021,12 +1021,6 @@
              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
              <input type="date" bind:value={newProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
            </div>
-           <!-- Project ID -->
-           <div class="mb-4">
-             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
-             <input type="text" bind:value={newProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="(Optional) Enter unique ID" />
-             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to auto-generate an ID</p>
-           </div>
            <!-- Upload Logo -->
            <div class="mb-4">
              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Logo</label>
@@ -1125,11 +1119,6 @@
            <div class="mb-4">
              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
              <input type="date" bind:value={updatedProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed" disabled />
-           </div>
-           <!-- Project ID (read-only) -->
-           <div class="mb-4">
-             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project ID</label>
-             <input type="text" bind:value={updatedProject.id} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed" disabled />
            </div>
            <!-- Upload New Logo -->
            <div class="mb-4">
@@ -1982,7 +1971,6 @@
           <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" on:click={closeProjectDetails}>✕</button>
         </div>
         <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-          <p><span class="font-medium">ID:</span> {selectedProject.id}</p>
           <p><span class="font-medium">Launched:</span> {selectedProject.launched || 'N/A'}</p>
           <p><span class="font-medium">Languages:</span> {displayLanguages(selectedProject.language)}</p>
           {#if selectedProject.expand?.asset_id && selectedProject.expand.asset_id.length > 0}
