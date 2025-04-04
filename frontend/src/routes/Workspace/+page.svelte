@@ -62,12 +62,14 @@
 
   // --- PROJECTS FUNCTIONS ---
   async function loadProjectsPage(page) {
+    if (!userId) return; // Ensure userId is available
     if (page < 1 || page > projectsTotalPages) return;
     projectsPage = page;
     loadingProjects = true;
     try {
       const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
-      projects = projectsResponse.items;
+      // Filter projects where owner_id matches userId
+      projects = projectsResponse.items.filter(owner_id === userId);
       const total = projectsResponse.totalItems;
       projectsTotalPages = Math.ceil(total / projectsPerPage);
       loadingProjects = false;
@@ -580,10 +582,12 @@
   });
   
   async function loadData() {
+    if (!userId) return; // Wait for userId
     try {
       loadingProjects = true;
       const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
-      projects = projectsResponse.items;
+      // Filter projects where owner_id matches userId
+      projects = projectsResponse.items.filter(p => p.owner_id === userId);
       
       // Calculate total pages for projects pagination
       const totalProjects = projectsResponse.totalItems;
@@ -934,6 +938,13 @@
     loadAssociatedAssetsPage(linkedAssetsPage);
   }
 
+  // Add a reactive statement to call loadData once userId is available
+  $: if (userId) {
+    loadData();
+    loadAddedAssetsPage(1);
+    loadCopiedAssetsPage(1);
+  }
+
 </script>
 
 
@@ -949,13 +960,13 @@
     <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
       <nav class="flex -mb-px">
         <button 
-          class="py-4 px-6 text-center border-b-2 font-medium text-sm leading-5 focus:outline-none transition-colors duration-200 ease-in-out mr-8 {activeTab === 'projects' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+          class="py-4 px-6 text-center border-b-2 font-medium text-sm leading-5 focus:outline-none transition-colors duration:200 ease-in-out mr-8 {activeTab === 'projects' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
           on:click={() => activeTab = 'projects'}
         >
           My Projects
         </button>
         <button 
-          class="py-4 px-6 text-center border-b-2 font-medium text-sm leading-5 focus:outline-none transition-colors duration-200 ease-in-out {activeTab === 'assets' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+          class="py-4 px-6 text-center border-b-2 font-medium text-sm leading-5 focus:outline-none transition-colors duration:200 ease-in-out {activeTab === 'assets' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
           on:click={() => activeTab = 'assets'}
         >
           My Assets
@@ -1329,16 +1340,13 @@
                         
                         <!-- Download button added inside the button group -->
                         {#if asset.file}
-                          <a 
-                            href={pb.files.getUrl(asset, asset.file)} 
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
+                            on:click={() => downloadAssetFile(asset)}
                             class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                            on:click|stopPropagation
+                            type="button"
                           >
                             <Download class="w-3 h-3" />
-                          </a>
+                          </button>
                         {/if}
                       </div>
                     </div>
@@ -1347,16 +1355,13 @@
                     {#if asset.file}
                       <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
                         <div class="flex mt-1 space-x-1">
-                          <a 
-                            href={pb.files.getUrl(asset, asset.file)} 
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
+                            on:click={() => downloadAssetFile(asset)}
                             class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                            on:click|stopPropagation
+                            type="button"
                           >
                             <Download class="w-3 h-3" />
-                          </a>
+                          </button>
                         </div>
                       </div>
                     {/if}
@@ -1617,12 +1622,11 @@
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
                     <!-- Checkbox -->
-                    <input
-                      type="checkbox"
-                      class="checkbox asset-checkbox"
-                      checked={selectedAssets.has(asset.id)}
-                      on:change={() => toggleAssetSelection(asset.id)}
-                    />
+                    {#if role !== 'viewer'}
+                      <input type="checkbox" class="checkbox asset-checkbox" 
+                             checked={selectedAssets.has(asset.id)}
+                             on:change={() => toggleAssetSelection(asset.id)} />
+                    {/if}
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
 
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
@@ -1798,12 +1802,11 @@
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
                     <!-- Checkbox -->
-                    <input
-                      type="checkbox"
-                      class="checkbox asset-checkbox"
-                      checked={selectedAssets.has(asset.id)}
-                      on:change={() => toggleAssetSelection(asset.id)}
-                    />
+                    {#if role !== 'viewer'}
+                      <input type="checkbox" class="checkbox asset-checkbox" 
+                             checked={selectedAssets.has(asset.id)}
+                             on:change={() => toggleAssetSelection(asset.id)} />
+                    {/if}
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i + 1}`}</h2>
 
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
@@ -1849,16 +1852,13 @@
                           </button>
                           <!-- Download button -->
                           {#if asset.file}
-                            <a 
-                              href={pb.files.getUrl(asset, asset.file)} 
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button 
+                              on:click={() => downloadAssetFile(asset)}
                               class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                              on:click|stopPropagation
+                              type="button"
                             >
                               <Download class="w-3 h-3" />
-                            </a>
+                            </button>
                           {/if}
                         </div>
                       </div>
