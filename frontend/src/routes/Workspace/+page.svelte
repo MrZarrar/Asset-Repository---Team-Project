@@ -333,8 +333,11 @@
 
   // Pagination state
   let assetsPage = 1;
+  let linkedAssetsPage = 1;
   let assetsTotalPages = 1;
-  let assetsPerPage = 3;
+  let linkedAssetsTotalPages = 1; // Added for associated assets pagination
+  // Updated assetsPerPage from 3 to 6 for associated assets pagination
+  let assetsPerPage = 6;
   let projectsPage = 1;
   let projectsTotalPages = 1;
   let projectsPerPage = 8;
@@ -619,8 +622,8 @@
   }
 
   async function loadAssociatedAssetsPage(page) {
-    if (page < 1 || page > assetsTotalPages) return;
-    assetsPage = page;
+    if (page < 1 || page > linkedAssetsTotalPages) return;
+    linkedAssetsPage = page;
     loadingAssets = true;
     try {
       const assetsResponse = await fetchAssets(1, 100);
@@ -634,10 +637,11 @@
           asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
         );
       }
-      const startIndex = (assetsPage - 1) * assetsPerPage;
+      const startIndex = (linkedAssetsPage - 1) * assetsPerPage;
       const endIndex = startIndex + assetsPerPage;
       assets = filteredAssets.slice(startIndex, endIndex);
       loadingAssets = false;
+      linkedAssetsTotalPages = Math.ceil(filteredAssets.length / assetsPerPage);
     } catch (err) {
       console.error('Error fetching associated assets:', err);
       assetsError = 'Failed to load associated assets: ' + err.message;
@@ -908,6 +912,7 @@
   // Reactive statement to update the count of selected assets
   $: selectedAssetsCount = selectedAssets.size;
 
+
   let selectedProjectForAssets = null;
   
   function selectProjectForAssets(project) {
@@ -916,17 +921,17 @@
     if (project.expand && project.expand.asset_id) {
       // If expanded linked assets are available, set assets accordingly and disable pagination
       assets = project.expand.asset_id;
-      assetsTotalPages = 1;
+      linkedAssetsTotalPages = 1;
     } else {
       // Fallback: filter current assets by project id
       assets = assets.filter(a => a.linked_projects && a.linked_projects.includes(project.id));
-      assetsTotalPages = 1;
+      linkedAssetsTotalPages = 1;
     }
   }
   
   function clearSelectedProject() {
     selectedProjectForAssets = null;
-    loadAssociatedAssetsPage(assetsPage);
+    loadAssociatedAssetsPage(linkedAssetsPage);
   }
 
 </script>
@@ -1372,29 +1377,62 @@
               </div>
             {/each}
           </div>
-          
-          <!-- Pagination for Associated Assets -->
-          {#if assetsTotalPages > 1}
-            <div class="flex justify-center mt-6">
-              <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
-                <button 
-                  class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {assetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                  on:click={() => loadAssociatedAssetsPage(assetsPage - 1)}
-                  disabled={assetsPage === 1}
+          <!-- Updated Pagination for Associated Assets with Page Numbers -->
+          {#if linkedAssetsTotalPages > 1}
+            <div class="flex justify-center mt-6 space-x-2">
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => loadAssociatedAssetsPage(linkedAssetsPage - 1)}
+                disabled={linkedAssetsPage === 1}
+              >
+                Previous
+              </button>
+              {#if linkedAssetsTotalPages <= 4}
+                {#each Array(linkedAssetsTotalPages) as _, i}
+                  <button
+                    class="px-3 py-1 {linkedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAssociatedAssetsPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                {/each}
+              {:else}
+                <button
+                  class="px-3 py-1 {linkedAssetsPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => loadAssociatedAssetsPage(1)}
                 >
-                  Previous
+                  1
                 </button>
-                <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
-                  Page {assetsPage} of {assetsTotalPages}
-                </div>
-                <button 
-                  class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {assetsPage === assetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
-                  on:click={() => loadAssociatedAssetsPage(assetsPage + 1)}
-                  disabled={assetsPage === assetsTotalPages}
+                {#if linkedAssetsPage > 2}
+                  <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                {/if}
+                {#each Array(linkedAssetsTotalPages) as _, i}
+                  {#if i + 1 !== 1 && i + 1 !== linkedAssetsTotalPages && Math.abs(linkedAssetsPage - (i + 1)) < 2}
+                    <button
+                      class="px-3 py-1 {linkedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => loadAssociatedAssetsPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/if}
+                {/each}
+                {#if linkedAssetsPage < linkedAssetsTotalPages - 1}
+                  <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                {/if}
+                <button
+                  class="px-3 py-1 {linkedAssetsPage === linkedAssetsTotalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => loadAssociatedAssetsPage(linkedAssetsTotalPages)}
                 >
-                  Next
+                  {linkedAssetsTotalPages}
                 </button>
-              </nav>
+              {/if}
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => loadAssociatedAssetsPage(linkedAssetsPage + 1)}
+                disabled={linkedAssetsPage === linkedAssetsTotalPages}
+              >
+                Next
+              </button>
             </div>
           {/if}
         {/if}
