@@ -1,13 +1,45 @@
+/**
+ * @fileoverview Store for managing asset search state and operations.
+ * @module lib/stores/searchStore
+ */
+
 import { writable } from 'svelte/store';
 import { searchAssets } from '$lib/services/assetSearchService';
 
-// This would create stores for each search state
+/**
+ * Store for the current search term.
+ * @type {import('svelte/store').Writable<string>}
+ */
 export const searchTerm = writable('');
+
+/**
+ * Store for search results.
+ * @type {import('svelte/store').Writable<Array>}
+ */
 export const searchResults = writable([]);
+
+/**
+ * Store indicating whether a search is in progress.
+ * @type {import('svelte/store').Writable<boolean>}
+ */
 export const isSearching = writable(false);
+
+/**
+ * Store for any search-related errors.
+ * @type {import('svelte/store').Writable<string|null>}
+ */
 export const searchError = writable(null);
 
-// Perform asset search
+/**
+ * Performs an asset search with the given term and search option.
+ * Updates all relevant stores with the search state.
+ * 
+ * @async
+ * @function performSearch
+ * @param {string} term - The search term to look for
+ * @param {string} option - The field to search in (e.g. 'name', 'description')
+ * @returns {Promise<void>}
+ */
 export async function performSearch(term, option) {
     // Update the search term
     searchTerm.set(term);
@@ -34,9 +66,13 @@ export async function performSearch(term, option) {
     }
   }
   
-  // Clear search results
-  export function clearSearch() {
-    searchTerm.set('');
-    searchResults.set([]);
-    searchError.set(null);
-  }
+/**
+ * Clears all search state - term, results, and errors.
+ * 
+ * @function clearSearch
+ */
+export function clearSearch() {
+  searchTerm.set('');
+  searchResults.set([]);
+  searchError.set(null);
+}

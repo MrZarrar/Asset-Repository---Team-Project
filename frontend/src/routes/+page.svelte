@@ -937,12 +937,14 @@ input[type="file"].hidden {
                   <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 transition-all duration-1000 group-hover:duration-200"></div>
                   <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md">
                     <!-- Checkbox -->
-                    <input
-                      type="checkbox"
-                      class="checkbox asset-checkbox"
-                      checked={selectedAssets.has(asset.id)}
-                      on:change={() => toggleAssetSelection(asset.id)}
-                    />
+                    {#if role === 'admin'}
+                      <input
+                        type="checkbox"
+                        class="checkbox asset-checkbox"
+                        checked={selectedAssets.has(asset.id)}
+                        on:change={() => toggleAssetSelection(asset.id)}
+                      />
+                    {/if}
 
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{asset.name || `Asset ${i+1}`}</h2>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
