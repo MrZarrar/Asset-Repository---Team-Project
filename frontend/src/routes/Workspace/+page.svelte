@@ -1340,16 +1340,13 @@
                         
                         <!-- Download button added inside the button group -->
                         {#if asset.file}
-                          <a 
-                            href={pb.files.getUrl(asset, asset.file)} 
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
+                            on:click={() => downloadAssetFile(asset)}
                             class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                            on:click|stopPropagation
+                            type="button"
                           >
                             <Download class="w-3 h-3" />
-                          </a>
+                          </button>
                         {/if}
                       </div>
                     </div>
@@ -1358,16 +1355,13 @@
                     {#if asset.file}
                       <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
                         <div class="flex mt-1 space-x-1">
-                          <a 
-                            href={pb.files.getUrl(asset, asset.file)} 
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
+                            on:click={() => downloadAssetFile(asset)}
                             class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                            on:click|stopPropagation
+                            type="button"
                           >
                             <Download class="w-3 h-3" />
-                          </a>
+                          </button>
                         </div>
                       </div>
                     {/if}
@@ -1860,16 +1854,13 @@
                           </button>
                           <!-- Download button -->
                           {#if asset.file}
-                            <a 
-                              href={pb.files.getUrl(asset, asset.file)} 
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button 
+                              on:click={() => downloadAssetFile(asset)}
                               class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-1"
-                              on:click|stopPropagation
+                              type="button"
                             >
                               <Download class="w-3 h-3" />
-                            </a>
+                            </button>
                           {/if}
                         </div>
                       </div>
