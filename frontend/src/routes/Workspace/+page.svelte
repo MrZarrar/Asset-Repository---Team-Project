@@ -578,7 +578,6 @@
   
   async function loadData() {
     try {
-      // Fetch projects with pagination
       loadingProjects = true;
       const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
       projects = projectsResponse.items;
@@ -595,53 +594,49 @@
     }
     
     try {
-      // Fetch assets associated with user's projects
       loadingAssets = true;
-      const assetsResponse = await fetchAssets(assetsPage, 100); // Get more assets initially to filter
-      // Filter for assets linked to user's projects
-      const projectIds = projects.map(p => p.id);
-      const filteredAssets = assetsResponse.items.filter(asset => 
-        asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
-      );
-      
-      // Apply pagination to the filtered assets
+      const assetsResponse = await fetchAssets(assetsPage, 100);
+      let filteredAssets = [];
+      if (selectedProjectForAssets && selectedProjectForAssets.asset_id) {
+        const linkedAssetIds = selectedProjectForAssets.asset_id;
+        filteredAssets = assetsResponse.items.filter(asset => linkedAssetIds.includes(asset.id));
+      } else {
+        const projectIds = projects.map(p => p.id);
+        filteredAssets = assetsResponse.items.filter(asset =>
+          asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
+        );
+      }
       const startIndex = (assetsPage - 1) * assetsPerPage;
       const endIndex = startIndex + assetsPerPage;
       assets = filteredAssets.slice(startIndex, endIndex);
-      
-      // Calculate total pages based on filtered assets count
       assetsTotalPages = Math.ceil(filteredAssets.length / assetsPerPage);
-      
       loadingAssets = false;
     } catch (err) {
       console.error('Error fetching associated assets:', err);
       assetsError = 'Failed to load associated assets: ' + err.message;
       loadingAssets = false;
     }
-    
-    
   }
-  
-  // Functions to handle pagination
-  
+
   async function loadAssociatedAssetsPage(page) {
     if (page < 1 || page > assetsTotalPages) return;
-    
     assetsPage = page;
     loadingAssets = true;
-    
     try {
-      const assetsResponse = await fetchAssets(1, 100); // Get more assets to filter from
-      const projectIds = projects.map(p => p.id);
-      const filteredAssets = assetsResponse.items.filter(asset => 
-        asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
-      );
-      
-      // Apply pagination to the filtered assets
+      const assetsResponse = await fetchAssets(1, 100);
+      let filteredAssets = [];
+      if (selectedProjectForAssets && selectedProjectForAssets.asset_id) {
+        const linkedAssetIds = selectedProjectForAssets.asset_id;
+        filteredAssets = assetsResponse.items.filter(asset => linkedAssetIds.includes(asset.id));
+      } else {
+        const projectIds = projects.map(p => p.id);
+        filteredAssets = assetsResponse.items.filter(asset =>
+          asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
+        );
+      }
       const startIndex = (assetsPage - 1) * assetsPerPage;
       const endIndex = startIndex + assetsPerPage;
       assets = filteredAssets.slice(startIndex, endIndex);
-      
       loadingAssets = false;
     } catch (err) {
       console.error('Error fetching associated assets:', err);
@@ -913,8 +908,26 @@
   // Reactive statement to update the count of selected assets
   $: selectedAssetsCount = selectedAssets.size;
 
+  let selectedProjectForAssets = null;
   
-
+  function selectProjectForAssets(project) {
+    selectedProjectForAssets = project;
+    loadAssociatedAssetsPage(1);
+    if (project.expand && project.expand.asset_id) {
+      // If expanded linked assets are available, set assets accordingly and disable pagination
+      assets = project.expand.asset_id;
+      assetsTotalPages = 1;
+    } else {
+      // Fallback: filter current assets by project id
+      assets = assets.filter(a => a.linked_projects && a.linked_projects.includes(project.id));
+      assetsTotalPages = 1;
+    }
+  }
+  
+  function clearSelectedProject() {
+    selectedProjectForAssets = null;
+    loadAssociatedAssetsPage(assetsPage);
+  }
 
 </script>
 
@@ -1189,6 +1202,10 @@
                        <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => requestDeleteProject(project.id)}>
                          Delete
                        </button>
+                       <!-- New button to select project for assets -->
+                       <button class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded" on:click={() => selectProjectForAssets(project)}>
+                         Show Linked Assets
+                       </button>
                      {/if}
                    </div>
                  </div>
@@ -1224,10 +1241,22 @@
       <!-- Associated Assets Section -->
       <section>
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-semibold">Associated Assets</h2>
-          <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">
-            Browse All Assets
-          </a>
+          <h2 class="text-2xl font-semibold">
+            {#if selectedProjectForAssets}
+              Assets for: {selectedProjectForAssets.name}
+            {:else}
+              Associated Assets
+            {/if}
+          </h2>
+          {#if selectedProjectForAssets}
+            <button class="text-blue-600 dark:text-blue-400 hover:underline" on:click={clearSelectedProject}>
+              Clear Selection
+            </button>
+          {:else}
+            <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">
+              Browse All Assets
+            </a>
+          {/if}
         </div>
         
         {#if loadingAssets}
