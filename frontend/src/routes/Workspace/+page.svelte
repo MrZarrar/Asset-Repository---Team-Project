@@ -1040,18 +1040,18 @@
                {/if}
              </div>
            </div>
-           <!-- Link Assets -->
-           <div class="mb-4">
-             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Link Assets</label>
-             <div class="space-y-2">
-               {#each addedAssets.concat(copiedAssets).sort((a, b) => a.name.localeCompare(b.name)) as asset}
-                 <label class="asset-checkbox-label">
-                   <input type="checkbox" value={asset.id} bind:group={newProject.asset_id} class="rounded accent-blue-600" />
-                   <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
-                 </label>
-               {/each}
-             </div>
-           </div>
+          <!-- Edit Linked Assets -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Linked Assets</label>
+            <div class="space-y-2">
+              {#each addedAssets.concat(copiedAssets).sort((a, b) => a.name.localeCompare(b.name)) as asset}
+                <label class="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <input type="checkbox" value={asset.id} bind:group={updatedProject.asset_id} class="rounded accent-blue-600" />
+                  <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
+                </label>
+              {/each}
+            </div>
+          </div>
            <!-- Buttons -->
            {#if role !== 'viewer'}
              <div class="flex justify-end">
