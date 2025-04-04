@@ -15,9 +15,288 @@
   // Tab state
   let activeTab = 'projects'; // Default to projects tab
 
+
+
    // ------------------ VIEW DETAILS MODAL ------------------
-   let showProjectDetails = false;
+  let showAddProjectForm = false;
+  let showEditProjectForm = false;
+  let showProjectSaveSuccess = false;
+  let showProjectDeleteSuccess = false;
+  let showProjectConfirmDeleteModal = false;
+
+  let newProject = { name: '', description: '', language: [], launched: '', id: '', asset_id: [] };
+  let newProjectLogoFile = null;
+  let newProjectLogoFileName = '';
+  let newProjectLogoPreview = '';
+
+  let editingProject = null;
+  let updatedProject = {};
+  let editProjectLogoFile = null;
+  let editProjectLogoFileName = '';
+  let editProjectLogoPreview = '';
+  let originalLanguageStr = '';
+  let originalAssetIdsStr = '';
+
+  let projectToDeleteId = null;
+  let showProjectDetails = false;
+
   let selectedProject = null;
+
+  let availableLanguages = [
+    "Assembly", "Ada", "ALGOL", "APL", "Awk", "Bash", "BASIC", "C", "C++", "C#", "COBOL",
+    "CoffeeScript", "Crystal", "D", "Dart", "Delphi/Object Pascal", "Eiffel", "Elixir",
+    "Elm", "Erlang", "F#", "Fortran", "Go", "Groovy", "Haskell", "HTML/CSS", "Java",
+    "JavaScript", "Julia", "Kotlin", "LabVIEW", "Lisp", "Lua", "MATLAB", "Nim",
+    "Objective-C", "OCaml", "Pascal", "Perl", "PHP", "Prolog", "Python", "R", "Ruby",
+    "Rust", "Scala", "Scheme", "Smalltalk", "SQL", "Swift", "TypeScript", "VB.NET",
+    "Visual Basic", "Clojure", "PowerShell", "Forth", "Racket", "SAS", "ABAP",
+    "Common Lisp", "Factor", "Fantom", "Io", "J", "K", "Logo", "Modula-2", "Modula-3",
+    "OpenCL", "Oz", "PL/I", "REBOL", "RPG", "Simula", "Standard ML", "Tcl", "XQuery",
+    "Zig"
+  ];
+
+  let langDropdownOpenAdd = false;
+  let langDropdownOpenEdit = false;
+  let searchAdd = '';
+  let searchEdit = '';
+
+  // --- PROJECTS FUNCTIONS ---
+  async function loadProjectsPage(page) {
+    if (page < 1 || page > projectsTotalPages) return;
+    projectsPage = page;
+    loadingProjects = true;
+    try {
+      const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
+      projects = projectsResponse.items;
+      const total = projectsResponse.totalItems;
+      projectsTotalPages = Math.ceil(total / projectsPerPage);
+      loadingProjects = false;
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      projectsError = 'Failed to load projects: ' + err.message;
+      loadingProjects = false;
+    }
+  }
+
+  async function createProject() {
+    try {
+      if (!pb.authStore?.model) {
+        alert("You must be logged in to create a project.");
+        return;
+      }
+      if (role === 'viewer') {
+        alert("Viewers do not have permission to create projects.");
+        return;
+      }
+      if (newProject.id && projects.find(p => p.id === newProject.id)) {
+        alert("Project ID must be unique.");
+        return;
+      }
+      let formData = new FormData();
+      formData.append('id', newProject.id || '');
+      formData.append('name', newProject.name || '');
+      formData.append('description', newProject.description || '');
+      formData.append('language', JSON.stringify(newProject.language));
+      formData.append('launched', newProject.launched || '');
+      if (newProjectLogoFile) {
+        formData.append('logo', newProjectLogoFile);
+      }
+      formData.append('asset_id', JSON.stringify(newProject.asset_id));
+      formData.append('owner_id', userId);
+
+      const record = await pb.collection('projects').create(formData);
+      await loadProjectsPage(1);
+      resetNewProject();
+      showAddProjectForm = false;
+      triggerProjectSaveSuccess();
+    } catch (err) {
+      console.error('Error creating project:', err);
+      alert('Failed to create project.');
+    }
+  }
+
+  function resetNewProject() {
+    newProject = { name: '', description: '', language: [], launched: '', id: '', asset_id: [] };
+    newProjectLogoFile = null;
+    newProjectLogoFileName = '';
+    newProjectLogoPreview = '';
+    langDropdownOpenAdd = false;
+    searchAdd = '';
+  }
+
+  function editProjectFn(project) {
+    editingProject = project;
+    let langs = [];
+    try {
+      langs = JSON.parse(project.language) || [];
+      if (!Array.isArray(langs)) langs = [];
+    } catch {
+      langs = Array.isArray(project.language) ? project.language : [];
+    }
+    let launchedVal = project.launched;
+    if (launchedVal) {
+      try {
+        const d = new Date(launchedVal);
+        if (!isNaN(d.getTime())) {
+          launchedVal = d.toISOString().slice(0, 10);
+        }
+      } catch {}
+    }
+    const assetIds = project.expand?.asset_id
+      ? project.expand.asset_id.map(a => a.id)
+      : (Array.isArray(project.asset_id) ? project.asset_id : []);
+    updatedProject = { ...project, launched: launchedVal, language: langs, asset_id: assetIds };
+    originalLanguageStr = JSON.stringify(langs);
+    originalAssetIdsStr = JSON.stringify(assetIds);
+    editProjectLogoFile = null;
+    editProjectLogoFileName = '';
+    editProjectLogoPreview = '';
+    showEditProjectForm = true;
+  }
+
+  function hasProjectChanged() {
+    if (!editingProject) return false;
+    if (updatedProject.name !== editingProject.name) return true;
+    if (updatedProject.description !== editingProject.description) return true;
+    if (JSON.stringify(updatedProject.language) !== originalLanguageStr) return true;
+    if (JSON.stringify(updatedProject.asset_id) !== originalAssetIdsStr) return true;
+    if (editProjectLogoFile) return true;
+    return false;
+  }
+
+  async function updateProject() {
+    if (!editingProject) return;
+    if (role === 'viewer') {
+      alert("Viewers do not have permission to update projects.");
+      return;
+    }
+    if (!hasProjectChanged()) {
+      alert("No changes have been made.");
+      return;
+    }
+    try {
+      let formData = new FormData();
+      formData.append('name', updatedProject.name || '');
+      formData.append('description', updatedProject.description || '');
+      formData.append('language', JSON.stringify(updatedProject.language));
+      formData.append('launched', updatedProject.launched || '');
+      if (editProjectLogoFile) {
+        formData.append('logo', editProjectLogoFile);
+      }
+      formData.append('asset_id', JSON.stringify(updatedProject.asset_id));
+
+      const record = await pb.collection('projects').update(editingProject.id, formData);
+      const fetchedRecord = await pb.collection('projects').getOne(record.id, { expand: 'asset_id' });
+      projects = projects.map(p => p.id === fetchedRecord.id ? fetchedRecord : p);
+      showEditProjectForm = false;
+      editingProject = null;
+      updatedProject = {};
+      editProjectLogoFile = null;
+      editProjectLogoFileName = '';
+      editProjectLogoPreview = '';
+      triggerProjectSaveSuccess();
+    } catch (err) {
+      console.error('Error updating project:', err);
+      alert('Failed to update project.');
+    }
+  }
+
+  function requestDeleteProject(id) {
+    projectToDeleteId = id;
+    showProjectConfirmDeleteModal = true;
+  }
+
+  function cancelProjectDelete() {
+    showProjectConfirmDeleteModal = false;
+    projectToDeleteId = null;
+  }
+
+  async function confirmProjectDelete() {
+    if (!projectToDeleteId) return;
+    showProjectConfirmDeleteModal = false;
+    try {
+      await pb.collection('projects').delete(projectToDeleteId);
+      projects = projects.filter(p => p.id !== projectToDeleteId);
+      projectToDeleteId = null;
+      showProjectDeleteSuccess = true;
+      setTimeout(() => { showProjectDeleteSuccess = false; }, 3000);
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      alert('Failed to delete project.');
+    }
+  }
+
+  function triggerProjectSaveSuccess() {
+    showProjectSaveSuccess = true;
+    setTimeout(() => { showProjectSaveSuccess = false; }, 3000);
+  }
+  function closeProjectSaveSuccess() {
+    showProjectSaveSuccess = false;
+  }
+  function closeProjectDeleteSuccess() {
+    showProjectDeleteSuccess = false;
+  }
+
+  function handleNewProjectLogoChange(event) {
+    const file = event.target.files[0];
+    if (file) {
+      newProjectLogoFile = file;
+      newProjectLogoFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => { newProjectLogoPreview = e.target.result; };
+      reader.readAsDataURL(file);
+    } else {
+      newProjectLogoFile = null;
+      newProjectLogoFileName = '';
+      newProjectLogoPreview = '';
+    }
+  }
+
+  function handleEditProjectLogoChange(event) {
+    const file = event.target.files[0];
+    if (file) {
+      editProjectLogoFile = file;
+      editProjectLogoFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => { editProjectLogoPreview = e.target.result; };
+      reader.readAsDataURL(file);
+    } else {
+      editProjectLogoFile = null;
+      editProjectLogoFileName = '';
+      editProjectLogoPreview = '';
+    }
+  }
+
+  function filteredLanguagesAdd() {
+    if (!searchAdd.trim()) return availableLanguages;
+    return availableLanguages.filter(lang => lang.toLowerCase().includes(searchAdd.toLowerCase()));
+  }
+  function filteredLanguagesEdit() {
+    if (!searchEdit.trim()) return availableLanguages;
+    return availableLanguages.filter(lang => lang.toLowerCase().includes(searchEdit.toLowerCase()));
+  }
+  function toggleLangOptionAdd(lang) {
+    if (newProject.language.includes(lang)) {
+      newProject.language = newProject.language.filter(item => item !== lang);
+    } else {
+      newProject.language = [...newProject.language, lang];
+    }
+  }
+  function toggleLangOptionEdit(lang) {
+    if (updatedProject.language.includes(lang)) {
+      updatedProject.language = updatedProject.language.filter(item => item !== lang);
+    } else {
+      updatedProject.language = [...updatedProject.language, lang];
+    }
+  }
+  function clearLanguagesAdd() {
+    newProject.language = [];
+  }
+  function clearLanguagesEdit() {
+    updatedProject.language = [];
+  }
+
+
   function openProjectDetails(project) {
     selectedProject = project;
     showProjectDetails = true;
@@ -26,6 +305,20 @@
     showProjectDetails = false;
     selectedProject = null;
   }
+
+  function displayLanguages(langValue) {
+    if (!langValue) return 'N/A';
+    if (Array.isArray(langValue)) {
+      return langValue.length ? langValue.join(', ') : 'N/A';
+    }
+    try {
+      let arr = JSON.parse(langValue);
+      return (Array.isArray(arr) && arr.length) ? arr.join(', ') : 'N/A';
+    } catch {
+      return langValue || 'N/A';
+    }
+  }
+
   
 
 
@@ -40,8 +333,11 @@
 
   // Pagination state
   let assetsPage = 1;
+  let linkedAssetsPage = 1;
   let assetsTotalPages = 1;
-  let assetsPerPage = 3;
+  let linkedAssetsTotalPages = 1; // Added for associated assets pagination
+  // Updated assetsPerPage from 3 to 6 for associated assets pagination
+  let assetsPerPage = 6;
   let projectsPage = 1;
   let projectsTotalPages = 1;
   let projectsPerPage = 8;
@@ -285,7 +581,6 @@
   
   async function loadData() {
     try {
-      // Fetch projects with pagination
       loadingProjects = true;
       const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
       projects = projectsResponse.items;
@@ -302,54 +597,51 @@
     }
     
     try {
-      // Fetch assets associated with user's projects
       loadingAssets = true;
-      const assetsResponse = await fetchAssets(assetsPage, 100); // Get more assets initially to filter
-      // Filter for assets linked to user's projects
-      const projectIds = projects.map(p => p.id);
-      const filteredAssets = assetsResponse.items.filter(asset => 
-        asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
-      );
-      
-      // Apply pagination to the filtered assets
+      const assetsResponse = await fetchAssets(assetsPage, 100);
+      let filteredAssets = [];
+      if (selectedProjectForAssets && selectedProjectForAssets.asset_id) {
+        const linkedAssetIds = selectedProjectForAssets.asset_id;
+        filteredAssets = assetsResponse.items.filter(asset => linkedAssetIds.includes(asset.id));
+      } else {
+        const projectIds = projects.map(p => p.id);
+        filteredAssets = assetsResponse.items.filter(asset =>
+          asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
+        );
+      }
       const startIndex = (assetsPage - 1) * assetsPerPage;
       const endIndex = startIndex + assetsPerPage;
       assets = filteredAssets.slice(startIndex, endIndex);
-      
-      // Calculate total pages based on filtered assets count
       assetsTotalPages = Math.ceil(filteredAssets.length / assetsPerPage);
-      
       loadingAssets = false;
     } catch (err) {
       console.error('Error fetching associated assets:', err);
       assetsError = 'Failed to load associated assets: ' + err.message;
       loadingAssets = false;
     }
-    
-    
   }
-  
-  // Functions to handle pagination
-  
+
   async function loadAssociatedAssetsPage(page) {
-    if (page < 1 || page > assetsTotalPages) return;
-    
-    assetsPage = page;
+    if (page < 1 || page > linkedAssetsTotalPages) return;
+    linkedAssetsPage = page;
     loadingAssets = true;
-    
     try {
-      const assetsResponse = await fetchAssets(1, 100); // Get more assets to filter from
-      const projectIds = projects.map(p => p.id);
-      const filteredAssets = assetsResponse.items.filter(asset => 
-        asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
-      );
-      
-      // Apply pagination to the filtered assets
-      const startIndex = (assetsPage - 1) * assetsPerPage;
+      const assetsResponse = await fetchAssets(1, 100);
+      let filteredAssets = [];
+      if (selectedProjectForAssets && selectedProjectForAssets.asset_id) {
+        const linkedAssetIds = selectedProjectForAssets.asset_id;
+        filteredAssets = assetsResponse.items.filter(asset => linkedAssetIds.includes(asset.id));
+      } else {
+        const projectIds = projects.map(p => p.id);
+        filteredAssets = assetsResponse.items.filter(asset =>
+          asset.linked_projects && asset.linked_projects.some(id => projectIds.includes(id))
+        );
+      }
+      const startIndex = (linkedAssetsPage - 1) * assetsPerPage;
       const endIndex = startIndex + assetsPerPage;
       assets = filteredAssets.slice(startIndex, endIndex);
-      
       loadingAssets = false;
+      linkedAssetsTotalPages = Math.ceil(filteredAssets.length / assetsPerPage);
     } catch (err) {
       console.error('Error fetching associated assets:', err);
       assetsError = 'Failed to load associated assets: ' + err.message;
@@ -357,23 +649,6 @@
     }
   }
   
-  // Add function to handle projects pagination
-  async function loadProjectsPage(page) {
-    if (page < 1 || page > projectsTotalPages) return;
-    
-    projectsPage = page;
-    loadingProjects = true;
-    
-    try {
-      const projectsResponse = await fetchProjects(projectsPage, projectsPerPage, { owner_id: userId });
-      projects = projectsResponse.items;
-      loadingProjects = false;
-    } catch (err) {
-      console.error('Error fetching projects:', err);
-      projectsError = 'Failed to load projects: ' + err.message;
-      loadingProjects = false;
-    }
-  }
   
   function formatDate(dateString) {
     if (!dateString) return 'N/A';
@@ -637,8 +912,27 @@
   // Reactive statement to update the count of selected assets
   $: selectedAssetsCount = selectedAssets.size;
 
-  
 
+  let selectedProjectForAssets = null;
+  
+  function selectProjectForAssets(project) {
+    selectedProjectForAssets = project;
+    loadAssociatedAssetsPage(1);
+    if (project.expand && project.expand.asset_id) {
+      // If expanded linked assets are available, set assets accordingly and disable pagination
+      assets = project.expand.asset_id;
+      linkedAssetsTotalPages = 1;
+    } else {
+      // Fallback: filter current assets by project id
+      assets = assets.filter(a => a.linked_projects && a.linked_projects.includes(project.id));
+      linkedAssetsTotalPages = 1;
+    }
+  }
+  
+  function clearSelectedProject() {
+    selectedProjectForAssets = null;
+    loadAssociatedAssetsPage(linkedAssetsPage);
+  }
 
 </script>
 
@@ -669,78 +963,305 @@
       </nav>
     </div>
     
-    {#if activeTab === 'projects'}
-      <!-- Projects Tab Content -->
-      <section class="mb-12">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-semibold">My Projects</h2>
-          <a href="/Projects" class="text-blue-600 dark:text-blue-400 hover:underline">
-            View All Projects
-          </a>
-        </div>
-        
-        {#if loadingProjects}
-          <div class="flex justify-center items-center h-32">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
-            <p class="ml-3 text-gray-600 dark:text-gray-400">Loading projects...</p>
-          </div>
-        {:else if projectsError}
-          <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md">
-            <p>{projectsError}</p>
-          </div>
-        {:else if projects.length === 0}
-          <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
-            <p>You don't have any projects yet. <a href="/Projects" class="underline">Create a project</a> to get started.</p>
-          </div>
-        {:else}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
-          {#each projects as project}
-            <div class="relative w-64 group transition-transform duration-300 ease-in-out">
-              <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 animate-gradient"></div>
-              <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center space-x-1">
-                  {project.name}
-                </h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
-                <div class="mt-3 flex items-center justify-between">
-                  <div class="flex space-x-2">
-                    <!-- Edit Button -->
-                    <button
-                      class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded"
-                      on:click={() => goto(`/Projects?edit=${project.id}`)}
-                    >
-                      Edit
-                    </button>
-                
-                    <!-- Delete Button -->
-                    <button
-                      class="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
-                      on:click={() => deleteProject(project.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                <div class="mt-3">
-                  <button class="text-blue-600 dark:text-blue-400 text-xs hover:underline" on:click={() => openProjectDetails(project)}>
-                    View Details
-                  </button>
-                </div>
-                
-              </div>
+   <!-- PROJECTS TAB -->
+   {#if activeTab === 'projects'}
+   <section class="mb-12">
+     <div class="flex justify-between items-center mb-6">
+       <h2 class="text-2xl font-semibold">My Projects</h2>
+       {#if role !== 'viewer'}
+         {#if !showAddProjectForm && !showEditProjectForm}
+           <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm ml-4"
+             on:click={() => showAddProjectForm = true}>
+             Add Project
+           </button>
+         {/if}
+       {/if}
+     </div>
+
+     {#if showAddProjectForm}
+       <!-- ADD PROJECT FORM -->
+       <div class="mb-6">
+         <h2 class="text-2xl font-bold mb-4">Add New Project</h2>
+         <form on:submit|preventDefault={createProject}>
+           <!-- Logo Preview -->
+           <div class="flex items-center space-x-3 mb-4">
+             {#if newProjectLogoPreview}
+               <img src={newProjectLogoPreview} alt="New Logo Preview" class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" />
+             {:else}
+               <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 text-xs">
+                 No Logo
+               </div>
+             {/if}
+           </div>
+           <!-- Project Name -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
+             <input type="text" bind:value={newProject.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
+           </div>
+           <!-- Description -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+             <textarea rows="3" bind:value={newProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter project description"></textarea>
+           </div>
+           <!-- Languages Multi-Select -->
+           <div class="mb-4 relative">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Languages</label>
+             <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500" on:click={() => (langDropdownOpenAdd = !langDropdownOpenAdd)}>
+               {#if newProject.language.length > 0}
+                 {newProject.language.join(', ')}
+               {:else}
+                 Select Programming Languages...
+               {/if}
+               <svg class="ml-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+               </svg>
+             </button>
+             {#if langDropdownOpenAdd}
+               <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto">
+                 <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
+                   <input type="text" placeholder="Search..." bind:value={searchAdd} class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300" />
+                   <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded" on:click={clearLanguagesAdd}>Clear</button>
+                   <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded" on:click={() => (langDropdownOpenAdd = false)}>Done</button>
+                 </div>
+                 <div class="p-2 space-y-1">
+                   {#each filteredLanguagesAdd() as lang}
+                     <label class="flex items-center space-x-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                       <input type="checkbox" class="rounded" checked={newProject.language.includes(lang)} on:change={() => toggleLangOptionAdd(lang)} />
+                       <span>{lang}</span>
+                     </label>
+                   {/each}
+                 </div>
+               </div>
+             {/if}
+           </div>
+           <!-- Launched -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
+             <input type="date" bind:value={newProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+           </div>
+           <!-- Upload Logo -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Logo</label>
+             <div class="mt-1 flex items-center space-x-2">
+               <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                 Select File
+                 <input type="file" accept="image/*" on:change={handleNewProjectLogoChange} class="hidden" />
+               </label>
+               {#if newProjectLogoFileName}
+                 <div class="text-sm text-gray-600 dark:text-gray-400">{newProjectLogoFileName}</div>
+               {/if}
+             </div>
+           </div>
+          <!-- Edit Linked Assets -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Linked Assets</label>
+            <div class="space-y-2">
+              {#each addedAssets.concat(copiedAssets).sort((a, b) => a.name.localeCompare(b.name)) as asset}
+                <label class="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <input type="checkbox" value={asset.id} bind:group={updatedProject.asset_id} class="rounded accent-blue-600" />
+                  <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
+                </label>
+              {/each}
             </div>
-          {/each}
-        </div>
-        {/if}
-      </section>
+          </div>
+           <!-- Buttons -->
+           {#if role !== 'viewer'}
+             <div class="flex justify-end">
+               <button type="button" on:click={() => showAddProjectForm = false} class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                 Cancel
+               </button>
+               <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                 Save
+               </button>
+             </div>
+           {/if}
+         </form>
+       </div>
+
+     {:else if showEditProjectForm}
+       <!-- EDIT PROJECT FORM -->
+       <div class="mb-6">
+         <h2 class="text-2xl font-bold mb-4">Edit Project</h2>
+         <form on:submit|preventDefault={updateProject}>
+           {#if editingProject?.logo && !editProjectLogoFile}
+             <img src={pb.files.getUrl(editingProject, editingProject.logo)} alt="Project Logo" class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600 mb-4" />
+           {:else if editProjectLogoPreview}
+             <img src={editProjectLogoPreview} alt="New Logo Preview" class="w-16 h-16 object-cover rounded-md border border-gray-300 dark:border-gray-600 mb-4" />
+           {:else}
+             <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 text-xs mb-4">
+               No Logo
+             </div>
+           {/if}
+           <!-- Name -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
+             <input type="text" bind:value={updatedProject.name} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
+           </div>
+           <!-- Description -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+             <textarea rows="3" bind:value={updatedProject.description} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></textarea>
+           </div>
+           <!-- Languages Multi-Select (Edit) -->
+           <div class="mb-4 relative">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Languages</label>
+             <button type="button" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white inline-flex justify-between focus:ring-blue-500 focus:border-blue-500" on:click={() => (langDropdownOpenEdit = !langDropdownOpenEdit)}>
+               {#if updatedProject.language.length > 0}
+                 {updatedProject.language.join(', ')}
+               {:else}
+                 Select Programming Languages...
+               {/if}
+               <svg class="ml-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+               </svg>
+             </button>
+             {#if langDropdownOpenEdit}
+               <div class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 rounded-md shadow-lg max-h-56 overflow-auto">
+                 <div class="p-2 border-b border-gray-200 dark:border-gray-600 flex items-center">
+                   <input type="text" placeholder="Search..." bind:value={searchEdit} class="w-full p-2 text-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-700 dark:text-gray-300" />
+                   <button type="button" class="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded" on:click={clearLanguagesEdit}>Clear</button>
+                   <button type="button" class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded" on:click={() => (langDropdownOpenEdit = false)}>Done</button>
+                 </div>
+                 <div class="p-2 space-y-1">
+                   {#each filteredLanguagesEdit() as lang}
+                     <label class="flex items-center space-x-2 px-2 py-1 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                       <input type="checkbox" class="rounded" checked={updatedProject.language.includes(lang)} on:change={() => toggleLangOptionEdit(lang)} />
+                       <span>{lang}</span>
+                     </label>
+                   {/each}
+                 </div>
+               </div>
+             {/if}
+           </div>
+           <!-- Launched (read-only) -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Launched</label>
+             <input type="date" bind:value={updatedProject.launched} class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed" disabled />
+           </div>
+           <!-- Upload New Logo -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload New Logo</label>
+             <div class="mt-1 flex items-center space-x-2">
+               <label class="cursor-pointer flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                 Select File
+                 <input type="file" accept="image/*" on:change={handleEditProjectLogoChange} class="hidden" />
+               </label>
+               {#if editProjectLogoFileName}
+                 <div class="text-sm text-gray-600 dark:text-gray-400">{editProjectLogoFileName}</div>
+               {/if}
+             </div>
+           </div>
+           <!-- Edit Linked Assets -->
+           <div class="mb-4">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Linked Assets</label>
+             <div class="space-y-2">
+               {#each addedAssets.concat(copiedAssets).sort((a, b) => a.name.localeCompare(b.name)) as asset}
+                 <label class="flex items-center space-x-2 p-2 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                   <input type="checkbox" value={asset.id} bind:group={updatedProject.asset_id} class="rounded accent-blue-600" />
+                   <span class="text-sm font-medium">{asset.name}{asset.version ? ` (${asset.version})` : ''}</span>
+                 </label>
+               {/each}
+             </div>
+           </div>
+           {#if role !== 'viewer'}
+             <div class="flex justify-end">
+               <button type="button" on:click={() => { showEditProjectForm = false; editingProject = null; }} class="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                 Cancel
+               </button>
+               <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                 Save Changes
+               </button>
+             </div>
+           {/if}
+         </form>
+       </div>
+
+     {:else}
+       {#if loadingProjects}
+         <div class="flex justify-center items-center h-32">
+           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
+           <p class="ml-3 text-gray-600 dark:text-gray-400">Loading projects...</p>
+         </div>
+       {:else if projectsError}
+         <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md">
+           <p>{projectsError}</p>
+         </div>
+       {:else if projects.length === 0}
+         <div class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
+           <p>You don't have any projects yet. Try adding a new one!</p>
+         </div>
+       {:else}
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+           {#each projects as project}
+             <div class="relative w-64 group transition-transform duration-300 ease-in-out">
+               <div class="absolute -inset-2 bg-gradient-to-r from-blue-600/50 to-pink-600/50 rounded-lg blur-md opacity-75 group-hover:opacity-100 animate-gradient"></div>
+               <div class="relative h-full bg-white/90 dark:bg-gray-800/90 p-4 rounded-lg shadow-md transform transition-transform group-hover:scale-105">
+                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{project.name}</h2>
+                 <p class="text-xs text-gray-500 dark:text-gray-400"><strong>Last Updated:</strong> {formatDate(project.updated)}</p>
+                 <div class="mt-3 flex items-center justify-between">
+                   <div class="flex space-x-2">
+                     {#if role !== 'viewer'}
+                       <button class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded" on:click={() => editProjectFn(project)}>
+                         Edit
+                       </button>
+                       <button class="px-2 py-1 text-xs bg-red-500 hover:bg-red-700 text-white rounded" on:click={() => requestDeleteProject(project.id)}>
+                         Delete
+                       </button>
+                       <!-- New button to select project for assets -->
+                       <button class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded" on:click={() => selectProjectForAssets(project)}>
+                         Show Linked Assets
+                       </button>
+                     {/if}
+                   </div>
+                 </div>
+                 <div class="mt-3">
+                   <button class="text-blue-600 dark:text-blue-400 text-xs hover:underline" on:click={() => openProjectDetails(project)}>
+                     View Details
+                   </button>
+                 </div>
+               </div>
+             </div>
+           {/each}
+         </div>
+         {#if projectsTotalPages > 1}
+           <div class="flex justify-center mt-6">
+             <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+               <button class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {projectsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" on:click={() => loadProjectsPage(projectsPage - 1)} disabled={projectsPage === 1}>
+                 Previous
+               </button>
+               <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
+                 Page {projectsPage} of {projectsTotalPages}
+               </div>
+               <button class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {projectsPage === projectsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}" on:click={() => loadProjectsPage(projectsPage + 1)} disabled={projectsPage === projectsTotalPages}>
+                 Next
+               </button>
+             </nav>
+           </div>
+         {/if}
+       {/if}
+     {/if}
+   </section>
+
       
       <!-- Associated Assets Section -->
       <section>
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-semibold">Associated Assets</h2>
-          <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">
-            Browse All Assets
-          </a>
+          <h2 class="text-2xl font-semibold">
+            {#if selectedProjectForAssets}
+              Assets for: {selectedProjectForAssets.name}
+            {:else}
+              Associated Assets
+            {/if}
+          </h2>
+          {#if selectedProjectForAssets}
+            <button class="text-blue-600 dark:text-blue-400 hover:underline" on:click={clearSelectedProject}>
+              Clear Selection
+            </button>
+          {:else}
+            <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">
+              Browse All Assets
+            </a>
+          {/if}
         </div>
         
         {#if loadingAssets}
@@ -856,29 +1377,62 @@
               </div>
             {/each}
           </div>
-          
-          <!-- Pagination for Associated Assets -->
-          {#if assetsTotalPages > 1}
-            <div class="flex justify-center mt-6">
-              <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
-                <button 
-                  class="px-3 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {assetsPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                  on:click={() => loadAssociatedAssetsPage(assetsPage - 1)}
-                  disabled={assetsPage === 1}
+          <!-- Updated Pagination for Associated Assets with Page Numbers -->
+          {#if linkedAssetsTotalPages > 1}
+            <div class="flex justify-center mt-6 space-x-2">
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => loadAssociatedAssetsPage(linkedAssetsPage - 1)}
+                disabled={linkedAssetsPage === 1}
+              >
+                Previous
+              </button>
+              {#if linkedAssetsTotalPages <= 4}
+                {#each Array(linkedAssetsTotalPages) as _, i}
+                  <button
+                    class="px-3 py-1 {linkedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                    on:click={() => loadAssociatedAssetsPage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                {/each}
+              {:else}
+                <button
+                  class="px-3 py-1 {linkedAssetsPage === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => loadAssociatedAssetsPage(1)}
                 >
-                  Previous
+                  1
                 </button>
-                <div class="px-4 py-2 border-t border-b border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300">
-                  Page {assetsPage} of {assetsTotalPages}
-                </div>
-                <button 
-                  class="px-3 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 {assetsPage === assetsTotalPages ? 'opacity-50 cursor-not-allowed' : ''}"
-                  on:click={() => loadAssociatedAssetsPage(assetsPage + 1)}
-                  disabled={assetsPage === assetsTotalPages}
+                {#if linkedAssetsPage > 2}
+                  <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                {/if}
+                {#each Array(linkedAssetsTotalPages) as _, i}
+                  {#if i + 1 !== 1 && i + 1 !== linkedAssetsTotalPages && Math.abs(linkedAssetsPage - (i + 1)) < 2}
+                    <button
+                      class="px-3 py-1 {linkedAssetsPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                      on:click={() => loadAssociatedAssetsPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  {/if}
+                {/each}
+                {#if linkedAssetsPage < linkedAssetsTotalPages - 1}
+                  <span class="px-3 py-1 text-gray-700 dark:text-gray-300">...</span>
+                {/if}
+                <button
+                  class="px-3 py-1 {linkedAssetsPage === linkedAssetsTotalPages ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'} rounded"
+                  on:click={() => loadAssociatedAssetsPage(linkedAssetsTotalPages)}
                 >
-                  Next
+                  {linkedAssetsTotalPages}
                 </button>
-              </nav>
+              {/if}
+              <button
+                class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded disabled:opacity-50"
+                on:click={() => loadAssociatedAssetsPage(linkedAssetsPage + 1)}
+                disabled={linkedAssetsPage === linkedAssetsTotalPages}
+              >
+                Next
+              </button>
             </div>
           {/if}
         {/if}
@@ -1474,19 +2028,16 @@
       </div>
     </div>
   {/if}
-</main>
-{/if}
 
-{#if showProjectDetails}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal-backdrop" transition:fade>
-    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 md:mx-0" transition:scale>
-      {#if selectedProject}
+<!-- PROJECT DETAILS MODAL -->
+  {#if showProjectDetails && selectedProject}
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal-backdrop" transition:fade>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 md:mx-0" transition:scale>
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{selectedProject.name}</h2>
           <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" on:click={closeProjectDetails}>✕</button>
         </div>
         <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-          <p><span class="font-medium">ID:</span> {selectedProject.id}</p>
           <p><span class="font-medium">Launched:</span> {selectedProject.launched || 'N/A'}</p>
           <p><span class="font-medium">Languages:</span> {displayLanguages(selectedProject.language)}</p>
           {#if selectedProject.expand?.asset_id && selectedProject.expand.asset_id.length > 0}
@@ -1504,12 +2055,87 @@
           {/if}
         </div>
         <div class="mt-6 flex justify-end">
-          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm btn-fancy btn-ripple focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" on:click={closeProjectDetails}>Close</button>
+          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm" on:click={closeProjectDetails}>
+            Close
+          </button>
         </div>
-      {/if}
+      </div>
     </div>
-  </div>
+  {/if}
+
+  <!-- PROJECT DELETE CONFIRM MODAL -->
+  {#if showProjectConfirmDeleteModal}
+    <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
+      <div class="bg-white dark:bg-gray-800 rounded p-6 w-80 shadow-lg" transition:scale>
+        <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Confirm Deletion</h2>
+        <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+          Are you sure you want to delete this project? This action cannot be undone.
+        </p>
+        <div class="flex justify-end space-x-2">
+          {#if role !== 'viewer'}
+            <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" on:click={confirmProjectDelete}>
+              Confirm
+            </button>
+            <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={cancelProjectDelete}>
+              Cancel
+            </button>
+          {/if}
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- PROJECT DELETE SUCCESS MODAL -->
+  {#if showProjectDeleteSuccess}
+    <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
+      <div class="relative bg-red-100 dark:bg-red-900 rounded p-6 w-80 shadow-lg" transition:scale>
+        <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeProjectDeleteSuccess}>
+          ✕
+        </button>
+        <div class="flex justify-center mb-4">
+          <div class="animated-circle">
+            <span class="text-xl text-white">–</span>
+          </div>
+        </div>
+        <h2 class="text-md font-semibold mb-2 text-center text-red-800 dark:text-red-200">
+          Project Deleted Successfully!
+        </h2>
+        <p class="text-sm text-center text-red-700 dark:text-red-300 mb-4">
+          The selected project has been removed.
+        </p>
+        <div class="flex justify-center">
+          <button class="bg-gray-200 dark:bg-gray-600 text-sm px-3 py-1 rounded text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500" on:click={closeProjectDeleteSuccess}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- PROJECT SAVE SUCCESS MODAL -->
+  {#if showProjectSaveSuccess}
+    <div class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 modal-backdrop" transition:fade>
+      <div class="relative bg-green-100 dark:bg-green-900 rounded p-6 w-80 shadow-lg" transition:scale>
+        <button class="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" on:click={closeProjectSaveSuccess}>
+          ✕
+        </button>
+        <div class="flex justify-center mb-4">
+          <div class="animated-green">
+            <span class="text-xl text-white">✔</span>
+          </div>
+        </div>
+        <h2 class="text-md font-semibold mb-2 text-center text-green-800 dark:text-green-200">
+          Project Saved Successfully!
+        </h2>
+        <p class="text-sm text-center text-green-700 dark:text-green-300">
+          Your changes have been saved.
+        </p>
+      </div>
+    </div>
+  {/if}
+</main>
 {/if}
+
 
 <style>
   input[type="search"]::-webkit-search-cancel-button {
