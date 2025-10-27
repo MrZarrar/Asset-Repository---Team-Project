@@ -14,7 +14,7 @@ Each asset is linked to a project, and users can explore relationships, discuss 
 ---
 
 ## 🎬 Demo Video
-🎥 **Watch on YouTube:** [Click here to view the demo](https://youtu.be/rGM3N7e14JA)  
+🎥 **Watch on YouTube:** [![Watch the demo on YouTube](Screenshot 2025-10-27 at 11.07.45.png)](https://youtu.be/rGM3N7e14JA)  
 
 
 ---
@@ -71,6 +71,9 @@ My primary contributions included:
 
 
 ## 📸 Screenshots
+
+**Dashboard View**
+![Dashboard Screenshot](Screenshot 2025-10-27 at 11.07.45.png)
 
 
 
