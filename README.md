@@ -14,7 +14,7 @@ Each asset is linked to a project, and users can explore relationships, discuss 
 ---
 
 ## 🎬 Demo Video
-🎥 **Watch on YouTube:** [![Watch the demo on YouTube](./Screenshot%202025-10-27%20at%2011.07.25.png)](https://youtu.be/rGM3N7e14JA)  
+🎥 **Watch on YouTube:** [![Watch the demo on YouTube](./IMG_0379.jpg)](https://youtu.be/rGM3N7e14JA)  
 
 
 ---
@@ -73,7 +73,23 @@ My primary contributions included:
 ## 📸 Screenshots
 
 **Dashboard View**
-![Dashboard Screenshot](./Screenshot%202025-10-27%20at%2011.07.25.png)
+![Dashboard Screenshot](./Screenshot%202025-10-27%20at%2011.07.45.png)
+
+**Lightmode View**
+![LightMode Screenshot](./Screenshot%202025-10-27%20at%2011.07.25.png)
+
+**Chatbot**
+![Chatbot Screenshot](./Screenshot%202025-10-27%20at%2011.09.23.png)
+
+**Profile**
+![Profile Screenshot](./Screenshot%202025-10-27%20at%2011.10.14.png)
+
+**Sign Up**
+![Sign Up Screenshot](./Screenshot%202025-10-27%20at%2011.09.46.png)
+
+**Role Based Access**
+![RBAC Screenshot](./Screenshot%202025-10-27%20at%2011.10.48.png)
+
 
 
 
